@@ -8,10 +8,11 @@ export default function RootLayout() {
         <Stack.Screen
             name="LandingPage"
             options={({ navigation }) => ({
-                title: 'The Catch',
+                title: "What We're Watching",
                 headerBackVisible: false,
                 headerTitleStyle: {
                     fontSize: 24,
+                    color: '#2D2350',
                 },
                 headerRight: () => (
                     <TouchableOpacity onPress={() => navigation.navigate('ProfilePage')}>

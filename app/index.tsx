@@ -22,7 +22,7 @@ export default function Index() {
     };
 
     return (
-        <ScrollView contentContainerStyle={{ flexGrow: 1 }} style={{ backgroundColor: "#FFD3EE" }}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }} style={{ backgroundColor: "#2D2350" }}>
             <Animated.View // white rectangle (no absolute positioning now)
                 style={{
                     width: 350,
@@ -38,114 +38,47 @@ export default function Index() {
                 }}
             >
                 {/* Top Section with welcome text and image */}
-                <View style={{ alignItems: "center", paddingTop: 30 }}>
+                <View style={{ alignItems: "center", paddingTop: 40 }}>
                     <Text style={{ fontSize: 32 }}>Welcome to</Text>
 
                     <Image
                         style={{
-                            width: 325,
-                            height: 100
+                            paddingTop: 10,
+                            width: 310,
+                            height: 110
                         }}
-                        source={require('../assets/images/TheCatchText.png')}
+                        source={require('../assets/images/whatWewatch.png')}
                     />
                 </View>
-
-                {/*Username and password entry*/}
-                {isExpanded && (
-                    <View style={{ marginTop: 20, paddingHorizontal: 20, alignItems: "flex-start" }}>
-                        <TextInput
-                            style={{
-                                height: 40,
-                                width: 250,
-                                borderColor: 'white',
-                                borderWidth: 1,
-                                borderRadius: 8,
-                                paddingHorizontal: 10,
-                                marginTop: 10,
-                                textAlign: "left",
-                                backgroundColor: "#ECE6F0",
-                            }}
-                            placeholder="Username"
-                            placeholderTextColor="black"
-                        />
-                        <Text style={{ fontStyle: "italic", marginBottom: 10 }}>Forgot Username?</Text>
-
-                        <TextInput
-                            style={{
-                                height: 40,
-                                width: 250,
-                                borderColor: 'white',
-                                borderWidth: 1,
-                                borderRadius: 8,
-                                paddingHorizontal: 10,
-                                marginTop: 10,
-                                textAlign: "left",
-                                backgroundColor: "#ECE6F0",
-                            }}
-                            placeholder="Password"
-                            placeholderTextColor="black"
-                        />
-                        <Text style={{ fontStyle: "italic", marginBottom: 10 }}>Forgot Password?</Text>
-                    </View>
-                )}
 
                 {/* Button container */}
                 <View
                     style={{
                         flex: 1,
                         justifyContent: "flex-end",
-                        marginBottom: 20
+                        marginBottom: 75
                     }}
                 >
                     {/* Sign In Button */}
+                    <Link href="./LandingPage" asChild>
                     <TouchableOpacity
                         style={{
-                            backgroundColor: "#6750A4",
+                            backgroundColor: "#676F9D",
                             paddingVertical: 10,
                             paddingHorizontal: 20,
                             borderRadius: 10,
                             marginTop: 10,
-                            width: 175,
-                            height: 75,
+                            width: 200,
+                            height: 100,
                             justifyContent: "center",
                             alignItems: "center"
                         }}
-                        onPress={handleSignInPress}
                     >
-                        <Text style={{ color: "white", fontWeight: "bold", fontSize: 30 }}>SIGN IN</Text>
+                        <Text style={{ color: "white", fontWeight: "bold", fontSize: 30 }}>ENTER</Text>
                     </TouchableOpacity>
-
-                    {/* Sign Up Button */}
-                    <Link href="./registration" asChild>
-                        <TouchableOpacity
-                            style={{
-                                backgroundColor: "#6750A4",
-                                paddingVertical: 10,
-                                paddingHorizontal: 20,
-                                borderRadius: 10,
-                                marginTop: 10,
-                                width: 175,
-                                height: 75,
-                                justifyContent: "center",
-                                alignItems: "center"
-                            }}
-                        >
-                            <Text style={{ color: "white", fontWeight: "bold", fontSize: 30 }}>SIGN UP</Text>
-                            </TouchableOpacity>
                     </Link>
                 </View>
             </Animated.View>
-
-            {/* Bottom Logo Image */}
-            <View style={{ alignItems: "center", marginTop: 20 }}>
-                <Image
-                    style={{
-                        width: 200,
-                        height: 200,
-                    }}
-                    source={require('../assets/images/TheCatchLogo.png')}
-                />
-            </View>
         </ScrollView>
     );
 }
