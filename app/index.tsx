@@ -133,6 +133,25 @@ export default function Index() {
                             <Text style={{ color: "white", fontWeight: "bold", fontSize: 30 }}>SIGN UP</Text>
                             </TouchableOpacity>
                     </Link>
+
+                    {/*Test Page*/}
+                    <Link href="./registration" asChild>
+                        <TouchableOpacity
+                            style={{
+                                backgroundColor: "#6750A4",
+                                paddingVertical: 10,
+                                paddingHorizontal: 20,
+                                borderRadius: 10,
+                                marginTop: 10,
+                                width: 175,
+                                height: 75,
+                                justifyContent: "center",
+                                alignItems: "center"
+                            }}
+                        >
+                            <Text style={{ color: "white", fontWeight: "bold", fontSize: 30 }}>Test</Text>
+                            </TouchableOpacity>
+                    </Link>
                 </View>
             </Animated.View>
 
