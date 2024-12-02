@@ -43,9 +43,9 @@ export default function Index() {
 
                     <Image
                         style={{
-                            paddingTop: 10,
+                            paddingTop: 20,
                             width: 310,
-                            height: 110
+                            height: 120
                         }}
                         source={require('../assets/images/whatWewatch.png')}
                     />

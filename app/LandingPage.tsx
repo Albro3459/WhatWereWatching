@@ -1,388 +1,295 @@
-import {
-  Text,
-  View,
-  StyleSheet,
-  ScrollView,
-  Image,
-  Button,
-  Pressable,
-  Dimensions,
-  LayoutChangeEvent,
-} from "react-native";
+import React, { useState } from "react";
+import { StyleSheet, View, Text, ScrollView, FlatList, Image, TouchableOpacity } from "react-native";
+import { Card, Title, Button, Searchbar } from "react-native-paper";
+import { MaterialIcons } from "@expo/vector-icons";
 
-import * as SplashScreen from "expo-splash-screen";
-
-import { useFonts, Kurale_400Regular } from "@expo-google-fonts/kurale";
-
-import React, { useState, useEffect, useRef } from "react";
-
-import * as Font from "expo-font";
-
-// useEffect(() => {
-//   async function loadFonts() {
-//     await Font.loadAsync({
-//       "Kurale-Regular": require("./assets/fonts/Kurale-Regular.ttf"),
-//     });
-//   }
-//   loadFonts();
-// }, []);
-
-import { Link } from "expo-router";
-const screenWidth = Dimensions.get("window").width;
-
-import LinearGradient from "react-native-linear-gradient";
-
-var darkRed = "#B0170F";
-var magenta = "#FF2452";
-var pink = "#FFD3EE";
-var darkPurple = "#6750A4";
-var grayText = "#49454F";
-var attributeGray = "#ECE6F0";
-
-export default function LandingPage() {
-  const hobbies = ["Video Games", "Anime", "Reading", "Clogging", "Tennis"];
-  const hobbiesLength = hobbies.length;
-
-  const music = ["R&B", "Rock", "Country", "Folk", "smthsmth", "indie pop"];
-  const musicLength = music.length;
-
-  const icks = ["Smelly", "Broke", "Bad Driver"];
-  const icksLength = icks.length;
-
-  const attributes = [
-    ["Hobbies", hobbies],
-    ["Music", music],
-    ["Icks", icks],
+const LandingPage = () => {
+    // Array of trending movies
+    const trendingMovies = [
+      { id: "1", title: "The Wild Robot (2024)", image: require("../assets/images/wildrobot.jpg") },
+      { id: "2", title: "Inside Out (2015)", image: require("../assets/images/insideout.jpg") },
+      { id: "3", title: "Finding Nemo (2003)", image: require("../assets/images/nemo.jpeg") },
+    ];
+  
+    // State to manage the currently displayed movie
+    const [currentMovieIndex, setCurrentMovieIndex] = useState(0);
+  
+    // Function to handle the Next button
+    const handleNextMovie = () => {
+      setCurrentMovieIndex((prevIndex) => (prevIndex + 1) % trendingMovies.length); // Loop back to the first movie
+    };
+  
+    // Function to handle the Previous button
+    const handlePreviousMovie = () => {
+      setCurrentMovieIndex((prevIndex) =>
+        prevIndex === 0 ? trendingMovies.length - 1 : prevIndex - 1
+      );
+    };
+  const recommendedMovies = [
+    { id: "1", title: "Joker", image: "https://via.placeholder.com/150" },
+    { id: "2", title: "Elf", image: "https://via.placeholder.com/150" },
+    { id: "3", title: "Shrek", image: "https://via.placeholder.com/150" },
+    { id: "4", title: "Star Wars", image: "https://via.placeholder.com/150" },
+    { id: "5", title: "Avengers", image: "https://via.placeholder.com/150" },
+    { id: "6", title: "Beauty and the Beast", image: "https://via.placeholder.com/150" },
   ];
-  const attributesLength = attributes.length;
+    // Array of reviews
+    const reviews = [
+      {
+        id: "1",
+        user: "@larryjustice",
+        text: "The movie made me shed so many tears.",
+        rating: 5,
+        avatar: "https://via.placeholder.com/50",
+        movieId: "1",
+      },
+      {
+        id: "2",
+        user: "@janedoe",
+        text: "A fantastic emotional journey.",
+        rating: 4,
+        avatar: "https://via.placeholder.com/50",
+        movieId: "2",
+      },
+      {
+        id: "3",
+        user: "@movielover",
+        text: "A must-watch for everyone!",
+        rating: 5,
+        avatar: "https://via.placeholder.com/50",
+        movieId: "3",
+      },
+      {
+        id: "4",
+        user: "@cinemafan",
+        text: "Visually stunning and heartfelt.",
+        rating: 4,
+        avatar: "https://via.placeholder.com/50",
+        movieId: "1",
+      },
+    ];
 
-  const [viewHeight, setViewHeight] = useState(0);
-  const myViewRef = useRef(null);
-
-  const [isReady, setIsReady] = useState(false);
-
-  const handleLayout = (event: LayoutChangeEvent) => {
-    const { height } = event.nativeEvent.layout;
-    setViewHeight(height);
-  };
-
-  useEffect(() => {
-    async function prepare() {
-      let [fontsLoaded] = useFonts({
-        Kurale_400Regular,
-      });
-      await SplashScreen.preventAutoHideAsync();
-    }
-
-    prepare();
-  }, []);
-
-  useEffect(() => {
-    const hideAsync = async () => {
-      if (isReady) {
-        await SplashScreen.hideAsync();
-      }
+    // Render function for reviews
+    const renderReview = ({ item }) => {
+      // Find the movie associated with the review
+      const associatedMovie = trendingMovies.find((movie) => movie.id === item.movieId);
+  
+      return (
+        <View style={styles.reviewCard}>
+          <Image source={{ uri: item.avatar }} style={styles.avatar} />
+          <View style={styles.reviewTextContainer}>
+            <Text style={styles.reviewUser}>{item.user}</Text>
+            <Text style={styles.reviewText}>{item.text}</Text>
+            <Text style={styles.reviewMovie}>
+              Movie: {associatedMovie?.title || "Unknown"}
+            </Text>
+            <View style={styles.ratingContainer}>
+              {Array.from({ length: 5 }).map((_, index) => (
+                <MaterialIcons
+                  key={index}
+                  name={index < item.rating ? "star" : "star-border"}
+                  size={16}
+                  color="#FFD700" // Gold color for stars
+                />
+              ))}
+            </View>
+          </View>
+        </View>
+      );
     };
 
-    hideAsync();
-  }, [isReady]);
-
   return (
-    <ScrollView style={styles.background}>
-      <View ref={myViewRef} onLayout={handleLayout}>
-        <View style={styles.container}>
-          <Pressable style={{ alignSelf: "flex-end" }}>
-            <Link href="./report">
-              <View style={styles.reportCircle}>
-                <Text style={{ alignSelf: "center", fontSize: 20 }}>!</Text>
-              </View>
-            </Link>
-          </Pressable>
-          <Image
-            source={require("../assets/images/icon.png")}
-            style={styles.image}
-          />
-          <Text style={styles.bigText}>Myles Stubbs</Text>
-          <Text style={styles.smallText}>He/Him 24</Text>
-          <Text style={styles.verySmallText}>Sao Poalo, Brazil</Text>
-          {/* This is the space for the chat button */}
-          <View style={{ marginVertical: "5%" }}>
-            <Pressable style={styles.purpleButton}>
-              <Text style={styles.purpleButtonText}>Chat</Text>
-            </Pressable>
-          </View>
-        </View>
-        {/* This is the container that contains the bio */}
-        <View style={styles.container}>
-          <Text style={styles.bioText}>
-            Long ass text that should wrap within the container so that it looks
-            clean and the bio section should just auto adjust to the size of the
-            string input
-          </Text>
-        </View>
+    <ScrollView style={styles.container}>
+      <Text style={styles.welcomeText}>WELCOME BACK JOHN!</Text>
+       {/* Trending Section */}
+       <View style={styles.section}>
+        <Text style={styles.sectionTitle}>TRENDING</Text>
+        <Card style={styles.trendingCard}>
+        <Image source={trendingMovies[currentMovieIndex].image} style={styles.trendingImage} />
+          <Card.Content>
+            <Title style={styles.trendingTitle}>
+              {trendingMovies[currentMovieIndex].title}
+            </Title>
+          </Card.Content>
+        </Card>
 
-        {/* Everything in this view is the attributes about the person */}
-        <View style={styles.leftAlignedContainer}>
-          <Text style={styles.attributeName}>Age: 24</Text>
-          <View style={styles.separatorLine}></View>
-
-          <View style={styles.attributeViewSingle}>
-            <Text style={styles.attributeName}>Pronouns:</Text>
-            <Pressable style={styles.attribute}>
-              <Text style={styles.attributeText}>He/Him</Text>
-            </Pressable>
-          </View>
-          <View style={styles.separatorLine}></View>
-
-          <View style={styles.attributeViewSingle}>
-            <Text style={styles.attributeName}>Orientation:</Text>
-            <Pressable style={styles.attribute}>
-              <Text style={styles.attributeText}>Straight</Text>
-            </Pressable>
-          </View>
-          <View style={styles.separatorLine}></View>
-          {Array.from({ length: attributesLength }).map((_, i) => (
-            <View style={{ alignItems: "flex-start" }}>
-              <Text style={styles.attributeName}>{attributes[i][0]}:</Text>
-              <View style={styles.attributeView}>
-                {Array.from({ length: attributes[i][1].length }).map(
-                  (_, index) => (
-                    <Pressable style={styles.attribute}>
-                      <Text style={[styles.attributeText]}>
-                        {attributes[i][1][index]}
-                      </Text>
-                    </Pressable>
-                  )
-                )}
-              </View>
-              {i != attributesLength - 1 && (
-                <View style={styles.separatorLine}></View>
-              )}
-              {i == attributesLength - 1 && (
-                <View style={{ padding: "4%" }}></View>
-              )}
-            </View>
-          ))}
+        {/* Circular Navigation Buttons */}
+        <View style={styles.navigationButtons}>
+          <TouchableOpacity
+            onPress={handlePreviousMovie}
+            style={styles.circleButton}
+          >
+            <MaterialIcons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleNextMovie} style={styles.circleButton}>
+            <MaterialIcons name="arrow-forward" size={24} color="#fff" />
+          </TouchableOpacity>
         </View>
-        {/* buffer space for the bottom */}
-        <View style={{ padding: "33%" }}></View>
       </View>
 
-      {/* This is the lock Icon, may need to do some sort of magic in order to get it to be in front of the correct values */}
-      <View style={[styles.cover, { top: viewHeight - screenWidth * 0.68 }]}>
-        <Text style={styles.bigText}>Hidden Info</Text>
-        <Text style={styles.textPoints}>Points to Unlock: 3/5</Text>
-        <Pressable style={styles.breakupButton}>
-          <Link href={"./breakup"}>
-            <Text style={styles.breakupButtonText}>Break Up?</Text>
-          </Link>
-        </Pressable>
+      {/* Most Recommended Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>MOST RECOMMENDED</Text>
+        <FlatList
+          data={recommendedMovies}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <TouchableOpacity style={styles.movieCard}>
+              <Image source={{ uri: item.image }} style={styles.movieImage} />
+              <Text style={styles.movieTitle}>{item.title}</Text>
+            </TouchableOpacity>
+          )}
+        />
       </View>
-
-      <View
-        style={[styles.bottomOfPage, { top: viewHeight - screenWidth * 0.77 }]}
-      >
-        <View style={styles.lockLineLeft}></View>
-        <View style={styles.lockOutline}>
-          <View style={styles.lockContainer}>
-            <View style={styles.lockArc} />
-            <View style={styles.lockBody} />
+       {/* Reviews Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>TOP REVIEWS</Text>
+        <FlatList
+          data={reviews}
+          renderItem={renderReview}
+          keyExtractor={(item) => item.id}
+        />
+      </View>
+      {/* Filter Section */}
+      <View style={styles.filterSection}>
+        <Text style={styles.sectionTitle}>FILTER</Text>
+        <View style={styles.filterOptions}>
+          <View>
+            <Text style={styles.filterText}>Genre</Text>
+            <Text style={styles.filterText}>Fantasy | Action | Romance</Text>
           </View>
+          <View>
+            <Text style={styles.filterText}>Media Type</Text>
+            <Text style={styles.filterText}>Movies | Shows</Text>
+          </View>
+          <Button mode="contained" style={styles.filterButton}>
+            Search
+          </Button>
         </View>
-        <View style={styles.lockLineRight}></View>
       </View>
     </ScrollView>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  background: {
-    backgroundColor: pink,
-    padding: "5%",
-  },
   container: {
-    backgroundColor: "white",
-    padding: "3%",
-    borderRadius: 10,
-    justifyContent: "space-around",
-    alignItems: "center",
-    marginVertical: "5%",
+    flex: 1,
+    backgroundColor: "#1c2237",
+    paddingHorizontal: 20,
+    paddingTop: 40,
   },
-  image: {
-    width: screenWidth / 2,
-    height: screenWidth / 2,
-    resizeMode: "contain",
-    justifyContent: "center",
-    alignSelf: "center",
-    borderRadius: 100,
-  },
-  smallText: {
-    fontSize: 25,
-    fontFamily: "Kurale_400Regular",
-  },
-  bigText: {
-    fontSize: 48,
-    fontFamily: "Kurale_400Regular",
-  },
-  bioText: {
-    fontSize: 15,
-    padding: "1%",
-    fontFamily: "Kurale_400Regular",
-  },
-  verySmallText: {
-    fontSize: 14,
-    padding: "1%",
-  },
-  purpleButton: {
-    backgroundColor: darkPurple,
-    padding: "0%",
-    borderRadius: 10,
-    paddingHorizontal: "8%",
-  },
-  purpleButtonText: {
-    color: "#ffffff",
-    fontSize: 48,
-    fontFamily: "Kurale_400Regular",
-  },
-  reportCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 30,
-    borderWidth: 2,
-    borderColor: grayText,
-    justifyContent: "center",
-  },
-  attributeName: {
+  welcomeText: {
     fontSize: 24,
-    padding: "1%",
-    alignSelf: "flex-start",
-    fontFamily: "Kurale_400Regular",
+    fontWeight: "bold",
+    color: "#fff",
+    marginBottom: 20,
   },
-  leftAlignedContainer: {
-    backgroundColor: "white",
-    padding: "3%",
+  section: {
+    marginBottom: 30,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#fff",
+    marginBottom: 10,
+  },
+  trendingCard: {
+    backgroundColor: "#2a2f45",
     borderRadius: 10,
-    justifyContent: "space-around",
-    alignItems: "flex-start",
-    marginVertical: "5%",
-    marginBottom: "-5%",
-    paddingBottom: "15%",
   },
-  separatorLine: {
-    backgroundColor: "gray",
-    marginVertical: 10,
-    alignSelf: "center",
-    paddingHorizontal: "47%",
-    paddingVertical: "0.25%",
+  trendingImage: {
+    height: 150,
+    width: "100%",
+    borderRadius: 10,
   },
-  attribute: {
-    borderRadius: 30,
-    backgroundColor: attributeGray,
-    paddingHorizontal: "4%",
-    paddingVertical: "4%",
+  trendingTitle: {
+    color: "#fff",
+    marginTop: 10,
+    textAlign: "center",
   },
-  attributeView: {
-    flexWrap: "wrap",
+  navigationButtons: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    rowGap: screenWidth / 100,
-    columnGap: screenWidth / 90,
-    paddingHorizontal: "2%",
-    paddingVertical: "3%",
+    justifyContent: "space-between",
+    marginTop: 10,
   },
-  attributeText: {
-    fontSize: 16,
-    color: grayText,
-  },
-  attributeViewSingle: {
-    flexDirection: "row",
-    columnGap: 5,
-  },
-  lockOutline: {
-    borderRadius: 1000,
-    borderColor: "black",
-    borderWidth: 4,
-    width: "20%",
-    aspectRatio: 1,
-    alignContent: "center",
-    alignItems: "center",
-    backgroundColor: "white",
-  },
-  lockLineLeft: {
-    height: 3,
-    backgroundColor: "black",
-    alignSelf: "center",
-    width: "45%",
-    marginLeft: "-6%",
-  },
-  lockLineRight: {
-    height: 3,
-    backgroundColor: "black",
-    alignSelf: "center",
-    width: "45%",
-  },
-  lock: {
-    width: screenWidth / 10,
-    height: screenWidth / 10,
-    borderRadius: 40,
-  },
-  bottomOfPage: {
-    flexDirection: "row",
-    alignContent: "center",
-    position: "absolute",
-  },
-  cover: {
-    position: "absolute",
-    bottom: 0,
-    height: "15%",
-    width: "112%",
-    backgroundColor: pink,
-    marginLeft: "-6%",
-    alignItems: "center",
-    paddingTop: "10%",
-  },
-  textPoints: {
-    fontSize: 20,
-    color: grayText,
-    padding: "1%",
-    alignSelf: "center",
-  },
-  breakupButton: {
-    backgroundColor: magenta,
-    paddingHorizontal: "5%",
-    paddingVertical: "2%",
-    marginTop: "4%",
-    borderRadius: 20,
-  },
-  breakupButtonText: {
-    color: "white",
-    fontSize: 32,
-    fontFamily: "Kurale_400Regular",
-  },
-  lockContainer: {
+  circleButton: {
     width: 50,
-    height: 70,
+    height: 50,
+    backgroundColor: "#5568FE",
+    borderRadius: 25,
     justifyContent: "center",
     alignItems: "center",
   },
-  lockBody: {
-    width: screenWidth / 10,
-    height: screenWidth / 14,
-    borderColor: "black",
-    borderWidth: 3,
-    borderRadius: 10,
-    backgroundColor: "white",
-    marginTop: "10%",
+  movieCard: {
+    marginRight: 15,
   },
-  lockArc: {
-    position: "absolute",
-    width: screenWidth / 14,
-    height: screenWidth / 14,
-    borderRadius: screenWidth / 24,
-    borderColor: "black",
-    borderWidth: 3,
-    top: screenWidth / 50,
-    left: screenWidth / 35,
-    transform: [{ rotate: "45deg" }],
+  movieImage: {
+    height: 100,
+    width: 70,
+    borderRadius: 10,
+  },
+  movieTitle: {
+    color: "#fff",
+    fontSize: 14,
+    marginTop: 5,
+    textAlign: "center",
+  },
+  filterSection: {
+    backgroundColor: "#2a2f45",
+    padding: 20,
+    borderRadius: 10,
+  },
+  filterOptions: {
+    marginTop: 10,
+  },
+  filterText: {
+    color: "#fff",
+    fontSize: 16,
+    marginBottom: 5,
+  },
+  filterButton: {
+    marginTop: 15,
+    backgroundColor: "#5568FE",
+  },
+  reviewCard: {
+    flexDirection: "row",
+    backgroundColor: "#2a2f45",
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
+  },
+  avatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 10,
+  },
+  reviewTextContainer: {
+    flex: 1,
+  },
+  reviewUser: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+  reviewText: {
+    fontSize: 14,
+    color: "#ccc",
+    marginVertical: 5,
+  },
+  ratingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  reviewMovie: {
+    fontSize: 14,
+    color: "#bbb",
+    marginBottom: 5,
+    fontStyle: "italic",
   },
 });
+
+export default LandingPage;
+
