@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "what_were_watching",
+    "slug": "what_were_watching",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "myapp",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/AppNameImage.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1c2237"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/AppNameImage.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "assetBundlePatterns": [
+    "**/*.ttf"
+  ]
+  }
+}
