@@ -1,6 +1,7 @@
-import { Text, View, Image, TouchableOpacity, Animated, ScrollView, TextInput} from "react-native";
+import { Text, View, Image, TouchableOpacity, Animated, ScrollView, TextInput, StyleSheet} from "react-native";
 import React, { useState } from "react";
 import { Link, Href } from "expo-router"
+import { Colors } from "@/constants/Colors";
 
 export default function Index() {
 
@@ -22,63 +23,73 @@ export default function Index() {
     };
 
     return (
-        <ScrollView contentContainerStyle={{ flexGrow: 1 }} style={{ backgroundColor: "#2D2350" }}>
-            <Animated.View // white rectangle (no absolute positioning now)
-                style={{
-                    width: 350,
-                    height: animatedHeight, // Bind the animated value to the height
-                    backgroundColor: "white",
-                    borderRadius: 16,
-                    justifyContent: "flex-start",
-                    alignItems: "center",
-                    paddingTop: 20,
-                    paddingBottom: 20,
-                    marginTop: 100, // Added a margin to space it from the top
-                    alignSelf: "center"
-                }}
-            >
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }} style={{ backgroundColor: Colors.backgroundColor }}>
+            // white rectangle (no absolute positioning now)
+            <Animated.View style={[styles.animatedView, {height: animatedHeight}]} >
                 {/* Top Section with welcome text and image */}
-                <View style={{ alignItems: "center", paddingTop: 40 }}>
+                <View style={styles.textContainer}>
                     <Text style={{ fontSize: 32 }}>Welcome to</Text>
 
-                    <Image
-                        style={{
-                            paddingTop: 20,
-                            width: 310,
-                            height: 120
-                        }}
-                        source={require('../assets/images/whatWewatch.png')}
-                    />
+                    <Text style={styles.appNameText}>What We're Watching</Text>
+
                 </View>
 
                 {/* Button container */}
-                <View
-                    style={{
-                        flex: 1,
-                        justifyContent: "flex-end",
-                        marginBottom: 75
-                    }}
-                >
+                <View style={styles.buttonContainer} >
                     {/* Sign In Button */}
                     <Link href="./LandingPage" asChild>
-                    <TouchableOpacity
-                        style={{
-                            backgroundColor: "#676F9D",
-                            paddingVertical: 10,
-                            paddingHorizontal: 20,
-                            borderRadius: 10,
-                            marginTop: 10,
-                            width: 200,
-                            height: 100,
-                            justifyContent: "center",
-                            alignItems: "center"
-                        }}
-                    >
-                        <Text style={{ color: "white", fontWeight: "bold", fontSize: 30 }}>ENTER</Text>
-                    </TouchableOpacity>
+                        <TouchableOpacity style={styles.button} >
+                            <Text style={{ color: "white", fontWeight: "bold", fontSize: 30 }}>ENTER</Text>
+                        </TouchableOpacity>
                     </Link>
                 </View>
             </Animated.View>
         </ScrollView>
     );
 }
+
+const styles = StyleSheet.create({
+    animatedView: {
+        width: 350,
+        height: 450, // Bind the animated value to the height
+        backgroundColor: "white",
+        borderRadius: 16,
+        justifyContent: "flex-start",
+        alignItems: "center",
+        paddingTop: 20,
+        paddingBottom: 20,
+        marginTop: 100, // Added a margin to space it from the top
+        alignSelf: "center"
+    },
+    textContainer: { 
+        alignItems: "center", 
+        textAlign: "center",
+        justifyContent: "center",
+        paddingTop: 40 
+    },
+    buttonContainer: {
+        flex: 1,
+        justifyContent: "flex-end",
+        marginBottom: 75
+    },
+    appNameText: {
+        padding: 20,
+        fontSize: 52, 
+        fontFamily: 'Raleway_800ExtraBold', 
+        color: Colors.backgroundColor,
+        alignSelf: "center",
+        flexWrap: "wrap",
+        textAlign: "center"
+    },
+    button: {
+        backgroundColor: Colors.buttonColor,
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 10,
+        marginTop: 10,
+        width: 200,
+        height: 100,
+        justifyContent: "center",
+        alignItems: "center"
+    },
+});

@@ -180,7 +180,7 @@ const LandingPage = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.backgroundColor,
     paddingHorizontal: 20,
     paddingTop: 40,
   },
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   trendingCard: {
-    backgroundColor: Colors.cardBackground,
+    backgroundColor: Colors.cardBackgroundColor,
     borderRadius: 10,
   },
   trendingImage: {
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   filterSection: {
-    backgroundColor: Colors.cardBackground,
+    backgroundColor: Colors.cardBackgroundColor,
     padding: 20,
     borderRadius: 10,
   },
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
   },
   reviewCard: {
     flexDirection: "row",
-    backgroundColor: Colors.cardBackground,
+    backgroundColor: Colors.cardBackgroundColor,
     borderRadius: 10,
     padding: 10,
     marginBottom: 10,
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
   },
   reviewText: {
     fontSize: 14,
-    color: "#ccc",
+    color: Colors.reviewTextColor,
     marginVertical: 5,
   },
   ratingContainer: {

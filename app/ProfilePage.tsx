@@ -1,32 +1,11 @@
 import { Text, TextInput, View, StyleSheet,TouchableOpacity, ScrollView, Image, Button, Pressable, Dimensions, Alert } from "react-native";
 import React, { Dispatch, SetStateAction, useEffect, useState } from 'react';
-import { useFonts, Kurale_400Regular } from "@expo-google-fonts/kurale";
 import { PressableBubblesGroup,} from './components/formComponents';
-
 import { Link, Href } from "expo-router"
-
-var darkRed = "#B0170F";
-var magenta = "#FF2452CC"; // 80% opacity from the CC
-var pink = "#676F9D";
-var darkPurple = "#424769";
-var unselectedCellColor = "#676F9D";
-var unselectedTextColor = "#ffffff";
-
-// TODO:
-/*
-    Switching between editing
-
-    Obviously integrating a backend and actually loading with data, saving data, and canceling correctly
-
-    Input validation. BOOOO
-*/
+import { Colors } from "@/constants/Colors";
 
 
 export default function ProfilePage() {
-    useFonts({
-        Kurale_400Regular,
-    });
-
 
     const setAttributeTrue = (attribute: string, setState: Dispatch<SetStateAction<Set<string>>>) => {
         setState((prevSelected) => {
@@ -141,42 +120,23 @@ export default function ProfilePage() {
             <View style={styles.separatorLine}></View>
 
             {/* Button container */}
-            <View
-                    style={{
-                        flex: 1,
-                        justifyContent: "flex-end",
-                        marginBottom: 75,
-                        alignItems: "center"
-                    }}
-                >
-                    {/* logout Button */}
-                    <Link href="./" asChild>
-                    <TouchableOpacity
-                        style={{
-                            backgroundColor: "#2D2350",
-                            paddingVertical: 10,
-                            paddingHorizontal: 10,
-                            borderRadius: 10,
-                            marginTop: 10,
-                            width: 150,
-                            height: 75,
-                            justifyContent: "center",
-                            alignItems: "center"
-                        }}
-                    >
+            <View style={styles.buttonContainer} >
+                {/* logout Button */}
+                <Link href="./" asChild>
+                    <TouchableOpacity style={styles.button}>
                         <Text style={{ color: "white", fontWeight: "bold", fontSize: 30 }}>Logout</Text>
                     </TouchableOpacity>
-                    </Link>
-                </View>
+                </Link>
+            </View>
 
-            <View style={{ padding: "8%" }}></View>
+            {/* <View style={{ padding: "8%" }}></View> */}
         </ScrollView>
     );
 }
 
 const styles = StyleSheet.create({
     background: {
-        backgroundColor: pink,
+        backgroundColor: Colors.unselectedColor,
         padding: "5%",
     },
     image: {
@@ -218,81 +178,42 @@ const styles = StyleSheet.create({
         paddingRight: 16,
         marginBottom: 20,
     },
-    photosContainer: {
-        flexWrap: "wrap",
-        flexDirection: "row",
-        alignItems: "flex-start",
-        rowGap: 5,
-        columnGap: 5,
-        paddingHorizontal: 20,
-        // paddingVertical: "3%",
-    },
-    svgContainer: {
-        width: "32%",
-        aspectRatio: 11 / 16,
-        borderColor: "black",
-        borderWidth: .5,
-        borderRadius: 10,
-    },
-    photo: {
-        width: "100%",
-        height: "100%",
-        borderRadius: 10,
-    },
-    photoShadow: {
-        width: "32%",
-        aspectRatio: 11 / 16,
-
-        shadowColor: "black",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 5, // for Android
-    },
     textField: {
-        backgroundColor: unselectedCellColor,
+        backgroundColor: Colors.unselectedColor,
         width: 300,
         height: 50,
         borderRadius: 15,
         marginBottom: 20,
         fontSize: 18,
-        color: unselectedTextColor,
+        color: Colors.unselectedTextColor,
         padding: 10,
         textAlign: "left",
         alignSelf: "center",
     },
     textBox: {
-        backgroundColor: unselectedCellColor,
+        backgroundColor: Colors.unselectedColor,
         width: 300,
         minHeight: 200,
         borderRadius: 15,
         marginBottom: 20,
         fontSize: 18,
-        color: unselectedTextColor,
+        color: Colors.unselectedTextColor,
         padding: 15,
         textAlignVertical: "top",
         alignSelf: "center",
     },
     selectedTextBox: {
         color: "white",
-        backgroundColor: darkPurple,
+        backgroundColor: Colors.selectedColor,
         shadowColor: "black",
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 4,
         elevation: 5, // for Android
     },
-    bigText: {
-        fontSize: 30,
-        padding: "1%",
-    },
     nameText: {
         fontSize: 35,
         fontFamily: "Kurale_400Regular",
-        padding: "1%",
-    },
-    verySmallText: {
-        fontSize: 12,
         padding: "1%",
     },
     labelText: {
@@ -303,25 +224,6 @@ const styles = StyleSheet.create({
         paddingBottom: 5,
         paddingLeft: "8%",
     },
-    eyeContainer: {
-        justifyContent: "center",
-        alignItems: "flex-end"
-    },
-    headerButtons: {
-        marginLeft: 10,
-        marginRight: 5
-    },
-    purpleButtonText: {
-        color: "#ffffff",
-        fontSize: 30,
-        // margin: "5%",
-    },
-    purpleButton: {
-        backgroundColor: darkPurple,
-        padding: "5%",
-        borderRadius: 10,
-        paddingHorizontal: "15%",
-    },
     separatorLine: {
         width: "90%",
         height: 1,
@@ -331,15 +233,15 @@ const styles = StyleSheet.create({
     },
     pressableBubble: {
         borderRadius: 30,
-        backgroundColor: unselectedCellColor,
+        backgroundColor: Colors.unselectedColor,
         padding: "4%",
     },
     pressableText: {
         fontSize: 16,
-        color: unselectedTextColor,
+        color: Colors.unselectedTextColor,
     },
     selectedBubble: {
-        backgroundColor: darkPurple,
+        backgroundColor: Colors.selectedColor,
         shadowColor: "black",
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
@@ -351,32 +253,19 @@ const styles = StyleSheet.create({
     },
     buttonContainer: {
         flex: 1,
-        flexDirection: "row",
-        paddingHorizontal: "5%",
+        justifyContent: "flex-end",
+        marginBottom: 75,
+        alignItems: "center"
+    },
+    button: {
+        backgroundColor: Colors.backgroundColor,
+        paddingVertical: 10,
+        paddingHorizontal: 10,
+        borderRadius: 10,
+        marginTop: 10,
+        width: 150,
+        height: 75,
         justifyContent: "center",
-        columnGap: 15,
-    },
-    saveButton: {
-        backgroundColor: magenta,
-        width: "45%",
-        alignItems: "center",
-        paddingHorizontal: "5%",
-        paddingVertical: "2%",
-        marginTop: "4%",
-        borderRadius: 20,
-    },
-    cancelButton: {
-        backgroundColor: darkPurple,
-        width: "45%",
-        alignItems: "center",
-        paddingHorizontal: "5%",
-        paddingVertical: "2%",
-        marginTop: "4%",
-        borderRadius: 20,
-    },
-    buttonText: {
-        color: "white",
-        fontSize: 32,
-        fontFamily: "Kurale_400Regular",
-    },
+        alignItems: "center"
+    }
 });
