@@ -27,14 +27,14 @@ const LandingPage = () => {
         prevIndex === 0 ? trendingMovies.length - 1 : prevIndex - 1
       );
     };
-  const recommendedMovies = [
-    { id: "1", title: "Joker", image: "https://via.placeholder.com/150" },
-    { id: "2", title: "Elf", image: "https://via.placeholder.com/150" },
-    { id: "3", title: "Shrek", image: "https://via.placeholder.com/150" },
-    { id: "4", title: "Star Wars", image: "https://via.placeholder.com/150" },
-    { id: "5", title: "Avengers", image: "https://via.placeholder.com/150" },
-    { id: "6", title: "Beauty and the Beast", image: "https://via.placeholder.com/150" },
-  ];
+    const recommendedMovies = [
+      { id: "1", title: "Joker", image: require("../assets/images/posters/joker.png") },
+      { id: "2", title: "Elf", image: require("../assets/images/posters/elf.png") },
+      { id: "3", title: "Shrek", image: require("../assets/images/posters/shrek.png") },
+      { id: "4", title: "Star Wars", image: require("../assets/images/posters/starWars.png") },
+      { id: "5", title: "Get Out", image: require("../assets/images/posters/getOut.png") },
+      { id: "6", title: "Beauty and the Beast", image: require("../assets/images/posters/beautyAndTheBeast.png") },
+    ];
     // Array of reviews
     const reviews = [
       {
@@ -132,7 +132,7 @@ const LandingPage = () => {
       </View>
 
       {/* Most Recommended Section */}
-      <View style={styles.section}>
+      <View style={[styles.section, {height: "13%"}]}>
         <Text style={styles.sectionTitle}>MOST RECOMMENDED</Text>
         <FlatList
           data={recommendedMovies}
@@ -141,7 +141,7 @@ const LandingPage = () => {
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <Pressable style={styles.movieCard} onPress={() => (router.push('/InfoPage'))}>
-              <Image source={{ uri: item.image }} style={styles.movieImage} />
+              <Image source={item.image} style={styles.movieImage} />
               <Text style={styles.movieTitle}>{item.title}</Text>
             </Pressable>
           )}
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   navigationButtons: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 10,
+    paddingVertical: 13,
   },
   circleButton: {
     width: 50,
@@ -227,18 +227,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   movieCard: {
+    width: 11*7,
     marginRight: 15,
+    overflow: "hidden"
   },
   movieImage: {
-    height: 100,
-    width: 70,
-    borderRadius: 10,
+    height: 16*7,
+    aspectRatio: 11 / 16,
+    borderRadius: 8,
   },
   movieTitle: {
     color: "#fff",
     fontSize: 14,
     marginTop: 5,
     textAlign: "center",
+    // flexWrap: "wrap",
   },
   filterSection: {
     backgroundColor: Colors.cardBackgroundColor,

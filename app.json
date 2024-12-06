@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "the_catch",
-    "slug": "the_catch",
+    "name": "what_were_watching",
+    "slug": "what_were_watching",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/splash.png",
+      "image": "./assets/images/AppNameImage.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#1c2237"
     },
     "ios": {
       "supportsTablet": true
@@ -24,7 +24,7 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/AppNameImage.png"
     },
     "plugins": [
       "expo-router",

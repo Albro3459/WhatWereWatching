@@ -56,9 +56,8 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         justifyContent: "flex-start",
         alignItems: "center",
-        paddingTop: 20,
-        paddingBottom: 20,
-        marginTop: 100, // Added a margin to space it from the top
+        paddingVertical: 20,
+        marginTop: 150, // Added a margin to space it from the top
         alignSelf: "center"
     },
     textContainer: { 

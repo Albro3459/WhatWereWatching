@@ -1,4 +1,4 @@
-import { Stack } from "expo-router";
+import { router, Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { Pressable, Button, TouchableOpacity } from "react-native";
 import Feather from '@expo/vector-icons/Feather';
@@ -31,6 +31,21 @@ export default function RootLayout() {
     return (
         <Stack>
             <Stack.Screen name="index" options={{headerShown: false}} />
+            <Stack.Screen 
+                name="SearchPage" 
+                options={{ 
+                    title: "Search", 
+                    headerBackButtonDisplayMode: "minimal",
+                    headerTintColor: "white",
+                    headerTitleStyle: {
+                        fontSize: 24,
+                        color: "white"
+                    },
+                    headerStyle: {
+                        backgroundColor: Colors.unselectedColor,
+                    },
+                }}
+            />
             <Stack.Screen
                 name="LandingPage"
                 options={({ navigation }) => ({
@@ -38,21 +53,49 @@ export default function RootLayout() {
                     headerBackVisible: false,
                     headerTitleStyle: {
                         fontSize: 24,
-                        color: Colors.backgroundColor,
+                        color: "white"
                     },
+                    headerStyle: {
+                        backgroundColor: Colors.unselectedColor,
+                    },
+                    headerLeft: () => (
+                        <Pressable onPress={() => router.push('/SearchPage')}>
+                            <Feather name="search" size={28} color="white" />
+                        </Pressable>
+                    ),
                     headerRight: () => (
                         <TouchableOpacity onPress={() => navigation.navigate('ProfilePage')}>
-                            <Feather name="user" size={28} color="black" />
+                            <Feather name="user" size={28} color="white" />
                         </TouchableOpacity>
                     ),
                 })}
             />
-            <Stack.Screen name="InfoPage" options={{ title: "Info", headerBackButtonDisplayMode: "minimal" }} />
-            <Stack.Screen name="ProfilePage" options={{
-                    headerBackButtonDisplayMode: "minimal", title: "Profile",
+            <Stack.Screen 
+                name="InfoPage" 
+                options={{ 
+                    title: "Info", 
+                    headerBackButtonDisplayMode: "minimal",
+                    headerTintColor: "white",
                     headerTitleStyle: {
                         fontSize: 24,
-                }
+                        color: "white"
+                    },
+                    headerStyle: {
+                        backgroundColor: Colors.unselectedColor,
+                    },
+                }}
+            />
+            <Stack.Screen name="ProfilePage" options={{
+                title: "Profile",
+                headerBackButtonDisplayMode: "minimal",
+                headerTintColor: "black",
+                headerTitleStyle: {
+                    fontSize: 24,
+                    color: Colors.backgroundColor,
+                },
+                // headerStyle: {
+                //     backgroundColor: Colors.unselectedColor,
+                // },
             }} />
             
             

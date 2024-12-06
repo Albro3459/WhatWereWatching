@@ -1,10 +1,10 @@
 const backgroundColor = "#1c2237";
 const cardBackgroundColor = "#2a2f45";
 
-const unselectedColor = "#676F9D";
+const unselectedColor = "#65709D";
 const unselectedTextColor = "#FFFFFF";
 
-const selectedColor = "#424769";
+const selectedColor = "#424669";
 const selectedTextColor = "#FFFFFF";
 
 const reviewTextColor = "#ccc";
