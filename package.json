@@ -9,7 +9,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "jest --watchAll",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "populate-db": "ts-node app/scripts/populateDB.ts"
   },
   "jest": {
     "preset": "jest-expo"
@@ -19,7 +20,9 @@
     "@expo-google-fonts/kurale": "^0.2.3",
     "@expo-google-fonts/raleway": "^0.2.3",
     "@expo/vector-icons": "^14.0.2",
+    "@react-native-community/datetimepicker": "8.2.0",
     "@react-navigation/native": "^6.0.2",
+    "axios": "^1.7.9",
     "expo": "^52.0.6",
     "expo-constants": "~17.0.3",
     "expo-font": "~13.0.1",
@@ -43,8 +46,7 @@
     "react-native-svg": "^15.9.0",
     "react-native-svg-transformer": "^1.5.0",
     "react-native-vector-icons": "^10.2.0",
-    "react-native-web": "~0.19.13",
-    "@react-native-community/datetimepicker": "8.2.0"
+    "react-native-web": "~0.19.13"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
@@ -54,6 +56,7 @@
     "jest": "^29.2.1",
     "jest-expo": "~52.0.1",
     "react-test-renderer": "18.2.0",
+    "ts-node": "^10.9.2",
     "typescript": "~5.3.3"
   },
   "private": true
