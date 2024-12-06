@@ -1,7 +1,9 @@
 import React, { useState } from "react";
-import { StyleSheet, View, Text, ScrollView, FlatList, Image, TouchableOpacity } from "react-native";
+import { StyleSheet, View, Text, ScrollView, FlatList, Image, TouchableOpacity, Pressable } from "react-native";
 import { Card, Title, Button, Searchbar } from "react-native-paper";
 import { MaterialIcons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { Colors } from "@/constants/Colors";
 
 const LandingPage = () => {
     // Array of trending movies
@@ -104,14 +106,16 @@ const LandingPage = () => {
        {/* Trending Section */}
        <View style={styles.section}>
         <Text style={styles.sectionTitle}>TRENDING</Text>
-        <Card style={styles.trendingCard}>
-        <Image source={trendingMovies[currentMovieIndex].image} style={styles.trendingImage} />
-          <Card.Content>
-            <Title style={styles.trendingTitle}>
-              {trendingMovies[currentMovieIndex].title}
-            </Title>
-          </Card.Content>
-        </Card>
+        <Pressable onPress={() => (router.push('/InfoPage'))}>
+          <Card style={styles.trendingCard}>
+            <Image source={trendingMovies[currentMovieIndex].image} style={styles.trendingImage} />
+            <Card.Content>
+              <Title style={styles.trendingTitle}>
+                {trendingMovies[currentMovieIndex].title}
+              </Title>
+            </Card.Content>
+          </Card>
+        </Pressable>
 
         {/* Circular Navigation Buttons */}
         <View style={styles.navigationButtons}>
@@ -136,10 +140,10 @@ const LandingPage = () => {
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <TouchableOpacity style={styles.movieCard}>
+            <Pressable style={styles.movieCard} onPress={() => (router.push('/InfoPage'))}>
               <Image source={{ uri: item.image }} style={styles.movieImage} />
               <Text style={styles.movieTitle}>{item.title}</Text>
-            </TouchableOpacity>
+            </Pressable>
           )}
         />
       </View>
@@ -176,7 +180,7 @@ const LandingPage = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1c2237",
+    backgroundColor: Colors.background,
     paddingHorizontal: 20,
     paddingTop: 40,
   },
@@ -196,7 +200,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   trendingCard: {
-    backgroundColor: "#2a2f45",
+    backgroundColor: Colors.cardBackground,
     borderRadius: 10,
   },
   trendingImage: {
@@ -217,7 +221,7 @@ const styles = StyleSheet.create({
   circleButton: {
     width: 50,
     height: 50,
-    backgroundColor: "#5568FE",
+    backgroundColor: Colors.buttonColor,
     borderRadius: 25,
     justifyContent: "center",
     alignItems: "center",
@@ -237,7 +241,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   filterSection: {
-    backgroundColor: "#2a2f45",
+    backgroundColor: Colors.cardBackground,
     padding: 20,
     borderRadius: 10,
   },
@@ -251,11 +255,11 @@ const styles = StyleSheet.create({
   },
   filterButton: {
     marginTop: 15,
-    backgroundColor: "#5568FE",
+    backgroundColor: Colors.buttonColor,
   },
   reviewCard: {
     flexDirection: "row",
-    backgroundColor: "#2a2f45",
+    backgroundColor: Colors.cardBackground,
     borderRadius: 10,
     padding: 10,
     marginBottom: 10,
@@ -285,7 +289,7 @@ const styles = StyleSheet.create({
   },
   reviewMovie: {
     fontSize: 14,
-    color: "#bbb",
+    color: Colors.italicTextColor,
     marginBottom: 5,
     fontStyle: "italic",
   },

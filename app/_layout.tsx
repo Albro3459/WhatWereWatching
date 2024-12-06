@@ -24,7 +24,7 @@ export default function RootLayout() {
         <Stack.Screen name="unmatched" options={{ headerShown: false }} />
         <Stack.Screen name="report" options={{ headerShown: true, title: "Report User", headerBackButtonDisplayMode: "minimal" }} />
         <Stack.Screen name="registration" options={{ title: "Registration", headerBackButtonDisplayMode: "minimal" }} />
-        <Stack.Screen name="breakup" options={{ title: "Break Up With User", headerBackButtonDisplayMode: "minimal" }} />
+        <Stack.Screen name="InfoPage" options={{ title: "Info", headerBackButtonDisplayMode: "minimal" }} />
         <Stack.Screen name="ProfilePage" options={{
                 headerBackButtonDisplayMode: "minimal", title: "Profile",
                 headerTitleStyle: {

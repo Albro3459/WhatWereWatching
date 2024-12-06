@@ -9,24 +9,16 @@
   yo this is a good idea that i never thought about when making my last react native app.
   lets keep this, but change it for our app ofc. Ill check how to actually use the data stored within.*/
   
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+const background = "#1c2237";
+const cardBackground = "#2a2f45";
+const buttonColor = "#5568FE";
+
+const italicTextColor = "#bbb";
 
 export const Colors = {
-  light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
-  },
-  dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
-  },
+  background: background,
+  cardBackground: cardBackground,
+  buttonColor: buttonColor,
+  
+  italicTextColor:italicTextColor
 };
