@@ -4,6 +4,7 @@
     "slug": "what_were_watching",
     "version": "1.0.0",
     "orientation": "portrait",
+    "newArchEnabled": true,
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
@@ -28,13 +29,14 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true
     },
     "assetBundlePatterns": [
-    "**/*.ttf"
-  ]
+      "assets/**/*"
+    ]
   }
 }

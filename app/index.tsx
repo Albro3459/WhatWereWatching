@@ -24,7 +24,6 @@ export default function Index() {
 
     return (
         <ScrollView contentContainerStyle={{ flexGrow: 1 }} style={{ backgroundColor: Colors.backgroundColor }}>
-            // white rectangle (no absolute positioning now)
             <Animated.View style={[styles.animatedView, {height: animatedHeight}]} >
                 {/* Top Section with welcome text and image */}
                 <View style={styles.textContainer}>
