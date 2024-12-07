@@ -85,6 +85,23 @@ export default function RootLayout() {
                     },
                 }}
             />
+
+            <Stack.Screen 
+                name="SpinnerPage" 
+                options={{ 
+                    title: "Spinner", 
+                    headerBackButtonDisplayMode: "minimal",
+                    headerTintColor: "white",
+                    headerTitleStyle: {
+                        fontSize: 24,
+                        color: "white"
+                    },
+                    headerStyle: {
+                        backgroundColor: Colors.unselectedColor,
+                    },
+                }}
+            />
+
             <Stack.Screen name="ProfilePage" options={{
                 title: "Profile",
                 headerBackButtonDisplayMode: "minimal",
@@ -97,7 +114,6 @@ export default function RootLayout() {
                 //     backgroundColor: Colors.unselectedColor,
                 // },
             }} />
-            
             
         </Stack>
     );

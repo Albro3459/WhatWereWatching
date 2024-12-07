@@ -41,6 +41,12 @@ export default function Index() {
                             <Text style={{ color: "white", fontWeight: "bold", fontSize: 30 }}>ENTER</Text>
                         </TouchableOpacity>
                     </Link>
+                    {/* Just to test the spinner */}
+                    {/* <Link href="./SpinnerPage" asChild>
+                        <TouchableOpacity style={styles.button} >
+                            <Text style={{ color: "white", fontWeight: "bold", fontSize: 30 }}>SPINNER</Text>
+                        </TouchableOpacity>
+                    </Link> */}
                 </View>
             </Animated.View>
         </ScrollView>

@@ -78,7 +78,7 @@ function LandingPage () {
     };
 
     useEffect(() => {
-      const fetchRecommendedMovies  = async () => {
+      const fetchRecommendedContent  = async () => {
         if (pathname === "/LandingPage") {
           if (!moviesAndShows || moviesAndShows.length == 0) {
 
@@ -102,7 +102,7 @@ function LandingPage () {
           }
         }
       }
-      fetchRecommendedMovies();
+      fetchRecommendedContent();
     }, [pathname]);     
 
     // Render function for reviews
