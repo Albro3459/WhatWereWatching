@@ -1,8 +1,10 @@
 import { Text, TextInput, View, StyleSheet,TouchableOpacity, ScrollView, Image, Button, Pressable, Dimensions, Alert } from "react-native";
 import React, { Dispatch, SetStateAction, useEffect, useState } from 'react';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { PressableBubblesGroup,} from './components/formComponents';
 import { Link, Href } from "expo-router"
 import { Colors } from "@/constants/Colors";
+import { dateToString, stringToDate } from "./helpers/dateHelper";
 
 
 export default function ProfilePage() {
@@ -16,7 +18,13 @@ export default function ProfilePage() {
     };
 
     // State for text inputs
-    const [birthdayText, setBirthdayText] = useState('08/24/2002'); // temporary placeholder, will be from the db
+    const [birthdayText, setBirthdayText] = useState<string>('09/22/2002'); // temporary placeholder, will be from the db
+    // Date picker for birthday
+    const [selectedDate, setSelectedDate] = useState<Date | null>(stringToDate(birthdayText));
+    const handleConfirmDate = (birthdayDate: Date) => {
+        setBirthdayText(dateToString(birthdayDate));
+        setSelectedDate(birthdayDate);
+    };
     const [locationText, setLocationText] = useState('Baton Rouge, LA'); // temporary placeholder, will be from the db
     const [bioText, setBioText] = useState('I\'m a super cool guy!'); // temporary placeholder, will be from the db
 
@@ -65,13 +73,32 @@ export default function ProfilePage() {
             <View style={[styles.container, { marginTop: 0 }]}>
                 <View style={styles.labelContainer}>
                     <Text style={styles.labelText}>Birthday:</Text>
-                    <Text style={{ color: 'red', marginLeft: 2 }}>*</Text>
-                </View>
-                <TextInput
-                    style={[styles.textField, birthdayText.length > 0 ? styles.selectedTextBox : null]}
-                    value={birthdayText}
-                    onChangeText={(newText) => setBirthdayText(newText)}
-                />
+                    <Text style={{ color: "red", marginLeft: 2 }}>*</Text>
+                    </View>
+                    <View
+                    style={[
+                        styles.dateContainer,
+                        birthdayText && birthdayText.length > 0
+                        ? styles.selectedDateContainer
+                        : null,
+                    ]}
+                    >
+                    {selectedDate && (
+                    <DateTimePicker
+                        value={selectedDate || new Date()}
+                        mode="date"
+                        display="default"
+                        style={styles.datePicker}
+                        themeVariant={birthdayText && birthdayText.length > 0 ? "dark" : "light"}
+                        textColor={birthdayText && birthdayText.length > 0 ? "dark" : "light"}
+                        onChange={(event, date) => {
+                        if (date) {
+                            handleConfirmDate(date);
+                        }
+                        }}
+                    />
+                    )}
+                    </View>
 
                 <View style={styles.labelContainer}>
                     <Text style={styles.labelText}>Location:</Text>
@@ -180,7 +207,7 @@ const styles = StyleSheet.create({
     },
     textField: {
         backgroundColor: Colors.unselectedColor,
-        width: 300,
+        width: "90%",
         height: 50,
         borderRadius: 15,
         marginBottom: 20,
@@ -192,7 +219,7 @@ const styles = StyleSheet.create({
     },
     textBox: {
         backgroundColor: Colors.unselectedColor,
-        width: 300,
+        width: "90%",
         minHeight: 200,
         borderRadius: 15,
         marginBottom: 20,
@@ -267,5 +294,29 @@ const styles = StyleSheet.create({
         height: 75,
         justifyContent: "center",
         alignItems: "center"
-    }
+    },
+    dateContainer: {
+        backgroundColor: Colors.unselectedColor,
+        width: "90%",
+        height: 50,
+        borderRadius: 15,
+        marginBottom: 20,
+        padding: 10,
+        alignContent: "flex-start",
+        alignSelf: "center",
+        justifyContent: "center",
+        shadowColor: "black",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 5, // for Android
+    },
+    selectedDateContainer: {
+        backgroundColor: Colors.selectedColor,
+    },
+    datePicker: {
+        borderRadius: 15,
+        alignSelf: "flex-start",
+        overflow: "hidden",
+    },
 });

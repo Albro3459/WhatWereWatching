@@ -1,7 +1,16 @@
 import { Colors } from '@/constants/Colors';
 import React, { useState } from 'react';
-import { View, Text, TextInput, FlatList, Image, StyleSheet, Pressable, TouchableOpacity, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Dimensions } from 'react-native';
+import { View, Text, TextInput, FlatList, Image, StyleSheet, Pressable, TouchableOpacity, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Dimensions, ScrollView } from 'react-native';
 import { Heart } from './components/heartComponent';
+import { Content } from './types/contentType';
+import { getPosterByContent, getRandomContent } from './helpers/fetchHelper';
+import { router } from 'expo-router';
+
+
+// TODO:
+//  - ADD FILTERING
+//    - by genre, or show/movie
+
 
 const screenWidth = Dimensions.get("window").width;
 const scale = .75;
@@ -12,11 +21,7 @@ const SearchPage = () => {
   const [searchText, setSearchText] = useState('');
   const [favoriteMovies, setFavoriteMovies] = useState<Set<string>>(new Set());
 
-  const [heartColors, setHeartColors] = useState<{ [key: string]: string }>({
-    '1': unselectedHeartColor,
-    '2': unselectedHeartColor,
-    '3': unselectedHeartColor,
-  });
+  const [heartColors, setHeartColors] = useState<{ [key: string]: string }>();
 
   const toggleHeartColor = (id: string) => {
     setHeartColors((prevColors) => ({
@@ -25,29 +30,12 @@ const SearchPage = () => {
     }));
   };
 
-  const movies = [
-    {
-      id: '1',
-      title: 'Joker',
-      description: 'A gritty character study of Arthur Fleck.',
-      rating: 4.8,
-      poster: require('../assets/images/posters/joker.png'),
-    },
-    {
-      id: '2',
-      title: 'Elf',
-      description: 'A funny Christmas adventure.',
-      rating: 4.6,
-      poster: require('../assets/images/posters/elf.png'),
-    },
-    {
-      id: '3',
-      title: 'Shrek',
-      description: 'An ogre’s hilarious journey to rescue a princess.',
-      rating: 4.9,
-      poster: require('../assets/images/posters/shrek.png'),
-    },
-  ];
+  type Movie = {
+    id: string;
+    rating: number;
+    content: Content | null;
+  };
+  const [movies, setMovies] = useState<Movie[]>([]);
 
   const toggleFavorite = (id: string) => {
     setFavoriteMovies((prevFavorites) => {
@@ -62,38 +50,57 @@ const SearchPage = () => {
     toggleHeartColor(id);
   };
 
-  const filteredMovies = movies.filter((movie) =>
-    movie.title.toLowerCase().includes(searchText.toLowerCase())
-  );
+  // const filteredMovies = movies.filter((movie) =>
+  //   movie.title.toLowerCase().includes(searchText.toLowerCase())
+  // );
+
+  const search = async (searchText: string) => {
+    setSearchText(searchText);
+    const contents = await getRandomContent(10);
+    if (contents) {
+      const mappedMovies = contents.map((content, index) => ({
+        id: `${index}`,
+        rating: 4 + ((index + 2) * 3) * 0.01,
+        content: content,
+      }));
+      setMovies(mappedMovies);
+  
+      const heartColors = mappedMovies.reduce((acc, movie) => {
+        acc[movie.id] = unselectedHeartColor;
+        return acc;
+      }, {});
+      setHeartColors(heartColors);
+    }
+  };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior="padding"
-      keyboardVerticalOffset={90}
-    >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View>
-          {/* Search Bar */}
-          <TextInput
-            style={styles.searchBar}
-            placeholder="Search for a movie..."
-            placeholderTextColor="#ccc"
-            value={searchText}
-            onChangeText={(text) => setSearchText(text)}
-            
-          />
+    <View style={[styles.container]}>
+        {/* Search Bar */}
+        <TextInput
+          style={styles.searchBar}
+          placeholder="Search for a movie..."
+          placeholderTextColor="#ccc"
+          value={searchText}
+          onChangeText={async (text) => await search(text)}
+        />
 
-          {/* Movie Cards */}
-          <FlatList
-            data={filteredMovies}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
+        {/* ADD FILTERING */}
+
+        {/* Movie Cards */}
+        <FlatList
+          data={movies}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <Pressable onPress={() => router.push({
+                                    pathname: '/InfoPage',
+                                    params: { id: item.content.id },
+                                  })}
+              >
               <View style={styles.card}>
-                <Image source={item.poster} style={styles.poster} />
+                <Image source={{ uri: getPosterByContent(item.content) }} style={styles.poster} />
                 <View style={styles.cardContent}>
-                  <Text style={styles.title}>{item.title}</Text>
-                  <Text style={styles.description}>{item.description}</Text>
+                  <Text style={styles.title}>{item.content.title}</Text>
+                  <Text style={styles.description}>{item.content.overview}</Text>
                   <Text style={styles.rating}>⭐ {item.rating}</Text>
                 </View>
                 <Heart 
@@ -103,11 +110,10 @@ const SearchPage = () => {
                   onPress={() => toggleFavorite(item.id)}
                 />
               </View>
-            )}
-          />
-        </View>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+            </Pressable>
+          )}
+      />
+    </View>
   );
 };
 
@@ -116,7 +122,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.backgroundColor,
     padding: 16,
-    paddingTop: 50,
+    paddingVertical: 50,
   },
   searchBar: {
     backgroundColor: Colors.cardBackgroundColor,

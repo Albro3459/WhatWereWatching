@@ -44,3 +44,5 @@ export const PressableBubblesGroup: React.FC<PressableBubbleGroupProps> = ({ lab
         </Pressable>
     )
 );
+
+export default {};

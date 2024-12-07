@@ -1,49 +1,40 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, View, Text, ScrollView, FlatList, Image, TouchableOpacity, Pressable } from "react-native";
 import { Card, Title, Button, Searchbar } from "react-native-paper";
 import { MaterialIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { Link, router, usePathname } from "expo-router";
 import { Colors } from "@/constants/Colors";
+import { getContentById, getPosterByContent, getRandomContent } from "./helpers/fetchHelper";
+import { Content } from "./types/contentType";
+import { appStyles } from "@/styles/appStyles";
 
-const LandingPage = () => {
-    // Array of trending movies
-    const trendingMovies = [
-      { id: "1", title: "The Wild Robot (2024)", image: require("../assets/images/wildrobot.jpg") },
-      { id: "2", title: "Inside Out (2015)", image: require("../assets/images/insideout.jpg") },
-      { id: "3", title: "Finding Nemo (2003)", image: require("../assets/images/nemo.jpeg") },
-    ];
+function LandingPage () {
+    const pathname = usePathname();
   
     // State to manage the currently displayed movie
-    const [currentMovieIndex, setCurrentMovieIndex] = useState(0);
-  
-    // Function to handle the Next button
-    const handleNextMovie = () => {
-      setCurrentMovieIndex((prevIndex) => (prevIndex + 1) % trendingMovies.length); // Loop back to the first movie
+    const [carouselIndex, setCarouselIndex] = useState(0);
+    const [carouselContent, setCarouselContent] = useState<Content[]>([]);
+    const [moviesAndShows, setMoviesAndShows] = useState<Content[]>([]);    
+    
+    type Review = {
+      id: string;
+      user: string;
+      text: string;
+      rating: number;
+      avatar: string;
+      contentID: string,
+      contentTitle: string
     };
-  
-    // Function to handle the Previous button
-    const handlePreviousMovie = () => {
-      setCurrentMovieIndex((prevIndex) =>
-        prevIndex === 0 ? trendingMovies.length - 1 : prevIndex - 1
-      );
-    };
-    const recommendedMovies = [
-      { id: "1", title: "Joker", image: require("../assets/images/posters/joker.png") },
-      { id: "2", title: "Elf", image: require("../assets/images/posters/elf.png") },
-      { id: "3", title: "Shrek", image: require("../assets/images/posters/shrek.png") },
-      { id: "4", title: "Star Wars", image: require("../assets/images/posters/starWars.png") },
-      { id: "5", title: "Get Out", image: require("../assets/images/posters/getOut.png") },
-      { id: "6", title: "Beauty and the Beast", image: require("../assets/images/posters/beautyAndTheBeast.png") },
-    ];
     // Array of reviews
-    const reviews = [
+    const [reviews, setReviews] = useState<Review[]>([
       {
         id: "1",
         user: "@larryjustice",
         text: "The movie made me shed so many tears.",
         rating: 5,
         avatar: "https://via.placeholder.com/50",
-        movieId: "1",
+        contentID: "110",
+        contentTitle: ""
       },
       {
         id: "2",
@@ -51,7 +42,8 @@ const LandingPage = () => {
         text: "A fantastic emotional journey.",
         rating: 4,
         avatar: "https://via.placeholder.com/50",
-        movieId: "2",
+        contentID: "146",
+        contentTitle: ""
       },
       {
         id: "3",
@@ -59,7 +51,8 @@ const LandingPage = () => {
         text: "A must-watch for everyone!",
         rating: 5,
         avatar: "https://via.placeholder.com/50",
-        movieId: "3",
+        contentID: "396",
+        contentTitle: ""
       },
       {
         id: "4",
@@ -67,31 +60,70 @@ const LandingPage = () => {
         text: "Visually stunning and heartfelt.",
         rating: 4,
         avatar: "https://via.placeholder.com/50",
-        movieId: "1",
+        contentID: "462",
+        contentTitle: ""
       },
-    ];
+    ]);
+
+    // Function to handle the Next button
+    const handleNextMovie = () => {
+      setCarouselIndex((prevIndex) => (prevIndex + 1) % carouselContent.length); // Loop back to the first movie
+    };
+  
+    // Function to handle the Previous button
+    const handlePreviousMovie = () => {
+      setCarouselIndex((prevIndex) =>
+        prevIndex === 0 ? carouselContent.length - 1 : prevIndex - 1
+      );
+    };
+
+    useEffect(() => {
+      const fetchRecommendedMovies  = async () => {
+        if (pathname === "/LandingPage") {
+          if (!moviesAndShows || moviesAndShows.length == 0) {
+
+            const randomContent = await getRandomContent(10);
+            if (randomContent) {
+              setMoviesAndShows(randomContent.slice(0, 5));
+              setCarouselContent(randomContent.slice(5, 9));
+            }
+            
+            const updatedReviews = await Promise.all(
+              reviews.map(async (review) => {
+                const content = await getContentById(review.contentID);
+                // console.log(`review id: ${review.id} has title ${content.title}`);
+                return {
+                  ...review,
+                  contentTitle: content?.title || "Unknown",
+                };
+              })
+            );
+            setReviews(updatedReviews);
+          }
+        }
+      }
+      fetchRecommendedMovies();
+    }, [pathname]);     
 
     // Render function for reviews
-    const renderReview = ({ item }) => {
-      // Find the movie associated with the review
-      const associatedMovie = trendingMovies.find((movie) => movie.id === item.movieId);
-  
+    const renderReview = ({ item }: {item: Review}) => {
+
       return (
-        <View style={styles.reviewCard}>
-          <Image source={{ uri: item.avatar }} style={styles.avatar} />
-          <View style={styles.reviewTextContainer}>
-            <Text style={styles.reviewUser}>{item.user}</Text>
-            <Text style={styles.reviewText}>{item.text}</Text>
-            <Text style={styles.reviewMovie}>
-              Movie: {associatedMovie?.title || "Unknown"}
+        <View style={appStyles.reviewCard}>
+          <Image source={{ uri: item.avatar }} style={appStyles.avatar} />
+          <View style={appStyles.reviewTextContainer}>
+            <Text style={appStyles.reviewUser}>{item.user}</Text>
+            <Text style={appStyles.reviewText}>{item.text}</Text>
+            <Text style={appStyles.reviewMovie}>
+              Movie: {item.contentTitle.length > 0 ? item.contentTitle : "Unknown"}
             </Text>
-            <View style={styles.ratingContainer}>
+            <View style={appStyles.ratingContainer}>
               {Array.from({ length: 5 }).map((_, index) => (
                 <MaterialIcons
                   key={index}
                   name={index < item.rating ? "star" : "star-border"}
                   size={16}
-                  color="#FFD700" // Gold color for stars
+                  color="#FFD700"
                 />
               ))}
             </View>
@@ -106,12 +138,15 @@ const LandingPage = () => {
        {/* Trending Section */}
        <View style={styles.section}>
         <Text style={styles.sectionTitle}>TRENDING</Text>
-        <Pressable onPress={() => (router.push('/InfoPage'))}>
+        <Pressable onPress={() => router.push({
+                                  pathname: '/InfoPage',
+                                  params: { id: carouselContent[carouselIndex].id },
+                  })}>
           <Card style={styles.trendingCard}>
-            <Image source={trendingMovies[currentMovieIndex].image} style={styles.trendingImage} />
+            <Image source={{ uri: getPosterByContent(carouselContent[carouselIndex], false)}} style={styles.trendingImage} />
             <Card.Content>
               <Title style={styles.trendingTitle}>
-                {trendingMovies[currentMovieIndex].title}
+                {carouselContent && carouselContent[carouselIndex] && carouselContent[carouselIndex].title}
               </Title>
             </Card.Content>
           </Card>
@@ -132,27 +167,39 @@ const LandingPage = () => {
       </View>
 
       {/* Most Recommended Section */}
-      <View style={[styles.section, {height: "13%"}]}>
+      <View style={[styles.section, { height: 200 }]}>
         <Text style={styles.sectionTitle}>MOST RECOMMENDED</Text>
         <FlatList
-          data={recommendedMovies}
+          data={moviesAndShows}
           horizontal
           showsHorizontalScrollIndicator={false}
+          nestedScrollEnabled
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <Pressable style={styles.movieCard} onPress={() => (router.push('/InfoPage'))}>
-              <Image source={item.image} style={styles.movieImage} />
+            <Pressable
+              style={styles.movieCard}
+              onPress={() => router.push({
+                                  pathname: '/InfoPage',
+                                  params: { id: item.id },
+                                })}
+            >
+              <Image
+                source={{uri: getPosterByContent(item)}}
+                style={styles.movieImage}
+              />
               <Text style={styles.movieTitle}>{item.title}</Text>
             </Pressable>
           )}
         />
       </View>
-       {/* Reviews Section */}
+
+      {/* Reviews Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>TOP REVIEWS</Text>
         <FlatList
           data={reviews}
           renderItem={renderReview}
+          scrollEnabled={false}
           keyExtractor={(item) => item.id}
         />
         <TouchableOpacity
@@ -164,7 +211,7 @@ const LandingPage = () => {
       </View>
     </ScrollView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -193,9 +240,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   trendingImage: {
-    height: 150,
+    height: 200,
     width: "100%",
-    borderRadius: 10,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10
   },
   trendingTitle: {
     color: "#fff",
@@ -230,12 +278,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 5,
     textAlign: "center",
-    // flexWrap: "wrap",
   },
   filterSection: {
     backgroundColor: Colors.cardBackgroundColor,
     padding: 20,
     borderRadius: 10,
+    marginBottom: 50
   },
   filterOptions: {
     marginTop: 10,
@@ -246,44 +294,19 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   filterButton: {
-    marginTop: 15,
     backgroundColor: Colors.buttonColor,
-  },
-  reviewCard: {
-    flexDirection: "row",
-    backgroundColor: Colors.cardBackgroundColor,
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 10,
-  },
-  avatar: {
-    width: 50,
+    width: 125,
     height: 50,
-    borderRadius: 25,
-    marginRight: 10,
-  },
-  reviewTextContainer: {
-    flex: 1,
-  },
-  reviewUser: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-  reviewText: {
-    fontSize: 14,
-    color: Colors.reviewTextColor,
-    marginVertical: 5,
-  },
-  ratingContainer: {
-    flexDirection: "row",
+    borderRadius: 10,
+
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    marginTop: 15,
+    marginBottom: 60,    
+    
+    justifyContent: "center",
     alignItems: "center",
-  },
-  reviewMovie: {
-    fontSize: 14,
-    color: Colors.italicTextColor,
-    marginBottom: 5,
-    fontStyle: "italic",
+    alignSelf: "center"
   },
   libraryButton: {
     backgroundColor: Colors.buttonColor,
