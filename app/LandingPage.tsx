@@ -155,23 +155,12 @@ const LandingPage = () => {
           renderItem={renderReview}
           keyExtractor={(item) => item.id}
         />
-      </View>
-      {/* Filter Section */}
-      <View style={styles.filterSection}>
-        <Text style={styles.sectionTitle}>FILTER</Text>
-        <View style={styles.filterOptions}>
-          <View>
-            <Text style={styles.filterText}>Genre</Text>
-            <Text style={styles.filterText}>Fantasy | Action | Romance</Text>
-          </View>
-          <View>
-            <Text style={styles.filterText}>Media Type</Text>
-            <Text style={styles.filterText}>Movies | Shows</Text>
-          </View>
-          <Button mode="contained" style={styles.filterButton}>
-            Search
-          </Button>
-        </View>
+        <TouchableOpacity
+        style={styles.libraryButton}
+        onPress={() => router.push('/Library')} // Navigate to the Library page
+        >
+        <Text style={styles.libraryButtonText}>Library</Text>
+      </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -296,6 +285,17 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     fontStyle: "italic",
   },
+  libraryButton: {
+    backgroundColor: Colors.buttonColor,
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 5,
+},
+libraryButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "bold",
+},
 });
 
 export default LandingPage;
