@@ -1,89 +1,256 @@
-import React, { useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList, StyleSheet, Image } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
+  Image,
+  Modal,
+  Alert,
+  Pressable,
+  Dimensions,
+} from 'react-native';
 import PagerView from 'react-native-pager-view';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getRandomContent, getPosterByContent } from './helpers/fetchHelper';
 
-const movies = [  
-    { id: '1', title: 'Joker', poster: 'https://image.tmdb.org/t/p/w200/udDclJoHjfjb8Ekgsd4FDteOkCU.jpg' },
-    { id: '2', title: 'Elf', poster: 'https://image.tmdb.org/t/p/w200/xVwpZTcDqppOrE1Zdcdrt8oEwJa.jpg' },
-    { id: '3', title: 'Shrek', poster: 'https://image.tmdb.org/t/p/w200/hz0kDzyIdhP5hOJBWlDdcF2Z7rl.jpg' },
-    { id: '4', title: 'The Wild Robot', poster: 'https://placekitten.com/200/300' }, // Replace with actual
-    { id: '5', title: 'Star Wars', poster: 'https://image.tmdb.org/t/p/w200/6FfCtAuVAW8XJjZ7eWeLibRLWTw.jpg' },
-    { id: '6', title: 'Avengers', poster: 'https://image.tmdb.org/t/p/w200/7WsyChQLEftFiDOVTGkv3hFpyyt.jpg' },
-    { id: '7', title: 'Beauty and the Beast', poster: 'https://image.tmdb.org/t/p/w200/tWqifoYuwLETmmasnGHO7xBjEtt.jpg' },
-    { id: '8', title: 'Barbie', poster: 'https://placekitten.com/200/200' }, // Replace with actual
-  ]; 
-const TabContent = ({ movies }) => (
-   <View style={styles.container}>
-      <FlatList
-         data={movies}
-         numColumns={2}
-         keyExtractor={(item) => item.id}
-         renderItem={({ item }) => (
-            <View style={styles.movieCard}>
-               <Image source={{ uri: item.poster }} style={styles.movieImage} />
-               <Text style={styles.movieTitle}>{item.title}</Text>
-            </View>
-         )}
-      />
-   </View>
-);
+const { width } = Dimensions.get('window');
+const STORAGE_KEY = 'libraryTabs'; // Key for saving tab data
 
 const Library = () => {
-   const pagerViewRef = useRef(null);
-   const [activeTab, setActiveTab] = useState(0);
+  const pagerViewRef = useRef(null);
+  const [activeTab, setActiveTab] = useState(0);
+  const [tabs, setTabs] = useState({
+    Planned: [],
+    Watching: [],
+    Completed: [],
+    Favorite: [],
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [moveModalVisible, setMoveModalVisible] = useState(false);
 
-   const handleTabPress = (index) => {
-      setActiveTab(index);
-      pagerViewRef.current?.setPage(index); // Ensure ref works correctly
-   };
-   return (
-      <View style={{ flex: 1, backgroundColor: '#2b2b4f' }}>
-         {/* Tab Bar */}
-         <View style={styles.tabBar}>
-            {['Planned', 'Watching', 'Completed', 'Favorite'].map((tab, index) => (
-               <TouchableOpacity
-                  key={index}
-                  style={[styles.tabItem, activeTab === index && styles.activeTabItem]}
-                  onPress={() => handleTabPress(index)}
-               >
-                  <Text style={[styles.tabText, activeTab === index && styles.activeTabText]}>{tab}</Text>
-               </TouchableOpacity>
-            ))}
-         </View>
+  useEffect(() => {
+    const loadContent = async () => {
+      try {
+        // Load saved tabs from AsyncStorage
+        const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+        if (savedTabs) {
+          setTabs(JSON.parse(savedTabs));
+        } else {
+          // If no saved data, load random content for "Planned" and "Watching"
+          const plannedContent = await getRandomContent(8);
+          const watchingContent = await getRandomContent(8);
+          setTabs((prevTabs) => ({
+            ...prevTabs,
+            Planned: plannedContent,
+            Watching: watchingContent,
+          }));
+        }
+      } catch (error) {
+        console.error('Error loading library content:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-         {/* Pager View */}
-         <PagerView
-            style={{ flex: 1 }}
-            initialPage={0}
-            ref={pagerViewRef} // Attach ref
-            onPageSelected={(e) => setActiveTab(e.nativeEvent.position)} // Sync tab state
-         >
-            <View key="1">
-               <TabContent movies={movies.slice(0, 4)} />
-            </View>
-            <View key="2">
-               <TabContent movies={movies.slice(4, 8)} />
-            </View>
-            <View key="3">
-               <TabContent movies={movies.slice(0, 4)} />
-            </View>
-            <View key="4">
-               <TabContent movies={movies.slice(4, 8)} />
-            </View>
-         </PagerView>
+    loadContent();
+  }, []);
+
+  const saveTabsToStorage = async (updatedTabs) => {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
+    } catch (error) {
+      console.error('Error saving tabs to storage:', error);
+    }
+  };
+
+  const handleTabPress = (index) => {
+    setActiveTab(index);
+    pagerViewRef.current?.setPage(index);
+  };
+
+  const moveItemToTab = (item, targetTab) => {
+    const sourceTab = Object.keys(tabs).find((tab) =>
+      tabs[tab].some((content) => content.id === item.id)
+    );
+
+    if (sourceTab && sourceTab !== targetTab) {
+      const updatedTabs = {
+        ...tabs,
+        [sourceTab]: tabs[sourceTab].filter((content) => content.id !== item.id),
+        [targetTab]: [...tabs[targetTab], item],
+      };
+
+      setTabs(updatedTabs);
+      saveTabsToStorage(updatedTabs); // Save updated state to AsyncStorage
+
+      Alert.alert('Success', `Moved "${item.title}" to "${targetTab}"`);
+    }
+    setMoveModalVisible(false);
+  };
+
+  const renderTabContent = (tabData) => (
+    <FlatList
+      data={tabData}
+      numColumns={2}
+      keyExtractor={(item) => item.id.toString()}
+      renderItem={({ item }) => (
+        <TouchableOpacity
+          style={styles.movieCard}
+          onLongPress={() => {
+            setSelectedItem(item);
+            setMoveModalVisible(true);
+          }}
+        >
+          <Image
+            source={{
+              uri: getPosterByContent(item) || 'https://via.placeholder.com/100x150',
+            }}
+            style={styles.movieImage}
+          />
+          <Text style={styles.movieTitle}>{item.title}</Text>
+        </TouchableOpacity>
+      )}
+    />
+  );
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading Library...</Text>
       </View>
-   );
-}
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#2b2b4f' }}>
+      {/* Tab Bar */}
+      <View style={styles.tabBar}>
+        {Object.keys(tabs).map((tab, index) => (
+          <TouchableOpacity
+            key={index}
+            style={[styles.tabItem, activeTab === index && styles.activeTabItem]}
+            onPress={() => handleTabPress(index)}
+          >
+            <Text
+              style={[styles.tabText, activeTab === index && styles.activeTabText]}
+            >
+              {tab}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Pager View */}
+      <PagerView
+        style={{ flex: 1 }}
+        initialPage={0}
+        ref={pagerViewRef}
+        onPageSelected={(e) => setActiveTab(e.nativeEvent.position)}
+      >
+        {Object.keys(tabs).map((tab, index) => (
+          <View key={index}>{renderTabContent(tabs[tab])}</View>
+        ))}
+      </PagerView>
+
+      {/* Move Modal */}
+      <Modal
+        transparent={true}
+        visible={moveModalVisible}
+        animationType="fade"
+        onRequestClose={() => setMoveModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setMoveModalVisible(false)}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              Move "{selectedItem?.title}" to:
+            </Text>
+            {Object.keys(tabs).map((tab) => (
+              <TouchableOpacity
+                key={tab}
+                style={styles.modalButton}
+                onPress={() => moveItemToTab(selectedItem, tab)}
+              >
+                <Text style={styles.modalButtonText}>{tab}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
-   container: { flex: 1, backgroundColor: '#2b2b4f', padding: 10 },
-   tabBar: { flexDirection: 'row', backgroundColor: '#4f4f77', justifyContent: 'space-around', paddingVertical: 10 },
-   tabItem: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 5 },
-   activeTabItem: { backgroundColor: '#6c6c91' },
-   tabText: { color: '#ccc', fontSize: 14 },
-   activeTabText: { color: 'white', fontWeight: 'bold' },
-   movieCard: { flex: 1, margin: 5, alignItems: 'center' },
-   movieImage: { width: 100, height: 150, borderRadius: 10, marginBottom: 5 },
-   movieTitle: { color: 'white', textAlign: 'center' },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#2b2b4f',
+  },
+  loadingText: {
+    color: '#fff',
+    fontSize: 18,
+  },
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#4f4f77',
+    justifyContent: 'space-around',
+    paddingVertical: 10,
+  },
+  tabItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 5,
+  },
+  activeTabItem: { backgroundColor: '#6c6c91' },
+  tabText: { color: '#ccc', fontSize: 14 },
+  activeTabText: { color: 'white', fontWeight: 'bold' },
+  movieCard: { flex: 1, margin: 5, alignItems: 'center' },
+  movieImage: { width: width / 3, height: width / 2, borderRadius: 10 },
+  movieTitle: {
+    color: 'white',
+    textAlign: 'center',
+    fontSize: 14,
+    marginTop: 5,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#4f4f77',
+    borderRadius: 10,
+    padding: 20,
+    width: '80%',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  modalButton: {
+    backgroundColor: '#6c6c91',
+    padding: 10,
+    borderRadius: 5,
+    marginVertical: 5,
+    width: '100%',
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
 });
+
 export default Library;
