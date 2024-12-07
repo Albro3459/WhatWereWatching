@@ -71,15 +71,6 @@ export default function ProfilePage() {
 
             {/* First container */}
             <View style={[styles.container, { marginTop: 0 }]}>
-                {/* <View style={styles.labelContainer}>
-                    <Text style={styles.labelText}>Birthday:</Text>
-                    <Text style={{ color: 'red', marginLeft: 2 }}>*</Text>
-                </View>
-                <TextInput
-                    style={[styles.textField, birthdayText.length > 0 ? styles.selectedTextBox : null]}
-                    value={birthdayText}
-                    onChangeText={(newText) => setBirthdayText(newText)}
-                /> */}
                 <View style={styles.labelContainer}>
                     <Text style={styles.labelText}>Birthday:</Text>
                     <Text style={{ color: "red", marginLeft: 2 }}>*</Text>

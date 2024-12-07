@@ -1,15 +1,38 @@
 import { Colors } from '@/constants/Colors';
-import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, Button, TouchableOpacity, Dimensions, Pressable, Modal } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, Image, StyleSheet, ScrollView, Button, TouchableOpacity, Dimensions, Pressable, Modal, FlatList } from 'react-native';
+import * as SplashScreen from "expo-splash-screen";
 import StarRating from 'react-native-star-rating-widget';
 import { Heart } from './components/heartComponent';
+import { Content } from './types/contentType';
+import { useLocalSearchParams, usePathname } from 'expo-router/build/hooks';
+import { getContentById, getPosterByContent, getRandomContent } from './helpers/fetchHelper';
+import { MaterialIcons } from '@expo/vector-icons';
+import { appStyles } from '@/styles/appStyles';
+import { router } from 'expo-router';
 
 const screenWidth = Dimensions.get("window").width;
 const scale = 1;
 const selectedHeartColor = "#FF2452";
 const unselectedHeartColor = "#ECE6F0";
 
-const InfoPage = () => {
+interface InfoPageParams {
+  id?: string;
+}
+
+// Prevent splash screen from hiding until everything is loaded
+SplashScreen.preventAutoHideAsync();
+
+function InfoPage() {
+  const pathname = usePathname();
+
+  const { id } = useLocalSearchParams() as InfoPageParams;
+  const contentID = id ? id.toString() : null;
+
+  const [content, setContent] = useState<Content>();
+
+  const [isLoading, setIsLoading] = useState(true);
+  
   const [rating, setRating] = useState(2.5); // this is the default rating
 
   const watchItems = ["Planned", "Watching", "Completed"];
@@ -18,7 +41,58 @@ const InfoPage = () => {
 
   const [heartColor, setHeartColor] = useState<string>(unselectedHeartColor);
 
-  const [activeTab, setActiveTab] = useState('About');
+  const [activeTab, setActiveTab] = useState<string>('About');
+
+  type Review = {
+    id: string;
+    user: string;
+    text: string;
+    rating: number;
+    avatar: string;
+    contentID: string,
+    contentTitle: string
+  };
+  // Array of reviews
+  const [reviews, setReviews] = useState<Review[]>([
+    {
+      id: "1",
+      user: "@larryjustice",
+      text: "The movie made me shed so many tears.",
+      rating: 5,
+      avatar: "https://via.placeholder.com/50",
+      contentID: "110",
+      contentTitle: ""
+    },
+    {
+      id: "2",
+      user: "@janedoe",
+      text: "A fantastic emotional journey.",
+      rating: 4,
+      avatar: "https://via.placeholder.com/50",
+      contentID: "146",
+      contentTitle: ""
+    },
+    {
+      id: "3",
+      user: "@movielover",
+      text: "A must-watch for everyone!",
+      rating: 5,
+      avatar: "https://via.placeholder.com/50",
+      contentID: "396",
+      contentTitle: ""
+    },
+    {
+      id: "4",
+      user: "@cinemafan",
+      text: "Visually stunning and heartfelt.",
+      rating: 4,
+      avatar: "https://via.placeholder.com/50",
+      contentID: "462",
+      contentTitle: ""
+    },
+  ]);
+
+  const [recommendedContent, setRecommendedContent] = useState<Content[]>([]);    
 
   const addItemToList = (item: string, list: Set<string>, setList: React.Dispatch<React.SetStateAction<Set<string>>>, setModalFunc: React.Dispatch<React.SetStateAction<boolean>>) => {
     setModalFunc(false);
@@ -46,23 +120,34 @@ const InfoPage = () => {
       case 'About':
         return (
           <View style={styles.content}>
-            <Text style={styles.sectionTitle}>Summary</Text>
-            <Text style={styles.text}>
-              Shipwrecked on a deserted island, a robot named Roz must learn to adapt to its new surroundings...
-            </Text>
+            <Text style={styles.sectionTitle}>Overview</Text>
+            <Text style={styles.text}>{content.overview}</Text>
             <Text style={styles.sectionTitle}>More Info</Text>
-            <Text style={styles.text}>Animation | Sci-Fi | Survival</Text>
+            <Text style={styles.text}>{
+                content.genres.map((genre) => (
+                    genre.name
+                  )).join(' | ')}
+            </Text>
             <Text style={styles.sectionTitle}>Cast</Text>
-            <View style={styles.castContainer}>
-              {/* Add images of cast */}
-            </View>
+            <Text style={styles.text}>
+              {content.cast.join(' | ')}
+            </Text>
           </View>
         );
       case 'Reviews':
         return (
           <View style={styles.content}>
-            <Text style={styles.sectionTitle}>Reviews</Text>
-            <Text style={styles.text}>No reviews yet. Be the first to add one!</Text>
+            <Text style={[styles.sectionTitle, {paddingBottom: 10}]}>Reviews</Text>
+              {(!reviews || reviews.length <= 0) ? (
+                <Text style={styles.text}>No reviews yet. Be the first to add one!</Text>
+              ) : (
+                <FlatList
+                  data={reviews}
+                  renderItem={renderReview}
+                  scrollEnabled={false}
+                  keyExtractor={(item) => item.id}
+                />
+              )}
           </View>
         );
       case 'Recommended':
@@ -70,22 +155,134 @@ const InfoPage = () => {
           <View style={styles.content}>
             <Text style={styles.sectionTitle}>Recommended</Text>
             <Text style={styles.text}>Explore more movies like this!</Text>
+            <FlatList
+              data={recommendedContent}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              nestedScrollEnabled
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={appStyles.movieCard}
+                  onPress={() => router.push({
+                                      pathname: '/InfoPage',
+                                      params: { id: item.id },
+                                    })}
+                >
+                  <Image
+                    source={{uri: getPosterByContent(item)}}
+                    style={appStyles.movieImage}
+                  />
+                  <Text style={appStyles.movieTitle}>{item.title}</Text>
+                </Pressable>
+              )}
+            />
           </View>
         );
       default:
-        return null;
+        console.warn(`active tab is set incorrectly | ${activeTab}`);
+        return (
+          <View style={styles.content}>
+            <Text style={styles.sectionTitle}>Overview</Text>
+            <Text style={styles.text}>{content.overview}</Text>
+            <Text style={styles.sectionTitle}>More Info</Text>
+            <Text style={styles.text}>{
+                content.genres.map((genre) => (
+                    genre.name
+                  )).join(' | ')}
+            </Text>
+            <Text style={styles.sectionTitle}>Cast</Text>
+            <Text style={styles.text}>
+              {content.cast.join(' | ')}
+            </Text>
+          </View>
+        );
     }
   };
 
+  // Render function for reviews
+  const renderReview = ({ item }: {item: Review}) => {
+
+    return (
+      <View style={appStyles.reviewCard}>
+        <Image source={{ uri: item.avatar }} style={appStyles.avatar} />
+        <View style={appStyles.reviewTextContainer}>
+          <Text style={appStyles.reviewUser}>{item.user}</Text>
+          <Text style={appStyles.reviewText}>{item.text}</Text>
+          <Text style={appStyles.reviewMovie}>
+            Movie: {item.contentTitle.length > 0 ? item.contentTitle : "Unknown"}
+          </Text>
+          <View style={appStyles.ratingContainer}>
+            {Array.from({ length: 5 }).map((_, index) => (
+              <MaterialIcons
+                key={index}
+                name={index < item.rating ? "star" : "star-border"}
+                size={16}
+                color="#FFD700"
+              />
+            ))}
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+
+  useEffect(() => {
+    const getContentObject = async () => {
+      try {
+        if (pathname === "/InfoPage" && contentID) {
+          // console.log(`INFO PAGE ID: ${contentID}`);
+          setActiveTab('About');
+          const getContent = await getContentById(contentID);
+          if (getContent) {
+            setContent(getContent);
+            
+            const randomContent = await getRandomContent(4);
+            if (randomContent) {
+              setRecommendedContent(randomContent);
+            }
+
+            const updatedReviews = await Promise.all(
+              reviews.map(async (review) => {
+                const content = await getContentById(review.contentID);
+                // console.log(`review id: ${review.id} has title ${content.title}`);
+                return {
+                  ...review,
+                  contentTitle: content?.title || "Unknown",
+                };
+              })
+            );
+            setReviews(updatedReviews);
+          } else {
+            console.log(`Content not found for ID: ${contentID}`);
+          }
+        } else {
+          console.log("Content ID is null or pathname mismatch.");
+        }
+      } catch (error) {
+        console.error("Error fetching content:", error);
+      } finally {
+        setIsLoading(false);
+        await SplashScreen.hideAsync();
+      }
+    };
+
+    getContentObject();
+  }, [pathname, contentID]);
   
+  if (isLoading) {
+    return null; // Prevent rendering until loaded
+  }
+
   return (
     <ScrollView style={styles.screen}>
       <View style={styles.movieContainer}>
         {/* Movie Poster */}
-        <Image source={require('../assets/images/posters/getOut.png')} style={styles.posterImage} />
+        <Image source={{ uri: getPosterByContent(content) }} style={styles.posterImage} />
         {/* Movie Info */}
         <View style={styles.infoSection}>
-          <Text style={styles.title}>Get Out</Text>
+          <Text style={styles.title}>{content && content.title}</Text>
           <View style={styles.attributeContainer} >
             {/* <Text style={styles.rating}>⭐ 4.7/5</Text> */}
             <StarRating
@@ -107,9 +304,10 @@ const InfoPage = () => {
               animationType="fade"
               onRequestClose={() => setAddToListModal(false)}
             >
+              {/* so that the modal will close when u tap outside */}
               <Pressable
                 style={styles.modalOverlay}
-                onPress={() => setAddToListModal(false)} // Close modal when tapping outside
+                onPress={() => setAddToListModal(false)}
               >
                 <View style={styles.modalContent}>
                   {watchItems.map((item, index) => (
@@ -156,7 +354,7 @@ const InfoPage = () => {
       {renderTabContent()}
     </ScrollView>
   );
-};
+}
 
 const styles = StyleSheet.create({
     screen: {
@@ -248,8 +446,9 @@ const styles = StyleSheet.create({
     },
     text: {
       fontSize: 14,
-      marginVertical: 4,
       color: Colors.reviewTextColor,
+      marginVertical: 4,
+      paddingBottom: 10,
     },
     castContainer: {
       flexDirection: 'row',
