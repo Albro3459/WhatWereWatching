@@ -183,7 +183,6 @@ const SpinnerPage = () => {
     }, [pathname]);   
   
     return (
-        
         <GestureHandlerRootView>
             <Spinner list={moviesAndShows} onFinish={handleWinner} />
             {winner && showOverlay && (
