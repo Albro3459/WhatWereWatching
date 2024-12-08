@@ -215,7 +215,7 @@ const SearchPage = () => {
         {(!movies || movies.length <= 0) ? (
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
             <Text style={{ fontSize: 16, color: 'gray', textAlign: 'center' }}>
-              {searchText.length <= 0 ? "Try Search!ing for a Show or Movie!" : "No Results :("}
+              {searchText.length <= 0 ? "Try Searching for a Show or Movie!" : "No Results :("}
             </Text>
           </View>
         ) : (

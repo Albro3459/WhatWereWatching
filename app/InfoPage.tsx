@@ -1,15 +1,16 @@
 import { Colors } from '@/constants/Colors';
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, Button, TouchableOpacity, Dimensions, Pressable, Modal, FlatList, Alert } from 'react-native';
+import { View, Text, Image, StyleSheet, ScrollView, Button, TouchableOpacity, Dimensions, Pressable, Modal, FlatList, Alert, Linking } from 'react-native';
 import * as SplashScreen from "expo-splash-screen";
 import StarRating from 'react-native-star-rating-widget';
 import Heart from './components/heartComponent';
-import { Content } from './types/contentType';
+import { Content, Service, StreamingOption } from './types/contentType';
 import { useLocalSearchParams, usePathname } from 'expo-router/build/hooks';
 import { getContentById, getPosterByContent, getRandomContent } from './helpers/fetchHelper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { appStyles, RalewayFont } from '@/styles/appStyles';
 import { router } from 'expo-router';
+import { SvgUri } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEY } from '@/Global';
 import { isItemInList } from './helpers/listHelper';
@@ -34,6 +35,27 @@ function InfoPage() {
   const contentID = id ? id.toString() : null;
 
   const [content, setContent] = useState<Content>();
+  const streamingServices: () => { serviceName: string, darkThemeImage: string, link: string }[] = () => {
+    const set = new Set<string>(); // Use a Set to track unique service names
+  
+    return Object.values(content.streamingOptions || {}).flatMap((options: StreamingOption[]) => 
+      options.map((option: StreamingOption) => {
+        const service = option.service;
+        const images = service?.imageSet; // Check if ImageSet exists
+        const uniqueKey = service?.name || ''; // Use serviceName as unique identifier
+  
+        if (!set.has(uniqueKey)) {
+          set.add(uniqueKey); // Add to Set to ensure uniqueness
+          return {
+            serviceName: uniqueKey,
+            darkThemeImage: images?.darkThemeImage || '', // Safely access darkThemeImage
+            link: option.link || '',
+          };
+        }
+        return null; // Exclude duplicates
+      }).filter((item) => item !== null) // Remove null entries
+    );
+  };
 
   const [isLoading, setIsLoading] = useState(true);
   
@@ -200,6 +222,13 @@ function InfoPage() {
     }
   };
 
+  const toHoursAndMinutes = (runtime) => {
+    if (!runtime) { return "N/A" }
+    const hours = Math.floor(runtime / 60);
+    const minutes = runtime % 60;
+    return `${hours}h ${minutes}m`;
+  };
+
   useEffect(() => {
     const getContentObject = async () => {
       try {
@@ -271,14 +300,59 @@ function InfoPage() {
       case 'About':
         return (
           <View style={styles.content}>
+
+            <View style={{flexDirection: "row", justifyContent: "flex-start", alignItems: "center"}}>
+              <Text style={styles.sectionTitle}>{`${content.showType.charAt(0).toUpperCase() + content.showType.slice(1).toLowerCase()}:`}</Text>
+              <Text style={[styles.text, {fontSize: 18, paddingLeft: 15, paddingTop: 10, textAlign: 'center', textAlignVertical: "center"}]}>
+                  {
+                    content.showType === 'movie' ? (
+                      toHoursAndMinutes(content.runtime)
+                    ) : (
+                      `Seasons: ${content.seasonCount}  |  Episodes: ${content.episodeCount}`
+                    )
+                  }
+              </Text>
+            </View>
+
             <Text style={styles.sectionTitle}>Overview</Text>
             <Text style={styles.text}>{content.overview}</Text>
-            <Text style={styles.sectionTitle}>More Info</Text>
+
+            <Text style={styles.sectionTitle}>Where to Watch</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start', columnGap: 10, padding: 10 }}>
+              {streamingServices().map((service, index) => (
+                <Pressable
+                  key={index}
+                  style={{
+                    maxWidth: screenWidth / 5,
+                    maxHeight: 50,
+                    margin: 5,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  onPress={() => {
+                    if (service.link) {
+                      Linking.openURL(service.link).catch(err => console.error("Failed to open URL:", err));
+                    } else {
+                      console.log("No link available");
+                    }
+                  }}
+                >
+                  <SvgUri
+                    uri={service.darkThemeImage}
+                    width={screenWidth / 5}
+                    height={screenWidth / 5}
+                  />
+                </Pressable>
+              ))}
+            </View>
+
+            <Text style={styles.sectionTitle}>Genre</Text>
             <Text style={styles.text}>{
                 content.genres.map((genre) => (
                     genre.name
                   )).join(' | ')}
             </Text>
+
             <Text style={styles.sectionTitle}>Cast</Text>
             <Text style={styles.text}>
               {content.cast.join(' | ')}
@@ -335,14 +409,59 @@ function InfoPage() {
         console.warn(`active tab is set incorrectly | ${activeTab}`);
         return (
           <View style={styles.content}>
+
+            <View style={{flexDirection: "row", justifyContent: "flex-start", alignItems: "center"}}>
+              <Text style={styles.sectionTitle}>{`${content.showType.charAt(0).toUpperCase() + content.showType.slice(1).toLowerCase()}:`}</Text>
+              <Text style={[styles.text, {fontSize: 18, paddingLeft: 15, paddingTop: 10, textAlign: 'center', textAlignVertical: "center"}]}>
+                  {
+                    content.showType === 'movie' ? (
+                      toHoursAndMinutes(content.runtime)
+                    ) : (
+                      `Seasons: ${content.seasonCount}  |  Episodes: ${content.episodeCount}`
+                    )
+                  }
+              </Text>
+            </View>
+
             <Text style={styles.sectionTitle}>Overview</Text>
             <Text style={styles.text}>{content.overview}</Text>
-            <Text style={styles.sectionTitle}>More Info</Text>
+
+            <Text style={styles.sectionTitle}>Where to Watch</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start', columnGap: 10, padding: 10 }}>
+              {streamingServices().map((service, index) => (
+                <Pressable
+                  key={index}
+                  style={{
+                    maxWidth: screenWidth / 5,
+                    maxHeight: 50,
+                    margin: 5,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  onPress={() => {
+                    if (service.link) {
+                      Linking.openURL(service.link).catch(err => console.error("Failed to open URL:", err));
+                    } else {
+                      console.log("No link available");
+                    }
+                  }}
+                >
+                  <SvgUri
+                    uri={service.darkThemeImage}
+                    width={screenWidth / 5}
+                    height={screenWidth / 5}
+                  />
+                </Pressable>
+              ))}
+            </View>
+
+            <Text style={styles.sectionTitle}>Genre</Text>
             <Text style={styles.text}>{
                 content.genres.map((genre) => (
                     genre.name
                   )).join(' | ')}
             </Text>
+
             <Text style={styles.sectionTitle}>Cast</Text>
             <Text style={styles.text}>
               {content.cast.join(' | ')}
@@ -385,7 +504,7 @@ function InfoPage() {
 
   return (
     <View style={styles.screen} >
-      <ScrollView >
+      <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.movieContainer}>
           {/* Movie Poster */}
           <Image source={{ uri: getPosterByContent(content) }} style={styles.posterImage} />
