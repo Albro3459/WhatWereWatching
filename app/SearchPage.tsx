@@ -8,6 +8,8 @@ import { router, usePathname } from 'expo-router';
 import { appStyles } from '@/styles/appStyles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEY } from '@/Global';
+import { WatchList } from './types/listsType';
+import { isItemInList } from './helpers/listHelper';
 
 
 // TODO:
@@ -27,7 +29,7 @@ const SearchPage = () => {
 
   const [heartColors, setHeartColors] = useState<{ [key: string]: string }>();
 
-  const [lists, setLists] = useState({
+  const [lists, setLists] = useState<WatchList>({
     Planned: [],
     Watching: [],
     Completed: [],
@@ -246,10 +248,12 @@ const SearchPage = () => {
                   ) : (
                      <TouchableOpacity
                         key={`LandingPage-${selectedResult.id}-${tab}-${index}`}
-                        style={appStyles.modalButton}
+                        style={[appStyles.modalButton, isItemInList(selectedResult, tab, lists) && appStyles.selectedModalButton]}
                         onPress={() => moveItemToList(selectedResult, tab)}
                       >
-                        <Text style={appStyles.modalButtonText}>{tab}</Text>
+                        <Text style={appStyles.modalButtonText}>
+                          {tab} {isItemInList(selectedResult, tab, lists) ? "✓" : ""}
+                        </Text>
                       </TouchableOpacity>
                   )
                 ))}

@@ -12,6 +12,8 @@ import { appStyles, RalewayFont } from '@/styles/appStyles';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEY } from '@/Global';
+import { isItemInList } from './helpers/listHelper';
+import { WatchList } from './types/listsType';
 
 const screenWidth = Dimensions.get("window").width;
 const scale = 1;
@@ -37,7 +39,7 @@ function InfoPage() {
   
   const [rating, setRating] = useState(2.5); // this is the default rating
 
-  const [lists, setLists] = useState({
+  const [lists, setLists] = useState<WatchList>({
     Planned: [],
     Watching: [],
     Completed: [],
@@ -196,22 +198,6 @@ function InfoPage() {
     } catch (error) {
       console.error("Error updating tabs:", error);
     }
-  };
-
-  const isItemInList = (list: string, lists) : boolean => {
-    if (!content) { 
-      console.log('Content is null');
-      return false; 
-    }
-    if (!lists) { 
-      console.log('Tabs is null');
-      return false; 
-    }
-    if (!lists[list]) { 
-      console.log('TAB INDEX is null');
-      return false; 
-    }
-    return lists[list].some((item) => item.id === content.id);
   };
 
   const renderTabContent = () => {
@@ -438,11 +424,11 @@ function InfoPage() {
                     {Object.keys(lists).slice(0,3).map((list, index) => (
                       <Pressable 
                         key={index}
-                        style={[styles.optionPressable, isItemInList(list, lists) && styles.selectedOptionPressable]} 
+                        style={[styles.optionPressable, isItemInList(content, list, lists) && styles.selectedOptionPressable]} 
                         onPress={() => moveItemToList(content, list)}
                       >
                         <Text style={styles.optionText}>
-                          {list} {isItemInList(list, lists) ? "✓" : ""}
+                          {list} {isItemInList(content, list, lists) ? "✓" : ""}
                         </Text>
                       </Pressable>
                     ))}
@@ -506,10 +492,12 @@ function InfoPage() {
                   ) : (
                      <TouchableOpacity
                         key={`LandingPage-${selectedRecommendation.id}-${tab}-${index}`}
-                        style={appStyles.modalButton}
+                        style={[appStyles.modalButton, isItemInList(selectedRecommendation, tab, lists) && appStyles.selectedModalButton]}
                         onPress={() => moveItemToList(selectedRecommendation, tab)}
                       >
-                        <Text style={appStyles.modalButtonText}>{tab}</Text>
+                        <Text style={appStyles.modalButtonText}>
+                          {tab} {isItemInList(selectedRecommendation, tab, lists) ? "✓" : ""}
+                        </Text>
                       </TouchableOpacity>
                   )
                 ))}

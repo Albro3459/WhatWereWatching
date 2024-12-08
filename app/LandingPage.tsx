@@ -10,6 +10,7 @@ import { appStyles, RalewayFont } from "@/styles/appStyles";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Heart from "./components/heartComponent";
 import { STORAGE_KEY } from "@/Global";
+import { isItemInList } from "./helpers/listHelper";
 
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
@@ -275,7 +276,7 @@ function LandingPage () {
 
   return (
     <View style={styles.container} >
-      <ScrollView style={{marginBottom: LIBRARY_OVERLAY_HEIGHT}}>
+      <ScrollView style={{ marginBottom: LIBRARY_OVERLAY_HEIGHT}} showsVerticalScrollIndicator={false}>
         <Text style={styles.welcomeText}>WELCOME BACK JOHN!</Text>
         {/* Trending Section */}
         <View style={styles.section}>
@@ -380,10 +381,12 @@ function LandingPage () {
                   ) : (
                      <TouchableOpacity
                         key={`LandingPage-${selectedContent.id}-${tab}-${index}`}
-                        style={appStyles.modalButton}
+                        style={[appStyles.modalButton, isItemInList(selectedContent, tab, tabList) && appStyles.selectedModalButton]}
                         onPress={() => moveItemToTab(selectedContent, tab)}
                       >
-                        <Text style={appStyles.modalButtonText}>{tab}</Text>
+                        <Text style={appStyles.modalButtonText}>
+                          {tab} {isItemInList(selectedContent, tab, tabList) ? "✓" : ""}
+                        </Text>
                       </TouchableOpacity>
                   )
                 ))}
@@ -439,7 +442,8 @@ const styles = StyleSheet.create({
   },
   trendingTitle: {
     color: "#fff",
-    marginTop: 10,
+    top: 8,
+    fontFamily: RalewayFont,
     textAlign: "center",
   },
   navigationButtons: {
@@ -514,7 +518,7 @@ const styles = StyleSheet.create({
   },
   libraryButton: {
     width: screenWidth*.5,
-    height: screenHeight*.065,
+    height: screenHeight*.06,
     padding: 10,
     marginBottom: 10,
     borderRadius: 10,

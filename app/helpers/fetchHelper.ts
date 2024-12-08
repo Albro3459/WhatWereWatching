@@ -144,7 +144,7 @@ export const getPosterByContent = (content: Content, vertical = true) => {
     }
 };
 
-export const searchByKeywords = async (keywords: string, filter: string = "") => {
+export const searchByKeywords = async (keywords: string, filter: string = "") : Promise<Content[] | null> => {
   try {
     if (keywords.length > 0) {
       const data: Content[] = await loadDbFile();
@@ -159,10 +159,9 @@ export const searchByKeywords = async (keywords: string, filter: string = "") =>
 
       const keywordArray = keywords.toLowerCase().split(" ");
 
-      let results: Content[] = [];
+      const uniqueResults: Set<string> = new Set(); // used to check for uniqueness
 
-      // Filter data based on keywords
-      results = data.filter((content) => {
+      const results: Content[] = data.filter((content: Content) => {
         const contentFields = [
           content.title?.toLowerCase(),
           content.originalTitle?.toLowerCase(),
@@ -177,9 +176,16 @@ export const searchByKeywords = async (keywords: string, filter: string = "") =>
         ];
 
         // Check if any keyword matches any field
-        return keywordArray.some((keyword) =>
+        const matches = keywordArray.some((keyword) =>
           contentFields.some((field) => field?.includes(keyword))
         );
+
+        // Add to results if it matches and is not already in the Set
+        if (matches && !uniqueResults.has(content.id)) {
+          uniqueResults.add(content.id); // Track unique content by ID
+          return true; // Include in results
+        }
+        return false; // Exclude duplicates
       });
 
       return results;

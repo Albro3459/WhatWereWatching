@@ -21,6 +21,8 @@ import { Content } from './types/contentType';
 import { appStyles } from '@/styles/appStyles';
 import { STORAGE_KEY } from '@/Global';
 import { Colors } from '@/constants/Colors';
+import { WatchList } from './types/listsType';
+import { isItemInList } from './helpers/listHelper';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const scale = .75;
@@ -35,7 +37,7 @@ const LibraryPage = () => {
   const pagerViewRef = useRef(null);
 
   const [activeTab, setActiveTab] = useState(0);
-  const [tabs, setTabs] = useState({
+  const [tabs, setTabs] = useState<WatchList>({
     Planned: [],
     Watching: [],
     Completed: [],
@@ -283,11 +285,13 @@ const LibraryPage = () => {
                   </View>
                 ) : (
                   <TouchableOpacity
-                  key={`LandingPage-${selectedItem.id}-${tab}-${index}`}
-                  style={appStyles.modalButton}
-                  onPress={() => moveItemToTab(selectedItem, tab)}
-                >
-                  <Text style={appStyles.modalButtonText}>{tab}</Text>
+                    key={`LandingPage-${selectedItem.id}-${tab}-${index}`}
+                    style={[appStyles.modalButton, isItemInList(selectedItem, tab, tabs) && appStyles.selectedModalButton]}
+                    onPress={() => moveItemToTab(selectedItem, tab)}
+                  >
+                  <Text style={appStyles.modalButtonText}>
+                    {tab} {isItemInList(selectedItem, tab, tabs) ? "✓" : ""}
+                  </Text>
                 </TouchableOpacity>
               )
               ))}
