@@ -9,14 +9,13 @@ import { Content } from "./types/contentType";
 import { appStyles, RalewayFont } from "@/styles/appStyles";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Heart from "./components/heartComponent";
+import { STORAGE_KEY } from "@/Global";
 
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const scale = .75;
 const selectedHeartColor = "#FF2452";
 const unselectedHeartColor = "#ECE6F0";
-
-const STORAGE_KEY = 'libraryTabs';
 
 const LIBRARY_OVERLAY_HEIGHT = screenHeight*.095
 
@@ -265,7 +264,7 @@ function LandingPage () {
                   key={index}
                   name={index < item.rating ? "star" : "star-border"}
                   size={16}
-                  color="#FFD700"
+                  color={Colors.goldColor}
                 />
               ))}
             </View>
@@ -507,7 +506,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: LIBRARY_OVERLAY_HEIGHT,
-    backgroundColor: Colors.unselectedColor,
+    backgroundColor: Colors.tabBarColor,
     borderTopWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -515,10 +514,11 @@ const styles = StyleSheet.create({
   },
   libraryButton: {
     width: screenWidth*.5,
-    height: screenHeight*.07,
+    height: screenHeight*.065,
     padding: 10,
+    marginBottom: 10,
     borderRadius: 10,
-    backgroundColor: Colors.cardBackgroundColor, 
+    backgroundColor: Colors.selectedTabColor, 
     alignContent: "center",
     justifyContent: "center"
   },

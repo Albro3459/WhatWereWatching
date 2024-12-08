@@ -11,6 +11,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { appStyles, RalewayFont } from '@/styles/appStyles';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { STORAGE_KEY } from '@/Global';
 
 const screenWidth = Dimensions.get("window").width;
 const scale = 1;
@@ -20,8 +21,6 @@ const unselectedHeartColor = "#ECE6F0";
 interface InfoPageParams {
   id?: string;
 }
-
-const STORAGE_KEY = 'libraryTabs';
 
 // Prevent splash screen from hiding until everything is loaded
 SplashScreen.preventAutoHideAsync();
@@ -38,7 +37,6 @@ function InfoPage() {
   
   const [rating, setRating] = useState(2.5); // this is the default rating
 
-  // const listTabs = ["Planned", "Watching", "Completed"];
   const [lists, setLists] = useState({
     Planned: [],
     Watching: [],
@@ -621,33 +619,6 @@ const styles = StyleSheet.create({
       flexDirection: 'row',
       justifyContent: 'space-around',
       marginTop: 8,
-    },
-    heartContainer: {
-      width: (screenWidth / 10) * scale,
-      height: ((4 * screenWidth) / 50) * scale,
-      justifyContent: "center",
-      alignItems: "center",
-      alignSelf: "center"
-    },
-    heartLeft: {
-      width: 0.079 * screenWidth * scale,
-      height: (screenWidth / 20) * scale,
-      backgroundColor: "#FDB0C0",
-      borderTopLeftRadius: 25,
-      borderBottomLeftRadius: 25,
-      transform: [{ rotate: "45deg" }],
-      position: "absolute",
-      left: 0,
-    },
-    heartRight: {
-      width: 0.079 * screenWidth * scale,
-      height: (screenWidth / 20) * scale,
-      backgroundColor: "#FDB0C0",
-      borderTopRightRadius: 25,
-      borderBottomRightRadius: 25,
-      transform: [{ rotate: "-45deg" }],
-      position: "absolute",
-      right: 0,
     },
     button: {
       backgroundColor: Colors.buttonColor,

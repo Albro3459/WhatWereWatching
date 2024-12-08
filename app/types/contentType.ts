@@ -35,7 +35,7 @@ type Genre = {
     imageSet: ServiceImageSet;
   };
   
-  type StreamingOption = {
+  export type StreamingOption = {
     service: Service;
     type: 'rent' | 'buy' | 'subscription';
     link: string;

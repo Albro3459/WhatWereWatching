@@ -3,14 +3,14 @@ import { Pressable, StyleSheet, View } from "react-native";
 const unselectedHeartColor = "#ECE6F0";
 
 interface HeartTypes {
-    heartColor: string;
+    heartColor?: string;
     size?: number;
     screenWidth?: number;
     scale?: number;
     onPress?: (any) => void;
 }
 
-const Heart: React.FC<HeartTypes> = ({heartColor = "#FF2452", size = 40, screenWidth = 420, scale = 1, onPress = () => {}}) => {
+const Heart: React.FC<HeartTypes> = ({heartColor = unselectedHeartColor, size = 40, screenWidth = 420, scale = 1, onPress = () => {}}) => {
     scale = scale ? scale : 1;
     return (
         <Pressable 

@@ -13,18 +13,22 @@ import {
 } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getRandomContent, getPosterByContent } from './helpers/fetchHelper';
+import * as SplashScreen from "expo-splash-screen";
+import { getPosterByContent } from './helpers/fetchHelper';
 import { router, usePathname } from 'expo-router';
 import Heart from './components/heartComponent';
 import { Content } from './types/contentType';
 import { appStyles } from '@/styles/appStyles';
+import { STORAGE_KEY } from '@/Global';
+import { Colors } from '@/constants/Colors';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const scale = .75;
 const selectedHeartColor = "#FF2452";
 const unselectedHeartColor = "#ECE6F0";
 
-const STORAGE_KEY = 'libraryTabs'; // Key for saving tab data
+// Prevent splash screen from hiding until everything is loaded
+SplashScreen.preventAutoHideAsync();
 
 const LibraryPage = () => {
   const pathname = usePathname();
@@ -84,6 +88,7 @@ const LibraryPage = () => {
           console.error('Error loading library content:', error);
         } finally {
           setIsLoading(false);
+          await SplashScreen.hideAsync();
         }
       }
     };
@@ -208,16 +213,20 @@ const LibraryPage = () => {
     );
   };
 
+  // if (isLoading) {
+  //   return (
+  //     <View style={styles.loadingContainer}>
+  //       <Text style={styles.loadingText}>Loading Library...</Text>
+  //     </View>
+  //   );
+  // }
+
   if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading Library...</Text>
-      </View>
-    );
+    return null; // Show splashcreen until loaded
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#2b2b4f' }}>
+    <View style={{ flex: 1, backgroundColor: Colors.backgroundColor }}>
       {/* Tab Bar */}
       <View style={styles.tabBar}>
         {Object.keys(tabs).map((tab, index) => (
@@ -295,7 +304,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#2b2b4f',
+    backgroundColor: Colors.backgroundColor,
   },
   loadingText: {
     color: '#fff',
@@ -303,7 +312,7 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#4f4f77',
+    backgroundColor: Colors.tabBarColor,
     justifyContent: 'center',
     alignItems: "center",
     padding: 20,
@@ -313,11 +322,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     borderRadius: 5,
   },
-  activeTabItem: { backgroundColor: '#6c6c91' },
-  tabText: { color: '#ccc', fontSize: 14 },
+  activeTabItem: { backgroundColor: Colors.selectedTabColor },
+  tabText: { color: Colors.reviewTextColor, fontSize: 14 },
   activeTabText: { color: 'white', fontWeight: 'bold' },
-  movieCard: { flex: 1, margin: 5, alignItems: 'center' },
-  movieImage: { width: screenWidth / 3, height: screenWidth / 2, borderRadius: 10 },
+  movieCard: { flex: 1, margin: 5, alignItems: 'center', paddingBottom: 10 },
+  movieImage: { aspectRatio: 11/16, minWidth: screenWidth/3.3, minHeight: screenWidth / 2.2,  borderRadius: 10 },
   movieTitle: {
     color: 'white',
     textAlign: 'center',

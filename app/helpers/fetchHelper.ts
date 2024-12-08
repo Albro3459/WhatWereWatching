@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system';
 import { Asset } from 'expo-asset';
 import { movies, tvShows} from '../data/moviesAndTvShows';
-import { Content } from '../types/contentType';
+import { Content, StreamingOption } from '../types/contentType';
 // import db from '../../assets/data/db.json';
 import db from '../data/db.json';
 
@@ -113,7 +113,6 @@ export const getRandomContent = async (count: number): Promise<Content[] | null>
     }
 };
 
-
 // helpers
 export const getPosterByContent = (content: Content, vertical = true) => {
     try {
@@ -143,6 +142,52 @@ export const getPosterByContent = (content: Content, vertical = true) => {
       console.log('Error fetching the poster in getPosterByContent:', error.message);
       return null;
     }
+};
+
+export const searchByKeywords = async (keywords: string, filter: string = "") => {
+  try {
+    if (keywords.length > 0) {
+      const data: Content[] = await loadDbFile();
+      if (!data) {
+        console.warn('Failed to load db.json.');
+        return null;
+      }
+      if (!Array.isArray(data)) {
+        console.warn('Invalid data format in db.json. Expected an array.');
+        return null;
+      }
+
+      const keywordArray = keywords.toLowerCase().split(" ");
+
+      let results: Content[] = [];
+
+      // Filter data based on keywords
+      results = data.filter((content) => {
+        const contentFields = [
+          content.title?.toLowerCase(),
+          content.originalTitle?.toLowerCase(),
+          content.overview?.toLowerCase(),
+          ...(content.cast?.map((c) => c.toLowerCase()) || []),
+          ...(content.directors?.map((d) => d.toLowerCase()) || []),
+          ...(content.genres?.map((g) => g.name.toLowerCase()) || []),
+          ...(Object.values(content.streamingOptions?.us || {}).flatMap((option) => [
+            option.service.name.toLowerCase(),
+            option.type.toString().toLowerCase(),
+          ])),
+        ];
+
+        // Check if any keyword matches any field
+        return keywordArray.some((keyword) =>
+          contentFields.some((field) => field?.includes(keyword))
+        );
+      });
+
+      return results;
+    }
+  } catch (error) {
+    console.log(`Error searching for ${keywords}:`, error.message);
+    return null;
+  }
 };
 
 export default {};
