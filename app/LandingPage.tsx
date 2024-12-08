@@ -23,10 +23,11 @@ const LIBRARY_OVERLAY_HEIGHT = screenHeight*.095
 function LandingPage () {
     const pathname = usePathname();
 
+    const tabList = ["Planned", "Watching", "Completed", "Favorite"];
     const [heartColors, setHeartColors] = useState<{ [key: string]: string }>({});  
     const [isLoading, setIsLoading] = useState(true);
     const [selectedItem, setSelectedItem] = useState<Content>(null);
-    const [moveModalVisible, setMoveModalVisible] = useState(false);
+    const [listModalVisible, setListModalVisible] = useState(false);
 
     // State to manage the currently displayed movie
     const [carouselIndex, setCarouselIndex] = useState(0);
@@ -83,11 +84,12 @@ function LandingPage () {
     ]);
 
     useEffect(() => {
+      setListModalVisible(false);
       const loadContent = async () => {
         if (pathname === "/LandingPage") {
           try {
             // Load saved tabs from AsyncStorage
-            console.log('LandingPage: Loading async storage ');
+            // console.log('LandingPage: Loading async storage ');
             const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
             if (savedTabs) {
               const parsedTabs = JSON.parse(savedTabs);
@@ -95,9 +97,9 @@ function LandingPage () {
               // Extract only favorites initially
               const savedHeartColors = (parsedTabs.Favorite || []).reduce((acc, content) => {
                 acc[content.id] = selectedHeartColor;
-                console.log(
-                  `Setting Heart Color: ID=${content.id}, Title="${content.title}", HeartColor=${selectedHeartColor}`
-                );
+                // console.log(
+                //   `Setting Heart Color: ID=${content.id}, Title="${content.title}", HeartColor=${selectedHeartColor}`
+                // );
                 return acc;
               }, {});
               setHeartColors(savedHeartColors || {});
@@ -113,18 +115,10 @@ function LandingPage () {
       loadContent();
     }, [pathname]);
   
-    const saveTabsToStorage = async (updatedTabs) => {
-      try {
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
-      } catch (error) {
-        console.error('Error saving tabs to storage:', error);
-      }
-    };
-  
     const moveItemToFavoriteTab = async (id: string) => {
       try {
         // Update heartColors locally
-        setHeartColors((prevColors) => ({
+        setHeartColors((prevColors = {}) => ({
           ...prevColors,
           [id]: prevColors[id] === selectedHeartColor ? unselectedHeartColor : selectedHeartColor,
         }));
@@ -170,7 +164,7 @@ function LandingPage () {
             : `Added "${item.title}" to Favorites`
         );
     
-        setMoveModalVisible(false); // Close the modal
+        setListModalVisible(false); // Close the modal
       } catch (error) {
         console.error("Error updating Favorites:", error);
         Alert.alert("Error", "Unable to update Favorites. Please try again.");
@@ -206,7 +200,7 @@ function LandingPage () {
         );
     
         // Close the modal
-        setMoveModalVisible(false);
+        setListModalVisible(false);
       } catch (error) {
         console.error("Error updating tabs:", error);
       }
@@ -333,7 +327,7 @@ function LandingPage () {
                       })}
                 onLongPress={() => {
                   setSelectedItem(item);
-                  setMoveModalVisible(true);
+                  setListModalVisible(true);
                 }}
               >
                 <Image
@@ -357,49 +351,47 @@ function LandingPage () {
           />
         </View>
 
-        {/* Move Modal */}
-        <Modal
-          transparent={true}
-          visible={moveModalVisible}
-          animationType="fade"
-          onRequestClose={() => setMoveModalVisible(false)}
-          style={{maxHeight: 265, overflow:"hidden"}}
-        >
-          <Pressable
-            style={appStyles.modalOverlay}
-            onPress={() => setMoveModalVisible(false)}
-          >
-            <View style={appStyles.modalContent}>
-              <Text style={appStyles.modalTitle}>
-                Move "{selectedItem?.title}" to:
-              </Text>
-              {selectedItem && ["Planned", "Watching", "Completed", "Favorite"].map((tab) => (
-                tab === "Favorite" ? (
-                  <View style={{paddingTop: 5, width: 35, height: 35, justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
-                    <Heart 
-                      heartColor={heartColors[selectedItem?.id] || unselectedHeartColor}
-                      size={35}
-                      // screenWidth={screenWidth}
-                      // scale={scale}
-                      onPress={() => moveItemToFavoriteTab(selectedItem?.id)}
-                    />
-                  </View>
-                ) : (
-                  <View style={{ width: 270, height: 50, overflow: "hidden"}}>
-                    <Pressable
-                      key={tab}
-                      style={[appStyles.modalButton ]}
-                      onPress={() => moveItemToTab(selectedItem, tab)}
-                    >
-                      <Text style={appStyles.modalButtonText}>{tab}</Text>
-                    </Pressable>
-                  </View>
-              )
-              ))}
-            </View>
-          </Pressable>
-        </Modal>
       </ScrollView>
+
+      {/* Move Modal */}
+      {selectedItem && (
+        <Modal
+            transparent={true}
+            visible={listModalVisible}
+            animationType="fade"
+            onRequestClose={() => setListModalVisible(false)}
+          >
+            <Pressable
+              style={appStyles.modalOverlay}
+              onPress={() => setListModalVisible(false)}
+            >
+              <View style={appStyles.modalContent}>
+                <Text style={appStyles.modalTitle}>
+                  Move "{selectedItem?.title}" to:
+                </Text>
+                {selectedItem && tabList.map((tab, index) => (
+                  tab === "Favorite" ? (
+                    <View key={`LandingPage-${selectedItem.id}-heart-${index}`} style={{paddingTop: 10}}>
+                      <Heart 
+                        heartColor={heartColors[selectedItem?.id] || unselectedHeartColor}
+                        size={35}
+                        onPress={() => moveItemToFavoriteTab(selectedItem?.id)}
+                      />
+                    </View>
+                  ) : (
+                     <TouchableOpacity
+                        key={`LandingPage-${selectedItem.id}-${tab}-${index}`}
+                        style={appStyles.modalButton}
+                        onPress={() => moveItemToTab(selectedItem, tab)}
+                      >
+                        <Text style={appStyles.modalButtonText}>{tab}</Text>
+                      </TouchableOpacity>
+                  )
+                ))}
+              </View>
+            </Pressable>
+        </Modal>
+      )}
 
       <View style={styles.libraryOverlay}>
           <TouchableOpacity

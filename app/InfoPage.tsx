@@ -1,6 +1,6 @@
 import { Colors } from '@/constants/Colors';
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, Button, TouchableOpacity, Dimensions, Pressable, Modal, FlatList } from 'react-native';
+import { View, Text, Image, StyleSheet, ScrollView, Button, TouchableOpacity, Dimensions, Pressable, Modal, FlatList, Alert } from 'react-native';
 import * as SplashScreen from "expo-splash-screen";
 import StarRating from 'react-native-star-rating-widget';
 import Heart from './components/heartComponent';
@@ -10,6 +10,7 @@ import { getContentById, getPosterByContent, getRandomContent } from './helpers/
 import { MaterialIcons } from '@expo/vector-icons';
 import { appStyles, RalewayFont } from '@/styles/appStyles';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const screenWidth = Dimensions.get("window").width;
 const scale = 1;
@@ -19,6 +20,8 @@ const unselectedHeartColor = "#ECE6F0";
 interface InfoPageParams {
   id?: string;
 }
+
+const STORAGE_KEY = 'libraryTabs';
 
 // Prevent splash screen from hiding until everything is loaded
 SplashScreen.preventAutoHideAsync();
@@ -35,11 +38,17 @@ function InfoPage() {
   
   const [rating, setRating] = useState(2.5); // this is the default rating
 
-  const watchItems = ["Planned", "Watching", "Completed"];
-  const [watchList, setWatchList] = useState<Set<string>>();
+  // const listTabs = ["Planned", "Watching", "Completed"];
+  const [lists, setLists] = useState({
+    Planned: [],
+    Watching: [],
+    Completed: [],
+    Favorite: [],
+  });
+  // const [watchList, setWatchList] = useState<Set<string>>();
   const [addToListModal, setAddToListModal] = useState(false);
 
-  const [heartColor, setHeartColor] = useState<string>(unselectedHeartColor);
+  const [heartColor, setHeartColor] = useState<{[key: string]: string}>();
 
   const [activeTab, setActiveTab] = useState<string>('About');
 
@@ -94,25 +103,112 @@ function InfoPage() {
 
   const [recommendedContent, setRecommendedContent] = useState<Content[]>([]);    
 
-  const addItemToList = (item: string, list: Set<string>, setList: React.Dispatch<React.SetStateAction<Set<string>>>, setModalFunc: React.Dispatch<React.SetStateAction<boolean>>) => {
-    setModalFunc(false);
-    if (list) {
-      if (list.has(item)) {
-        const newList = new Set(list);
-        newList.delete(item);
-        setList(newList);
+  const moveItemToFavoriteList = async (id: string) => {
+    try {
+      // Update heartColors locally
+      setHeartColor((prevColors = {}) => ({
+        ...prevColors,
+        [id]: prevColors[id] === selectedHeartColor ? unselectedHeartColor : selectedHeartColor,
+      }));
+  
+      // Fetch tabs from AsyncStorage
+      const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+      const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
+  
+      // Find the item in all tabs
+      let item = Object.values<Content>(tabs)
+        .flat()
+        .find((content: Content) => content.id === id);
+  
+      if (!item) {
+        item = await getContentById(id);
+        if (!item) {
+          console.log(`LandingPage: item with id: ${id} doesn't exist`);
+          return;
+        }
       }
-      else {
-        setList(new Set([...list, item]));
-      }
-    }
-    else {
-      setList(new Set(item));
+  
+      // Check if the item is already in the Favorite tab
+      const isFavorite = tabs.Favorite.some((fav) => fav.id === id);
+  
+      // Update the Favorite tab
+      const updatedFavorites = isFavorite
+        ? tabs.Favorite.filter((content) => content.id !== id) // Remove if already in Favorites
+        : [...tabs.Favorite, item]; // Add if not in Favorites
+  
+      const updatedTabs = {
+        ...tabs,
+        Favorite: updatedFavorites,
+      };
+      
+      setLists(updatedTabs);
+      // Save updated tabs to AsyncStorage
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
+  
+      // Show success alert
+      Alert.alert(
+        "Success",
+        isFavorite
+          ? `Removed "${item.title}" from Favorites`
+          : `Added "${item.title}" to Favorites`
+      );
+  
+    } catch (error) {
+      console.error("Error updating Favorites:", error);
+      // Alert.alert("Error", "Unable to update Favorites. Please try again.");
     }
   };
 
-  const isItemInList = (item: string, list: Set<string>) => {
-    return list && list.has(item);
+  const moveItemToList = async (item: Content, targetTab: string) => {
+    try {
+      // Load tabs from AsyncStorage
+      const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+      const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
+  
+      // Check if the item is already in the target tab
+      const isItemInTargetTab = tabs[targetTab].some((content) => content.id === item.id);
+  
+      // Update the target tab
+      const updatedTabs = {
+        ...tabs,
+        [targetTab]: isItemInTargetTab
+          ? tabs[targetTab].filter((content) => content.id !== item.id) // Remove if already exists
+          : [...tabs[targetTab], item], // Add if it doesn't exist
+      };
+
+      setLists(updatedTabs);
+  
+      // Save updated tabs back to AsyncStorage
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
+      
+      setAddToListModal(false);
+      // Show success alert
+      Alert.alert(
+        "Success",
+        isItemInTargetTab
+          ? `Removed "${item.title}" from "${targetTab}"`
+          : `Moved "${item.title}" to "${targetTab}"`
+      );
+  
+    } catch (error) {
+      console.error("Error updating tabs:", error);
+    }
+  };
+
+  const isItemInList = (list: string, lists) : boolean => {
+    if (!content) { 
+      console.log('Content is null');
+      return false; 
+    }
+    if (!lists) { 
+      console.log('Tabs is null');
+      return false; 
+    }
+    if (!lists[list]) { 
+      console.log('TAB INDEX is null');
+      return false; 
+    }
+    return lists[list].some((item) => item.id === content.id);
   };
 
   const renderTabContent = () => {
@@ -227,7 +323,6 @@ function InfoPage() {
     );
   };
 
-
   useEffect(() => {
     const getContentObject = async () => {
       try {
@@ -236,8 +331,33 @@ function InfoPage() {
           setActiveTab('About');
           const getContent = await getContentById(contentID);
           if (getContent) {
+            // console.log(`Getting content for ${getContent.title}`);
             setContent(getContent);
-            
+
+            try {
+              // Load saved tabs from AsyncStorage
+              const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+        
+              if (savedTabs && getContent) {
+                // console.log("getting content from storage for info");
+                const parsedTabs = JSON.parse(savedTabs);
+                // console.log(`does the planned list exist: ${parsedTabs["Planned"]}`);
+                setLists(parsedTabs);
+                // Initialize heartColors based on the Favorite tab
+                const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc) => {
+                  acc[getContent.id] = parsedTabs.Favorite.some((fav) => fav.id === getContent.id)
+                    ? selectedHeartColor
+                    : unselectedHeartColor;
+                  return acc;
+                }, {});
+                setHeartColor(savedHeartColors);
+              }
+            } catch (error) {
+              console.error("Error loading library content:", error);
+            } finally {
+              setIsLoading(false);
+            }
+
             const randomContent = await getRandomContent(4);
             if (randomContent) {
               setRecommendedContent(randomContent);
@@ -310,14 +430,14 @@ function InfoPage() {
                 onPress={() => setAddToListModal(false)}
               >
                 <View style={styles.modalContent}>
-                  {watchItems.map((item, index) => (
+                  {Object.keys(lists).slice(0,3).map((list, index) => (
                     <Pressable 
                       key={index}
-                      style={[styles.optionPressable, isItemInList(item, watchList) && styles.selectedOptionPressable]} 
-                      onPress={() => addItemToList(item, watchList, setWatchList, setAddToListModal)}
+                      style={[styles.optionPressable, isItemInList(list, lists) && styles.selectedOptionPressable]} 
+                      onPress={() => moveItemToList(content, list)}
                     >
                       <Text style={styles.optionText}>
-                        {item} {isItemInList(item, watchList) ? "✓" : ""}
+                        {list} {isItemInList(list, lists) ? "✓" : ""}
                       </Text>
                     </Pressable>
                   ))}
@@ -325,11 +445,9 @@ function InfoPage() {
               </Pressable>
             </Modal>
             <Heart 
-                heartColor={heartColor}
+                heartColor={(heartColor && heartColor[content.id]) || unselectedHeartColor}
                 size={45}
-                // screenWidth={screenWidth}
-                // scale={scale}
-                onPress={() => (setHeartColor(heartColor === selectedHeartColor ? unselectedHeartColor : selectedHeartColor))}
+                onPress={() => moveItemToFavoriteList(content.id)}
             />
           </View>
         </View>

@@ -44,6 +44,7 @@ const LibraryPage = () => {
   const [moveModalVisible, setMoveModalVisible] = useState(false);
 
   useEffect(() => {
+    setMoveModalVisible(false);
     const loadContent = async () => {
       if (pathname === "/LibraryPage") {
         try {
@@ -60,23 +61,25 @@ const LibraryPage = () => {
               return acc;
             }, {});
             setHeartColors(savedHeartColors);
-          } else {
-            // If no saved data, load random content for "Planned" and "Watching"
-            const plannedContent = await getRandomContent(8);
-            const watchingContent = await getRandomContent(8);
-            const heartColors = [...plannedContent, ...watchingContent].reduce((acc, content) => {
-              acc[content.id] = unselectedHeartColor;
-              return acc;
-            }, {});
-            setHeartColors(heartColors);
-
-            setTabs(({
-              Planned: plannedContent,
-              Watching: watchingContent,
-              Completed: [],
-              Favorite: [],
-            }));
           }
+          // We dont need random content anymore
+          //  else {
+          //   // If no saved data, load random content for "Planned" and "Watching"
+          //   const plannedContent = await getRandomContent(8);
+          //   const watchingContent = await getRandomContent(8);
+          //   const heartColors = [...plannedContent, ...watchingContent].reduce((acc, content) => {
+          //     acc[content.id] = unselectedHeartColor;
+          //     return acc;
+          //   }, {});
+          //   setHeartColors(heartColors);
+
+          //   setTabs(({
+          //     Planned: plannedContent,
+          //     Watching: watchingContent,
+          //     Completed: [],
+          //     Favorite: [],
+          //   }));
+          // }
         } catch (error) {
           console.error('Error loading library content:', error);
         } finally {
@@ -102,7 +105,7 @@ const LibraryPage = () => {
   };
 
   const moveItemToFavoriteTab = (id: string) => {
-    setHeartColors((prevColors) => {
+    setHeartColors((prevColors = {}) => {
       const newColor = prevColors[id] === selectedHeartColor ? unselectedHeartColor : selectedHeartColor;
   
       setTabs((prevTabs) => {
@@ -164,34 +167,46 @@ const LibraryPage = () => {
     setMoveModalVisible(false);
   };
 
-  const renderTabContent = (tabData) => (
-    <FlatList
-      data={tabData}
-      numColumns={2}
-      keyExtractor={(item) => item.id.toString()}
-      renderItem={({ item }) => (
-        <TouchableOpacity
-          style={styles.movieCard}
-          onPress={() => router.push({
-            pathname: '/InfoPage',
-            params: { id: item.id },
-          })}
-          onLongPress={() => {
-            setSelectedItem(item);
-            setMoveModalVisible(true);
-          }}
-        >
-          <Image
-            source={{
-              uri: getPosterByContent(item) || 'https://via.placeholder.com/100x150',
+  const renderTabContent = (tabData) => {
+    if (!tabData || tabData.length === 0) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ fontSize: 16, color: 'gray', textAlign: 'center' }}>
+            Your list is empty. Start adding items!
+          </Text>
+        </View>
+      );
+    }
+  
+    return (
+      <FlatList
+        data={tabData}
+        numColumns={2}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={styles.movieCard}
+            onPress={() => router.push({
+              pathname: '/InfoPage',
+              params: { id: item.id },
+            })}
+            onLongPress={() => {
+              setSelectedItem(item);
+              setMoveModalVisible(true);
             }}
-            style={styles.movieImage}
-          />
-          <Text style={styles.movieTitle}>{item.title}</Text>
-        </TouchableOpacity>
-      )}
-    />
-  );
+          >
+            <Image
+              source={{
+                uri: getPosterByContent(item) || 'https://via.placeholder.com/100x150',
+              }}
+              style={styles.movieImage}
+            />
+            <Text style={styles.movieTitle}>{item.title}</Text>
+          </TouchableOpacity>
+        )}
+      />
+    );
+  };
 
   if (isLoading) {
     return (
@@ -233,44 +248,44 @@ const LibraryPage = () => {
       </PagerView>
 
       {/* Move Modal */}
-      <Modal
-        transparent={true}
-        visible={moveModalVisible}
-        animationType="fade"
-        onRequestClose={() => setMoveModalVisible(false)}
-      >
-        <Pressable
-          style={appStyles.modalOverlay}
-          onPress={() => setMoveModalVisible(false)}
+      {selectedItem && (
+        <Modal
+          transparent={true}
+          visible={moveModalVisible}
+          animationType="fade"
+          onRequestClose={() => setMoveModalVisible(false)}
         >
-          <View style={appStyles.modalContent}>
-            <Text style={appStyles.modalTitle}>
-              Move "{selectedItem?.title}" to:
-            </Text>
-            {selectedItem && Object.keys(tabs).map((tab, index) => (
-              tab === "Favorite" ? (
-                <View style={{paddingTop: 5}}>
-                  <Heart 
-                    heartColor={heartColors[selectedItem?.id] || unselectedHeartColor}
-                    size={35}
-                    // screenWidth={screenWidth}
-                    // scale={scale}
-                    onPress={() => moveItemToFavoriteTab(selectedItem?.id)}
-                  />
-                </View>
-              ) : (
-              <TouchableOpacity
-                key={tab}
-                style={appStyles.modalButton}
-                onPress={() => moveItemToTab(selectedItem, tab)}
-              >
-                <Text style={appStyles.modalButtonText}>{tab}</Text>
-              </TouchableOpacity>
-            )
-            ))}
-          </View>
-        </Pressable>
-      </Modal>
+          <Pressable
+            style={appStyles.modalOverlay}
+            onPress={() => setMoveModalVisible(false)}
+          >
+            <View style={appStyles.modalContent}>
+              <Text style={appStyles.modalTitle}>
+                Move "{selectedItem?.title}" to:
+              </Text>
+              {selectedItem && Object.keys(tabs).map((tab, index) => (
+                tab === "Favorite" ? (
+                  <View key={`LandingPage-${selectedItem.id}-heart-${index}`} style={{paddingTop: 10}}>
+                    <Heart 
+                      heartColor={heartColors[selectedItem?.id] || unselectedHeartColor}
+                      size={35}
+                      onPress={() => moveItemToFavoriteTab(selectedItem?.id)}
+                    />
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                  key={`LandingPage-${selectedItem.id}-${tab}-${index}`}
+                  style={appStyles.modalButton}
+                  onPress={() => moveItemToTab(selectedItem, tab)}
+                >
+                  <Text style={appStyles.modalButtonText}>{tab}</Text>
+                </TouchableOpacity>
+              )
+              ))}
+            </View>
+          </Pressable>
+        </Modal>
+      )}
     </View>
   );
 };
