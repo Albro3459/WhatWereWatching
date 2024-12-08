@@ -146,7 +146,7 @@ export const getPosterByContent = (content: Content, vertical = true) => {
 
 export const searchByKeywords = async (keywords: string, filter: string = "") : Promise<Content[] | null> => {
   try {
-    if (keywords.length > 0) {
+    if (keywords.length >= 0) {
       const data: Content[] = await loadDbFile();
       if (!data) {
         console.warn('Failed to load db.json.');
@@ -158,7 +158,7 @@ export const searchByKeywords = async (keywords: string, filter: string = "") : 
       }
 
       const keywordArray = keywords.toLowerCase().split(" ");
-
+      const filters = filter ? filter.split(",").map((f) => f.trim().toLowerCase()) : [];
       const uniqueResults: Set<string> = new Set(); // used to check for uniqueness
 
       const results: Content[] = data.filter((content: Content) => {
@@ -166,6 +166,7 @@ export const searchByKeywords = async (keywords: string, filter: string = "") : 
           content.title?.toLowerCase(),
           content.originalTitle?.toLowerCase(),
           content.overview?.toLowerCase(),
+          content.showType?.toLowerCase(),
           ...(content.cast?.map((c) => c.toLowerCase()) || []),
           ...(content.directors?.map((d) => d.toLowerCase()) || []),
           ...(content.genres?.map((g) => g.name.toLowerCase()) || []),
@@ -175,20 +176,28 @@ export const searchByKeywords = async (keywords: string, filter: string = "") : 
           ])),
         ];
 
-        // Check if any keyword matches any field
-        const matches = keywordArray.some((keyword) =>
+        // Check if ANY keyword matches any field
+        const keywordMatches: boolean = keywordArray.length > 0 ? keywordArray.some((keyword) =>
           contentFields.some((field) => field?.includes(keyword))
-        );
+        ): false;
+
+        // using every to be strict with filers
+        const filterMatches: boolean =
+          filters.length === 0 ||
+          filters.every((filterValue) =>
+            (filterValue === 'series' || filterValue === 'movie') ? contentFields.includes(filterValue) :
+            contentFields.some((field) => field && field.includes(filterValue))
+          );
 
         // Add to results if it matches and is not already in the Set
-        if (matches && !uniqueResults.has(content.id)) {
+        if ((keywordArray.length > 0 ? keywordMatches && filterMatches : filterMatches) && !uniqueResults.has(content.id)) {
           uniqueResults.add(content.id); // Track unique content by ID
           return true; // Include in results
         }
         return false; // Exclude duplicates
       });
 
-      return results;
+      return results.sort((a, b) => a.title.localeCompare(b.title));
     }
   } catch (error) {
     console.log(`Error searching for ${keywords}:`, error.message);
