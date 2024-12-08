@@ -5,6 +5,7 @@ import { Heart } from './components/heartComponent';
 import { Content } from './types/contentType';
 import { getPosterByContent, getRandomContent } from './helpers/fetchHelper';
 import { router } from 'expo-router';
+import { appStyles } from '@/styles/appStyles';
 
 
 // TODO:
@@ -91,17 +92,18 @@ const SearchPage = () => {
           data={movies}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <Pressable onPress={() => router.push({
-                                    pathname: '/InfoPage',
-                                    params: { id: item.content.id },
-                                  })}
+            <Pressable
+                  onPress={() => router.push({
+                        pathname: '/InfoPage',
+                        params: { id: item.content.id },
+                    })}
               >
-              <View style={styles.card}>
-                <Image source={{ uri: getPosterByContent(item.content) }} style={styles.poster} />
-                <View style={styles.cardContent}>
-                  <Text style={styles.title}>{item.content.title}</Text>
-                  <Text style={styles.description}>{item.content.overview}</Text>
-                  <Text style={styles.rating}>⭐ {item.rating}</Text>
+              <View style={appStyles.cardContainer}>
+                <Image source={{ uri: getPosterByContent(item.content) }} style={appStyles.cardPoster} />
+                <View style={appStyles.cardContent}>
+                  <Text style={appStyles.cardTitle}>{item.content.title}</Text>
+                  <Text style={appStyles.cardDescription}>{item.content.overview}</Text>
+                  <Text style={appStyles.cardRating}>⭐ {item.rating}</Text>
                 </View>
                 <Heart 
                   heartColor={heartColors[item.id]}
@@ -132,43 +134,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginBottom: 20,
     fontSize: 16,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.cardBackgroundColor,
-    borderRadius: 10,
-    marginBottom: 15,
-    padding: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  poster: {
-    height: 80,
-    width: 60,
-    borderRadius: 5,
-    marginRight: 10,
-  },
-  cardContent: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 5,
-  },
-  description: {
-    fontSize: 14,
-    color: '#AAAAAA',
-    marginBottom: 5,
-  },
-  rating: {
-    fontSize: 14,
-    color: '#FFD700', // Gold star color
   },
 });
 

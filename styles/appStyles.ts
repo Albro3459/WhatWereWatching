@@ -55,4 +55,42 @@ export const appStyles = StyleSheet.create({
         marginBottom: 5,
         fontStyle: "italic",
       },
+
+      cardContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: Colors.cardBackgroundColor,
+        borderRadius: 10,
+        marginBottom: 15,
+        padding: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+      },
+      cardPoster: {
+        height: 80,
+        width: 60,
+        borderRadius: 5,
+        marginRight: 10,
+      },
+      cardContent: {
+        flex: 1,
+      },
+      cardTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#FFFFFF',
+        marginBottom: 5,
+      },
+      cardDescription: {
+        fontSize: 14,
+        color: '#AAAAAA',
+        marginBottom: 5,
+      },
+      cardRating: {
+        fontSize: 14,
+        color: '#FFD700', // Gold star color
+      },
 });
