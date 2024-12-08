@@ -5,6 +5,7 @@ import { PressableBubblesGroup,} from './components/formComponents';
 import { Link, Href } from "expo-router"
 import { Colors } from "@/constants/Colors";
 import { dateToString, stringToDate } from "./helpers/dateHelper";
+import { KuraleFont } from "@/styles/appStyles";
 
 
 export default function ProfilePage() {
@@ -240,13 +241,13 @@ const styles = StyleSheet.create({
     },
     nameText: {
         fontSize: 35,
-        fontFamily: "Kurale_400Regular",
+        fontFamily: KuraleFont,
         padding: "1%",
     },
     labelText: {
         color: "black",
         fontSize: 25,
-        fontFamily: "Kurale_400Regular",
+        fontFamily: KuraleFont,
         // alignSelf: "flex-start",
         paddingBottom: 5,
         paddingLeft: "8%",

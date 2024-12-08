@@ -1,6 +1,9 @@
 import { StyleSheet } from "react-native";
 import { Colors } from "../constants/Colors";
 
+export const RalewayFont = 'Raleway_800ExtraBold';
+export const KuraleFont = "Kurale_400Regular";
+
 export const appStyles = StyleSheet.create({
     movieCard: {
         width: 11*7,

@@ -8,7 +8,7 @@ import { getContentById, getPosterByContent, getRandomContent } from './helpers/
 import { router, usePathname } from 'expo-router';
 import moviesAndTvShows from './data/moviesAndTvShows';
 import { Colors } from '@/constants/Colors';
-import { appStyles } from '@/styles/appStyles';
+import { appStyles, RalewayFont } from '@/styles/appStyles';
 import Heart from './components/heartComponent';
 import { Entypo } from '@expo/vector-icons';
 
@@ -95,7 +95,6 @@ const SpinnerPage = () => {
 const styles = StyleSheet.create({
     overlay: {
         position: 'absolute', // Makes the view overlay the entire screen
-        // paddingBottom: "100%",
         top: 0,
         left: 0,
         right: 0,
@@ -116,7 +115,7 @@ const styles = StyleSheet.create({
       winnerText: {
         color: "#fff",
         fontSize: 40,
-        fontFamily: 'Raleway_800ExtraBold',
+        fontFamily: RalewayFont,
         textAlign: "center",
         paddingVertical: 20,
       },

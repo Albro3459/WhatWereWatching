@@ -8,7 +8,7 @@ import { Content } from './types/contentType';
 import { useLocalSearchParams, usePathname } from 'expo-router/build/hooks';
 import { getContentById, getPosterByContent, getRandomContent } from './helpers/fetchHelper';
 import { MaterialIcons } from '@expo/vector-icons';
-import { appStyles } from '@/styles/appStyles';
+import { appStyles, RalewayFont } from '@/styles/appStyles';
 import { router } from 'expo-router';
 
 const screenWidth = Dimensions.get("window").width;
@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
       fontWeight: "bold",
       textAlign: "center",
       color: "white",
-      fontFamily: "Raleway_800ExtraBold"
+      fontFamily: RalewayFont
     },
     rating: {
       fontSize: 16,

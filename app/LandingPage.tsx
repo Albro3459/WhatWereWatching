@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { StyleSheet, View, Text, ScrollView, FlatList, Image, TouchableOpacity, Pressable } from "react-native";
+import { StyleSheet, View, Text, ScrollView, FlatList, Image, TouchableOpacity, Pressable, Dimensions } from "react-native";
 import { Card, Title, Button, Searchbar } from "react-native-paper";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Link, router, usePathname } from "expo-router";
 import { Colors } from "@/constants/Colors";
 import { getContentById, getPosterByContent, getRandomContent } from "./helpers/fetchHelper";
 import { Content } from "./types/contentType";
-import { appStyles } from "@/styles/appStyles";
+import { appStyles, RalewayFont } from "@/styles/appStyles";
+
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
+const LIBRARY_OVERLAY_HEIGHT = screenHeight*.095
 
 function LandingPage () {
     const pathname = usePathname();
@@ -133,83 +137,88 @@ function LandingPage () {
     };
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.welcomeText}>WELCOME BACK JOHN!</Text>
-       {/* Trending Section */}
-       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>TRENDING</Text>
-        <Pressable onPress={() => router.push({
-                                  pathname: '/InfoPage',
-                                  params: { id: carouselContent[carouselIndex].id },
-                  })}>
-          <Card style={styles.trendingCard}>
-            <Image source={{ uri: getPosterByContent(carouselContent[carouselIndex], false)}} style={styles.trendingImage} />
-            <Card.Content>
-              <Title style={styles.trendingTitle}>
-                {carouselContent && carouselContent[carouselIndex] && carouselContent[carouselIndex].title}
-              </Title>
-            </Card.Content>
-          </Card>
-        </Pressable>
+    <View style={styles.container} >
+      <ScrollView style={{marginBottom: LIBRARY_OVERLAY_HEIGHT}}>
+        <Text style={styles.welcomeText}>WELCOME BACK JOHN!</Text>
+        {/* Trending Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>TRENDING</Text>
+          <Pressable onPress={() => router.push({
+                                    pathname: '/InfoPage',
+                                    params: { id: carouselContent[carouselIndex].id },
+                    })}>
+            <Card style={styles.trendingCard}>
+              <Image source={{ uri: getPosterByContent(carouselContent[carouselIndex], false)}} style={styles.trendingImage} />
+              <Card.Content>
+                <Title style={styles.trendingTitle}>
+                  {carouselContent && carouselContent[carouselIndex] && carouselContent[carouselIndex].title}
+                </Title>
+              </Card.Content>
+            </Card>
+          </Pressable>
 
-        {/* Circular Navigation Buttons */}
-        <View style={styles.navigationButtons}>
-          <TouchableOpacity
-            onPress={handlePreviousMovie}
-            style={styles.circleButton}
-          >
-            <MaterialIcons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleNextMovie} style={styles.circleButton}>
-            <MaterialIcons name="arrow-forward" size={24} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Most Recommended Section */}
-      <View style={[styles.section, { height: 200 }]}>
-        <Text style={styles.sectionTitle}>MOST RECOMMENDED</Text>
-        <FlatList
-          data={moviesAndShows}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          nestedScrollEnabled
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <Pressable
-              style={styles.movieCard}
-              onPress={() => router.push({
-                                  pathname: '/InfoPage',
-                                  params: { id: item.id },
-                                })}
+          {/* Circular Navigation Buttons */}
+          <View style={styles.navigationButtons}>
+            <TouchableOpacity
+              onPress={handlePreviousMovie}
+              style={styles.circleButton}
             >
-              <Image
-                source={{uri: getPosterByContent(item)}}
-                style={styles.movieImage}
-              />
-              <Text style={styles.movieTitle}>{item.title}</Text>
-            </Pressable>
-          )}
-        />
-      </View>
+              <MaterialIcons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleNextMovie} style={styles.circleButton}>
+              <MaterialIcons name="arrow-forward" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </View>
 
-      {/* Reviews Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>TOP REVIEWS</Text>
-        <FlatList
-          data={reviews}
-          renderItem={renderReview}
-          scrollEnabled={false}
-          keyExtractor={(item) => item.id}
-        />
-        <TouchableOpacity
-        style={styles.libraryButton}
-        onPress={() => router.push('/Library')} // Navigate to the Library page
-        >
-        <Text style={styles.libraryButtonText}>Library</Text>
-      </TouchableOpacity>
+        {/* Most Recommended Section */}
+        <View style={[styles.section, { height: 200 }]}>
+          <Text style={styles.sectionTitle}>MOST RECOMMENDED</Text>
+          <FlatList
+            data={moviesAndShows}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            nestedScrollEnabled
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <Pressable
+                style={styles.movieCard}
+                onPress={() => router.push({
+                                    pathname: '/InfoPage',
+                                    params: { id: item.id },
+                                  })}
+              >
+                <Image
+                  source={{uri: getPosterByContent(item)}}
+                  style={styles.movieImage}
+                />
+                <Text style={styles.movieTitle}>{item.title}</Text>
+              </Pressable>
+            )}
+          />
+        </View>
+
+        {/* Reviews Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>TOP REVIEWS</Text>
+          <FlatList
+            data={reviews}
+            renderItem={renderReview}
+            scrollEnabled={false}
+            keyExtractor={(item) => item.id}
+          />
+        </View>
+      </ScrollView>
+
+      <View style={styles.libraryOverlay}>
+          <TouchableOpacity
+            style={styles.libraryButton}
+            onPress={() => router.push('/LibraryPage')} // Navigate to the Library page
+            >
+              <Text style={styles.libraryButtonText}>Library</Text>
+          </TouchableOpacity>
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -221,8 +230,9 @@ const styles = StyleSheet.create({
     paddingTop: 40,
   },
   welcomeText: {
-    fontSize: 24,
-    fontWeight: "bold",
+    fontSize: 26,
+    // fontWeight: "bold",
+    fontFamily: RalewayFont,
     color: "#fff",
     marginBottom: 20,
   },
@@ -308,17 +318,33 @@ const styles = StyleSheet.create({
     alignItems: "center",
     alignSelf: "center"
   },
+  libraryOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: LIBRARY_OVERLAY_HEIGHT,
+    backgroundColor: Colors.unselectedColor,
+    borderTopWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
   libraryButton: {
-    backgroundColor: Colors.buttonColor,
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 5,
-},
-libraryButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "bold",
-},
+    width: screenWidth*.5,
+    height: screenHeight*.07,
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: Colors.cardBackgroundColor, 
+    alignContent: "center",
+    justifyContent: "center"
+  },
+  libraryButtonText: {
+    color: '#fff',
+    fontSize: 24,
+    fontFamily: RalewayFont,
+    textAlign:"center",
+  },
 });
 
 export default LandingPage;

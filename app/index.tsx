@@ -2,6 +2,7 @@ import { Text, View, Image, TouchableOpacity, Animated, ScrollView, TextInput, S
 import React, { useState } from "react";
 import { Link, Href } from "expo-router"
 import { Colors } from "@/constants/Colors";
+import { RalewayFont } from "@/styles/appStyles";
 
 export default function Index() {
 
@@ -73,7 +74,7 @@ const styles = StyleSheet.create({
     appNameText: {
         padding: 20,
         fontSize: 52, 
-        fontFamily: 'Raleway_800ExtraBold', 
+        fontFamily: RalewayFont, 
         color: Colors.backgroundColor,
         alignSelf: "center",
         flexWrap: "wrap",

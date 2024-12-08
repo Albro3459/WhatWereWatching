@@ -91,7 +91,7 @@ export default function RootLayout() {
                 })}
             />
             <Stack.Screen
-                name="Library"
+                name="LibraryPage"
                 options={({ navigation }) => ({
                     title: "Library",
                     headerBackButtonDisplayMode: "minimal",

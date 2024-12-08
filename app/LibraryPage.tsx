@@ -14,11 +14,12 @@ import {
 import PagerView from 'react-native-pager-view';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getRandomContent, getPosterByContent } from './helpers/fetchHelper';
+import { router } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 const STORAGE_KEY = 'libraryTabs'; // Key for saving tab data
 
-const Library = () => {
+const LibraryPage = () => {
   const pagerViewRef = useRef(null);
   const [activeTab, setActiveTab] = useState(0);
   const [tabs, setTabs] = useState({
@@ -99,6 +100,10 @@ const Library = () => {
       renderItem={({ item }) => (
         <TouchableOpacity
           style={styles.movieCard}
+          onPress={() => router.push({
+            pathname: '/InfoPage',
+            params: { id: item.id },
+          })}
           onLongPress={() => {
             setSelectedItem(item);
             setMoveModalVisible(true);
@@ -145,7 +150,7 @@ const Library = () => {
 
       {/* Pager View */}
       <PagerView
-        style={{ flex: 1 }}
+        style={{ flex: 1, marginTop: 20, marginBottom: 50 }}
         initialPage={0}
         ref={pagerViewRef}
         onPageSelected={(e) => setActiveTab(e.nativeEvent.position)}
@@ -201,7 +206,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#4f4f77',
     justifyContent: 'space-around',
-    paddingVertical: 10,
+    padding: 10,
   },
   tabItem: {
     paddingVertical: 8,
@@ -253,4 +258,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Library;
+export default LibraryPage;
