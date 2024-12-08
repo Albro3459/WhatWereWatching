@@ -326,8 +326,9 @@ function InfoPage() {
             </Modal>
             <Heart 
                 heartColor={heartColor}
-                screenWidth={screenWidth}
-                scale={scale}
+                size={45}
+                // screenWidth={screenWidth}
+                // scale={scale}
                 onPress={() => (setHeartColor(heartColor === selectedHeartColor ? unselectedHeartColor : selectedHeartColor))}
             />
           </View>

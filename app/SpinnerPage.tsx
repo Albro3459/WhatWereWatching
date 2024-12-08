@@ -24,7 +24,7 @@ const SpinnerPage = () => {
 
     const [winner, setWinner] = useState<Content | null>(null);
     const [showOverlay, setShowOverlay] = useState(false);
-    const [heartColor, setHeartColor] = useState(selectedHeartColor);
+    const [heartColor, setHeartColor] = useState(unselectedHeartColor);
 
     const handleWinner = (selectedWinner: Content) => {
         setWinner(selectedWinner); // Update state with the winner
@@ -79,8 +79,9 @@ const SpinnerPage = () => {
                                 </View>
                                 <Heart 
                                     heartColor={heartColor}
-                                    screenWidth={screenWidth}
-                                    scale={scale}
+                                    size={35}
+                                    // screenWidth={screenWidth}
+                                    // scale={scale}
                                     onPress={() => setHeartColor(heartColor === selectedHeartColor ? unselectedHeartColor : selectedHeartColor)}
                                 />
                             </View>

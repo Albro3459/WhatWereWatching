@@ -14,9 +14,10 @@ import {
 import PagerView from 'react-native-pager-view';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getRandomContent, getPosterByContent } from './helpers/fetchHelper';
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import Heart from './components/heartComponent';
 import { Content } from './types/contentType';
+import { appStyles } from '@/styles/appStyles';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const scale = .75;
@@ -26,7 +27,9 @@ const unselectedHeartColor = "#ECE6F0";
 const STORAGE_KEY = 'libraryTabs'; // Key for saving tab data
 
 const LibraryPage = () => {
+  const pathname = usePathname();
   const pagerViewRef = useRef(null);
+
   const [activeTab, setActiveTab] = useState(0);
   const [tabs, setTabs] = useState({
     Planned: [],
@@ -34,54 +37,56 @@ const LibraryPage = () => {
     Completed: [],
     Favorite: [],
   });
+  const [heartColors, setHeartColors] = useState<{ [key: string]: string }>({});  
+
   const [isLoading, setIsLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<Content>(null);
   const [moveModalVisible, setMoveModalVisible] = useState(false);
 
-  const [heartColors, setHeartColors] = useState<{ [key: string]: string }>({});  
-
   useEffect(() => {
     const loadContent = async () => {
-      try {
-        // Load saved tabs from AsyncStorage
-        const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
-        if (savedTabs) {
-          const parsedTabs = JSON.parse(savedTabs);
-          setTabs(parsedTabs);
-          // Initialize heartColors based on the Favorite tab
-          const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc, content: Content) => {
-            acc[content.id] = parsedTabs.Favorite.some((fav) => fav.id === content.id)
-              ? selectedHeartColor
-              : unselectedHeartColor;
-            return acc;
-          }, {});
-          setHeartColors(savedHeartColors);
-        } else {
-          // If no saved data, load random content for "Planned" and "Watching"
-          const plannedContent = await getRandomContent(8);
-          const watchingContent = await getRandomContent(8);
-          const heartColors = [...plannedContent, ...watchingContent].reduce((acc, content) => {
-            acc[content.id] = unselectedHeartColor;
-            return acc;
-          }, {});
-          setHeartColors(heartColors);
+      if (pathname === "/LibraryPage") {
+        try {
+          // Load saved tabs from AsyncStorage
+          const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+          if (savedTabs) {
+            const parsedTabs = JSON.parse(savedTabs);
+            setTabs(parsedTabs);
+            // Initialize heartColors based on the Favorite tab
+            const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc, content: Content) => {
+              acc[content.id] = parsedTabs.Favorite.some((fav) => fav.id === content.id)
+                ? selectedHeartColor
+                : unselectedHeartColor;
+              return acc;
+            }, {});
+            setHeartColors(savedHeartColors);
+          } else {
+            // If no saved data, load random content for "Planned" and "Watching"
+            const plannedContent = await getRandomContent(8);
+            const watchingContent = await getRandomContent(8);
+            const heartColors = [...plannedContent, ...watchingContent].reduce((acc, content) => {
+              acc[content.id] = unselectedHeartColor;
+              return acc;
+            }, {});
+            setHeartColors(heartColors);
 
-          setTabs(({
-            Planned: plannedContent,
-            Watching: watchingContent,
-            Completed: [],
-            Favorite: [],
-          }));
+            setTabs(({
+              Planned: plannedContent,
+              Watching: watchingContent,
+              Completed: [],
+              Favorite: [],
+            }));
+          }
+        } catch (error) {
+          console.error('Error loading library content:', error);
+        } finally {
+          setIsLoading(false);
         }
-      } catch (error) {
-        console.error('Error loading library content:', error);
-      } finally {
-        setIsLoading(false);
       }
     };
 
     loadContent();
-  }, []);
+  }, [pathname]);
 
   const saveTabsToStorage = async (updatedTabs) => {
     try {
@@ -235,30 +240,31 @@ const LibraryPage = () => {
         onRequestClose={() => setMoveModalVisible(false)}
       >
         <Pressable
-          style={styles.modalOverlay}
+          style={appStyles.modalOverlay}
           onPress={() => setMoveModalVisible(false)}
         >
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
+          <View style={appStyles.modalContent}>
+            <Text style={appStyles.modalTitle}>
               Move "{selectedItem?.title}" to:
             </Text>
             {selectedItem && Object.keys(tabs).map((tab, index) => (
               tab === "Favorite" ? (
                 <View style={{paddingTop: 5}}>
                   <Heart 
-                    heartColor={selectedItem.id ? heartColors[selectedItem?.id] : unselectedHeartColor}
-                    screenWidth={screenWidth}
-                    scale={scale}
+                    heartColor={heartColors[selectedItem?.id] || unselectedHeartColor}
+                    size={35}
+                    // screenWidth={screenWidth}
+                    // scale={scale}
                     onPress={() => moveItemToFavoriteTab(selectedItem?.id)}
                   />
                 </View>
               ) : (
               <TouchableOpacity
                 key={tab}
-                style={styles.modalButton}
+                style={appStyles.modalButton}
                 onPress={() => moveItemToTab(selectedItem, tab)}
               >
-                <Text style={styles.modalButtonText}>{tab}</Text>
+                <Text style={appStyles.modalButtonText}>{tab}</Text>
               </TouchableOpacity>
             )
             ))}
@@ -283,12 +289,13 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     backgroundColor: '#4f4f77',
-    justifyContent: 'space-around',
-    padding: 10,
+    justifyContent: 'center',
+    alignItems: "center",
+    padding: 20,
   },
   tabItem: {
     paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 15,
     borderRadius: 5,
   },
   activeTabItem: { backgroundColor: '#6c6c91' },
@@ -301,38 +308,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 14,
     marginTop: 5,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#4f4f77',
-    borderRadius: 10,
-    padding: 20,
-    width: '80%',
-    alignItems: 'center',
-  },
-  modalTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  modalButton: {
-    backgroundColor: '#6c6c91',
-    padding: 10,
-    borderRadius: 5,
-    marginVertical: 5,
-    width: '100%',
-    alignItems: 'center',
-  },
-  modalButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
   },
 });
 

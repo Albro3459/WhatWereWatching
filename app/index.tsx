@@ -1,8 +1,9 @@
-import { Text, View, Image, TouchableOpacity, Animated, ScrollView, TextInput, StyleSheet} from "react-native";
+import { Text, View, Image, TouchableOpacity, Animated, ScrollView, TextInput, StyleSheet, Alert} from "react-native";
 import React, { useState } from "react";
 import { Link, Href } from "expo-router"
 import { Colors } from "@/constants/Colors";
 import { RalewayFont } from "@/styles/appStyles";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Index() {
 
@@ -22,6 +23,17 @@ export default function Index() {
             useNativeDriver: false // Use native driver for better performance
         }).start();
     };
+
+    // const clearAllStorage = async () => {
+    //     try {
+    //       await AsyncStorage.clear(); // Clears all keys and values
+    //       console.log('AsyncStorage cleared!');
+    //       Alert.alert('Success', 'All storage cleared!');
+    //     } catch (error) {
+    //       console.error('Error clearing AsyncStorage:', error);
+    //       Alert.alert('Error', 'Failed to clear storage.');
+    //     }
+    //   };
 
     return (
         <ScrollView contentContainerStyle={{ flexGrow: 1 }} style={{ backgroundColor: Colors.backgroundColor }}>

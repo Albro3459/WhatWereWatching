@@ -1,8 +1,9 @@
-import { StyleSheet } from "react-native";
+import { Dimensions, StyleSheet } from "react-native";
 import { Colors } from "../constants/Colors";
 
 export const RalewayFont = 'Raleway_800ExtraBold';
 export const KuraleFont = "Kurale_400Regular";
+
 
 export const appStyles = StyleSheet.create({
     movieCard: {
@@ -96,4 +97,42 @@ export const appStyles = StyleSheet.create({
         fontSize: 14,
         color: '#FFD700', // Gold star color
       },
+
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalContent: {
+      backgroundColor: '#4f4f77',
+      borderRadius: 10,
+      padding: 20,
+      width: 315,
+      height: 'auto',
+      maxHeight: 265,
+      alignItems: 'center',
+      overflow: "hidden"
+    },
+    modalTitle: {
+      color: '#fff',
+      fontSize: 18,
+      fontWeight: 'bold',
+      marginBottom: 10,
+    },
+    modalButton: {
+      backgroundColor: '#6c6c91',
+      padding: 10,
+      borderRadius: 5,
+      marginVertical: 5,
+      width: 270,
+      height: 40,
+      alignItems: 'center',
+      overflow: "hidden"
+    },
+    modalButtonText: {
+      color: '#fff',
+      fontWeight: 'bold',
+      fontSize: 16,
+    },
 });

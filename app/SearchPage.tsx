@@ -107,8 +107,9 @@ const SearchPage = () => {
                 </View>
                 <Heart 
                   heartColor={heartColors[item.id]}
-                  screenWidth={screenWidth}
-                  scale={scale}
+                  size={40}
+                  // screenWidth={screenWidth}
+                  // scale={scale}
                   onPress={() => toggleFavorite(item.id)}
                 />
               </View>

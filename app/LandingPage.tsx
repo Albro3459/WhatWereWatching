@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { StyleSheet, View, Text, ScrollView, FlatList, Image, TouchableOpacity, Pressable, Dimensions } from "react-native";
+import { StyleSheet, View, Text, ScrollView, FlatList, Image, TouchableOpacity, Pressable, Dimensions, Alert, Modal } from "react-native";
 import { Card, Title, Button, Searchbar } from "react-native-paper";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Link, router, usePathname } from "expo-router";
@@ -7,14 +7,27 @@ import { Colors } from "@/constants/Colors";
 import { getContentById, getPosterByContent, getRandomContent } from "./helpers/fetchHelper";
 import { Content } from "./types/contentType";
 import { appStyles, RalewayFont } from "@/styles/appStyles";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Heart from "./components/heartComponent";
 
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
+const scale = .75;
+const selectedHeartColor = "#FF2452";
+const unselectedHeartColor = "#ECE6F0";
+
+const STORAGE_KEY = 'libraryTabs';
+
 const LIBRARY_OVERLAY_HEIGHT = screenHeight*.095
 
 function LandingPage () {
     const pathname = usePathname();
-  
+
+    const [heartColors, setHeartColors] = useState<{ [key: string]: string }>({});  
+    const [isLoading, setIsLoading] = useState(true);
+    const [selectedItem, setSelectedItem] = useState<Content>(null);
+    const [moveModalVisible, setMoveModalVisible] = useState(false);
+
     // State to manage the currently displayed movie
     const [carouselIndex, setCarouselIndex] = useState(0);
     const [carouselContent, setCarouselContent] = useState<Content[]>([]);
@@ -68,6 +81,137 @@ function LandingPage () {
         contentTitle: ""
       },
     ]);
+
+    useEffect(() => {
+      const loadContent = async () => {
+        if (pathname === "/LandingPage") {
+          try {
+            // Load saved tabs from AsyncStorage
+            console.log('LandingPage: Loading async storage ');
+            const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+            if (savedTabs) {
+              const parsedTabs = JSON.parse(savedTabs);
+
+              // Extract only favorites initially
+              const savedHeartColors = (parsedTabs.Favorite || []).reduce((acc, content) => {
+                acc[content.id] = selectedHeartColor;
+                console.log(
+                  `Setting Heart Color: ID=${content.id}, Title="${content.title}", HeartColor=${selectedHeartColor}`
+                );
+                return acc;
+              }, {});
+              setHeartColors(savedHeartColors || {});
+            }
+          } catch (error) {
+            console.error('Error loading library content:', error);
+          } finally {
+            setIsLoading(false);
+          }
+        }
+      };
+  
+      loadContent();
+    }, [pathname]);
+  
+    const saveTabsToStorage = async (updatedTabs) => {
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
+      } catch (error) {
+        console.error('Error saving tabs to storage:', error);
+      }
+    };
+  
+    const moveItemToFavoriteTab = async (id: string) => {
+      try {
+        // Update heartColors locally
+        setHeartColors((prevColors) => ({
+          ...prevColors,
+          [id]: prevColors[id] === selectedHeartColor ? unselectedHeartColor : selectedHeartColor,
+        }));
+    
+        // Fetch tabs from AsyncStorage
+        const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+        const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
+    
+        // Find the item in all tabs
+        let item = Object.values<Content>(tabs)
+          .flat()
+          .find((content: Content) => content.id === id);
+    
+        if (!item) {
+          item = await getContentById(id);
+          if (!item) {
+            console.log(`LandingPage: item with id: ${id} doesn't exist`);
+            return;
+          }
+        }
+    
+        // Check if the item is already in the Favorite tab
+        const isFavorite = tabs.Favorite.some((fav) => fav.id === id);
+    
+        // Update the Favorite tab
+        const updatedFavorites = isFavorite
+          ? tabs.Favorite.filter((content) => content.id !== id) // Remove if already in Favorites
+          : [...tabs.Favorite, item]; // Add if not in Favorites
+    
+        const updatedTabs = {
+          ...tabs,
+          Favorite: updatedFavorites,
+        };
+    
+        // Save updated tabs to AsyncStorage
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
+    
+        // Show success alert
+        Alert.alert(
+          "Success",
+          isFavorite
+            ? `Removed "${item.title}" from Favorites`
+            : `Added "${item.title}" to Favorites`
+        );
+    
+        setMoveModalVisible(false); // Close the modal
+      } catch (error) {
+        console.error("Error updating Favorites:", error);
+        Alert.alert("Error", "Unable to update Favorites. Please try again.");
+      }
+    };
+  
+    const moveItemToTab = async (item: Content, targetTab: string) => {
+      try {
+        // Load tabs from AsyncStorage
+        const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+        const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
+    
+        // Check if the item is already in the target tab
+        const isItemInTargetTab = tabs[targetTab].some((content) => content.id === item.id);
+    
+        // Update the target tab
+        const updatedTabs = {
+          ...tabs,
+          [targetTab]: isItemInTargetTab
+            ? tabs[targetTab].filter((content) => content.id !== item.id) // Remove if already exists
+            : [...tabs[targetTab], item], // Add if it doesn't exist
+        };
+    
+        // Save updated tabs back to AsyncStorage
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
+    
+        // Show success alert
+        Alert.alert(
+          "Success",
+          isItemInTargetTab
+            ? `Removed "${item.title}" from "${targetTab}"`
+            : `Moved "${item.title}" to "${targetTab}"`
+        );
+    
+        // Close the modal
+        setMoveModalVisible(false);
+      } catch (error) {
+        console.error("Error updating tabs:", error);
+      }
+    };
+    
 
     // Function to handle the Next button
     const handleNextMovie = () => {
@@ -184,9 +328,13 @@ function LandingPage () {
               <Pressable
                 style={styles.movieCard}
                 onPress={() => router.push({
-                                    pathname: '/InfoPage',
-                                    params: { id: item.id },
-                                  })}
+                        pathname: '/InfoPage',
+                        params: { id: item.id },
+                      })}
+                onLongPress={() => {
+                  setSelectedItem(item);
+                  setMoveModalVisible(true);
+                }}
               >
                 <Image
                   source={{uri: getPosterByContent(item)}}
@@ -208,6 +356,49 @@ function LandingPage () {
             keyExtractor={(item) => item.id}
           />
         </View>
+
+        {/* Move Modal */}
+        <Modal
+          transparent={true}
+          visible={moveModalVisible}
+          animationType="fade"
+          onRequestClose={() => setMoveModalVisible(false)}
+          style={{maxHeight: 265, overflow:"hidden"}}
+        >
+          <Pressable
+            style={appStyles.modalOverlay}
+            onPress={() => setMoveModalVisible(false)}
+          >
+            <View style={appStyles.modalContent}>
+              <Text style={appStyles.modalTitle}>
+                Move "{selectedItem?.title}" to:
+              </Text>
+              {selectedItem && ["Planned", "Watching", "Completed", "Favorite"].map((tab) => (
+                tab === "Favorite" ? (
+                  <View style={{paddingTop: 5, width: 35, height: 35, justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
+                    <Heart 
+                      heartColor={heartColors[selectedItem?.id] || unselectedHeartColor}
+                      size={35}
+                      // screenWidth={screenWidth}
+                      // scale={scale}
+                      onPress={() => moveItemToFavoriteTab(selectedItem?.id)}
+                    />
+                  </View>
+                ) : (
+                  <View style={{ width: 270, height: 50, overflow: "hidden"}}>
+                    <Pressable
+                      key={tab}
+                      style={[appStyles.modalButton ]}
+                      onPress={() => moveItemToTab(selectedItem, tab)}
+                    >
+                      <Text style={appStyles.modalButtonText}>{tab}</Text>
+                    </Pressable>
+                  </View>
+              )
+              ))}
+            </View>
+          </Pressable>
+        </Modal>
       </ScrollView>
 
       <View style={styles.libraryOverlay}>
