@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,13 +10,27 @@ import {
   Dimensions,
   FlatList,
   Alert,
+  SafeAreaView,
 } from "react-native";
+import 
+  // Animated, 
+  {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  // Easing,
+  runOnJS,
+} from 'react-native-reanimated';
+import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import Svg, { Path, Text as SvgText } from "react-native-svg";
+import { Content } from "../types/contentType";
+import { Entypo } from "@expo/vector-icons";
+import { Colors } from "@/constants/Colors";
 
 const { width } = Dimensions.get("window");
 const WHEEL_SIZE = width * 0.8;
 
-const Spinner = () => {
+export const Spinner: React.FC<{list: Content[]}> = ({list}) => {
   const [segments, setSegments] = useState<string[]>([]);
   const [inputText, setInputText] = useState<string>(""); // Input for adding movies
   const [selectedSegment, setSelectedSegment] = useState<string | null>(null); // Winner
@@ -24,6 +38,24 @@ const Spinner = () => {
   const spinValue = useRef(new Animated.Value(0)).current;
 
   const SEGMENT_ANGLE = segments.length ? 360 / segments.length : 0;
+
+  // old stuff
+  const rotation = useSharedValue(0);
+  const [currentAngle, setCurrentAngle] = useState(rotation.value);
+  const handleAngle = (value: number) => {
+    setCurrentAngle(parseInt(value.toFixed(), 10));
+  };
+  const easing = Easing.bezier(0.23, 1, 0.32, 1);
+  const gesture = Gesture.Pan().onUpdate(e => {
+    rotation.value = withTiming(
+      Math.abs(e.velocityY) / 7 + rotation.value,
+      {
+        duration: 1000,
+        easing: easing,
+      },
+      () => runOnJS(handleAngle)(rotation.value % 360),
+    );
+  });
 
   // Function to start spinning the wheel
   const spinWheel = () => {
@@ -99,109 +131,74 @@ const Spinner = () => {
     return `hsl(${hue}, 80%, 70%)`; // HSL color distribution
   };
 
+  useEffect(() => {
+    setSegments(list.map((item) => (item.title.split(":").length == 0 ? item.title : item.title.split(":")[0])));
+  }, [list]);
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Movie Spinner</Text>
+    <SafeAreaView style={[styles.container]}>
+      <GestureDetector gesture={gesture}>
+        <View style={styles.wheelContainer}>
+          <Entypo name="location-pin" size={80} color="black" style={styles.pointer} />
+          <Animated.View
+            style={[
+              styles.wheel,
+              { transform: [{ rotate: rotateInterpolate }] },
+            ]}
+          >
+            <Svg width={WHEEL_SIZE} height={WHEEL_SIZE}>
+              {segments.map((segment, index) => {
+                const path = generateSegmentPath(index);
+                const color = generateSegmentColor(index);
+                const segmentAngle = (360 / segments.length) * index;
+                const textAngle = (segmentAngle + 360 / (2 * segments.length)) % 360;
 
-      {/* Input Section */}
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter a movie name"
-          placeholderTextColor="#aaa"
-          value={inputText}
-          onChangeText={setInputText}
-        />
-        <TouchableOpacity style={styles.addButton} onPress={addSegment}>
-          <Text style={styles.addButtonText}>Add</Text>
-        </TouchableOpacity>
-      </View>
+                const textX =
+                  WHEEL_SIZE / 2 +
+                  (WHEEL_SIZE / 3.333) * Math.cos((textAngle * Math.PI) / 180);
+                const textY =
+                  WHEEL_SIZE / 2 -
+                  (WHEEL_SIZE / 3.3333) * Math.sin((textAngle * Math.PI) / 180);
 
-      {/* List of Movies */}
-      <FlatList
-        data={segments}
-        keyExtractor={(item, index) => index.toString()}
-        renderItem={({ item }) => (
-          <View style={styles.segmentItem}>
-            <Text style={styles.segmentText}>{item}</Text>
-            <TouchableOpacity onPress={() => removeSegment(item)}>
-              <Text style={styles.removeButton}>Remove</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        style={styles.list}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>No movies added to the wheel yet.</Text>
-        }
-      />
-
-      {/* Spinning Wheel */}
-      <View style={styles.wheelContainer}>
-        <Animated.View
-          style={[
-            styles.wheel,
-            { transform: [{ rotate: rotateInterpolate }] },
-          ]}
-        >
-          <Svg width={WHEEL_SIZE} height={WHEEL_SIZE}>
-            {segments.map((segment, index) => {
-              const path = generateSegmentPath(index);
-              const color = generateSegmentColor(index);
-              const segmentAngle = (360 / segments.length) * index;
-              const textAngle = (segmentAngle + 360 / (2 * segments.length)) % 360;
-
-              const textX =
-                WHEEL_SIZE / 2 +
-                (WHEEL_SIZE / 3.333) * Math.cos((textAngle * Math.PI) / 180);
-              const textY =
-                WHEEL_SIZE / 2 -
-                (WHEEL_SIZE / 3.3333) * Math.sin((textAngle * Math.PI) / 180);
-
-              return (
-                <React.Fragment key={index}>
-                  <Path d={path} fill={color} />
-                  <SvgText
-                    x={textX}
-                    y={textY}
-                    fill="white"
-                    fontSize="12"
-                    fontWeight="bold"
-                    textAnchor="middle"
-                    transform={`rotate(${(segments.length <= 2 ? 0 : -textAngle)}, ${textX}, ${textY})`}
-                  >
-                    {segment ? segment : ""}
-                  </SvgText>
-                </React.Fragment>
-              );
-            })}
-          </Svg>
-        </Animated.View>
-      </View>
-
-      {/* Spin Button */}
-      <TouchableOpacity
-        style={[styles.spinButton, isSpinning && { backgroundColor: "gray" }]}
-        onPress={!isSpinning ? spinWheel : undefined}
-      >
-        <Text style={styles.spinButtonText}>Spin</Text>
-      </TouchableOpacity>
-
-      {/* Winner Display */}
-      {selectedSegment && (
-        <View style={styles.winnerContainer}>
-          <Text style={styles.winnerText}>You should watch: {selectedSegment}</Text>
+                return (
+                  <React.Fragment key={index}>
+                    <Path d={path} fill={color} />
+                    <SvgText
+                      x={textX}
+                      y={textY}
+                      fill="white"
+                      fontSize="12"
+                      fontWeight="bold"
+                      textAnchor="middle"
+                      transform={`rotate(${(segments.length <= 2 ? 0 : -textAngle)}, ${textX}, ${textY})`}
+                    >
+                      {segment ? segment : ""}
+                    </SvgText>
+                  </React.Fragment>
+                );
+              })}
+            </Svg>
+          </Animated.View>
         </View>
-      )}
-    </View>
+      </GestureDetector>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#2b2b4f",
-    padding: 20,
-    alignItems: "center",
+    width: "100%",
+    backgroundColor: Colors.backgroundColor,
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: "center"
+  },
+  pointer: {
+    position: 'absolute',
+    top: -50,
+    zIndex: 6000,
+    color: "gray"
   },
   header: {
     fontSize: 24,
@@ -266,8 +263,6 @@ const styles = StyleSheet.create({
     borderColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
-    overflow: "hidden",
   },
   wheel: {
     width: "100%",
@@ -276,6 +271,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     alignItems: "center",
     justifyContent: "center",
+    alignSelf: "center",
+    overflow: "hidden"
   },
   spinButton: {
     backgroundColor: "#ff6f61",
@@ -302,4 +299,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Spinner;
+export default {};

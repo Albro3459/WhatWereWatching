@@ -70,28 +70,8 @@ export default function RootLayout() {
                     ),
                 })}
             />
-                        <Stack.Screen
-                name="Library"
-                options={({ navigation }) => ({
-                    title: "Library",
-                    headerBackButtonDisplayMode: "minimal",
-                    headerTintColor: "white",
-                    headerTitleStyle: {
-                        fontSize: 24,
-                        color: "white"
-                    },
-                    headerStyle: {
-                        backgroundColor: Colors.unselectedColor,
-                    },
-                    headerRight: () => (
-                        <TouchableOpacity onPress={() => router.push('/Spinner')}>
-                            <Feather name="circle" size={28} color="white" />
-                        </TouchableOpacity>
-                    ),
-                })}
-            />
-                        <Stack.Screen
-                name="Spinner"
+            <Stack.Screen
+                name="SpinnerPage"
                 options={({ navigation }) => ({
                     title: "What To Watch Wheel",
                     headerBackButtonDisplayMode: "minimal",
@@ -110,6 +90,27 @@ export default function RootLayout() {
                     ),
                 })}
             />
+            <Stack.Screen
+                name="Library"
+                options={({ navigation }) => ({
+                    title: "Library",
+                    headerBackButtonDisplayMode: "minimal",
+                    headerTintColor: "white",
+                    headerTitleStyle: {
+                        fontSize: 24,
+                        color: "white"
+                    },
+                    headerStyle: {
+                        backgroundColor: Colors.unselectedColor,
+                    },
+                    headerRight: () => (
+                        <TouchableOpacity onPress={() => router.push('/SpinnerPage')}>
+                            <Feather name="circle" size={28} color="white" />
+                        </TouchableOpacity>
+                    ),
+                })}
+            />
+            
             <Stack.Screen 
                 name="InfoPage" 
                 options={{ 
