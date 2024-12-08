@@ -152,10 +152,10 @@ const Spinner = () => {
 
               const textX =
                 WHEEL_SIZE / 2 +
-                (WHEEL_SIZE / 3) * Math.cos((textAngle * Math.PI) / 180);
+                (WHEEL_SIZE / 3.333) * Math.cos((textAngle * Math.PI) / 180);
               const textY =
                 WHEEL_SIZE / 2 -
-                (WHEEL_SIZE / 3) * Math.sin((textAngle * Math.PI) / 180);
+                (WHEEL_SIZE / 3.3333) * Math.sin((textAngle * Math.PI) / 180);
 
               return (
                 <React.Fragment key={index}>
@@ -167,8 +167,9 @@ const Spinner = () => {
                     fontSize="12"
                     fontWeight="bold"
                     textAnchor="middle"
+                    transform={`rotate(${(segments.length <= 2 ? 0 : -textAngle)}, ${textX}, ${textY})`}
                   >
-                    {segment}
+                    {segment ? segment : ""}
                   </SvgText>
                 </React.Fragment>
               );
