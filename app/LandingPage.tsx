@@ -26,7 +26,7 @@ function LandingPage () {
     const tabList = ["Planned", "Watching", "Completed", "Favorite"];
     const [heartColors, setHeartColors] = useState<{ [key: string]: string }>({});  
     const [isLoading, setIsLoading] = useState(true);
-    const [selectedItem, setSelectedItem] = useState<Content>(null);
+    const [selectedContent, setSelectedContent] = useState<Content>(null);
     const [listModalVisible, setListModalVisible] = useState(false);
 
     // State to manage the currently displayed movie
@@ -326,7 +326,7 @@ function LandingPage () {
                         params: { id: item.id },
                       })}
                 onLongPress={() => {
-                  setSelectedItem(item);
+                  setSelectedContent(item);
                   setListModalVisible(true);
                 }}
               >
@@ -354,7 +354,7 @@ function LandingPage () {
       </ScrollView>
 
       {/* Move Modal */}
-      {selectedItem && (
+      {selectedContent && (
         <Modal
             transparent={true}
             visible={listModalVisible}
@@ -367,22 +367,22 @@ function LandingPage () {
             >
               <View style={appStyles.modalContent}>
                 <Text style={appStyles.modalTitle}>
-                  Move "{selectedItem?.title}" to:
+                  Move "{selectedContent?.title}" to:
                 </Text>
-                {selectedItem && tabList.map((tab, index) => (
+                {selectedContent && tabList.map((tab, index) => (
                   tab === "Favorite" ? (
-                    <View key={`LandingPage-${selectedItem.id}-heart-${index}`} style={{paddingTop: 10}}>
+                    <View key={`LandingPage-${selectedContent.id}-heart-${index}`} style={{paddingTop: 10}}>
                       <Heart 
-                        heartColor={heartColors[selectedItem?.id] || unselectedHeartColor}
+                        heartColor={heartColors[selectedContent?.id] || unselectedHeartColor}
                         size={35}
-                        onPress={() => moveItemToFavoriteTab(selectedItem?.id)}
+                        onPress={() => moveItemToFavoriteTab(selectedContent?.id)}
                       />
                     </View>
                   ) : (
                      <TouchableOpacity
-                        key={`LandingPage-${selectedItem.id}-${tab}-${index}`}
+                        key={`LandingPage-${selectedContent.id}-${tab}-${index}`}
                         style={appStyles.modalButton}
-                        onPress={() => moveItemToTab(selectedItem, tab)}
+                        onPress={() => moveItemToTab(selectedContent, tab)}
                       >
                         <Text style={appStyles.modalButtonText}>{tab}</Text>
                       </TouchableOpacity>

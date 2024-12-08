@@ -48,7 +48,7 @@ function InfoPage() {
   // const [watchList, setWatchList] = useState<Set<string>>();
   const [addToListModal, setAddToListModal] = useState(false);
 
-  const [heartColor, setHeartColor] = useState<{[key: string]: string}>();
+  const [heartColors, setHeartColors] = useState<{[key: string]: string}>();
 
   const [activeTab, setActiveTab] = useState<string>('About');
 
@@ -101,12 +101,14 @@ function InfoPage() {
     },
   ]);
 
-  const [recommendedContent, setRecommendedContent] = useState<Content[]>([]);    
+  const [recommendedContent, setRecommendedContent] = useState<Content[]>([]); 
+  const [selectedRecommendation, setSelectedRecommendation] = useState<Content>(null);
+  const [infoModalVisible, setInfoModalVisible] = useState(false);   
 
   const moveItemToFavoriteList = async (id: string) => {
     try {
       // Update heartColors locally
-      setHeartColor((prevColors = {}) => ({
+      setHeartColors((prevColors = {}) => ({
         ...prevColors,
         [id]: prevColors[id] === selectedHeartColor ? unselectedHeartColor : selectedHeartColor,
       }));
@@ -144,6 +146,8 @@ function InfoPage() {
       setLists(updatedTabs);
       // Save updated tabs to AsyncStorage
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
+
+      setInfoModalVisible(false);
   
       // Show success alert
       Alert.alert(
@@ -182,6 +186,7 @@ function InfoPage() {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
       
       setAddToListModal(false);
+      setInfoModalVisible(false);
       // Show success alert
       Alert.alert(
         "Success",
@@ -264,6 +269,7 @@ function InfoPage() {
                                       pathname: '/InfoPage',
                                       params: { id: item.id },
                                     })}
+                  onLongPress={() => {setSelectedRecommendation(item); setInfoModalVisible(true);}}
                 >
                   <Image
                     source={{uri: getPosterByContent(item)}}
@@ -350,7 +356,7 @@ function InfoPage() {
                     : unselectedHeartColor;
                   return acc;
                 }, {});
-                setHeartColor(savedHeartColors);
+                setHeartColors(savedHeartColors);
               }
             } catch (error) {
               console.error("Error loading library content:", error);
@@ -396,82 +402,124 @@ function InfoPage() {
   }
 
   return (
-    <ScrollView style={styles.screen}>
-      <View style={styles.movieContainer}>
-        {/* Movie Poster */}
-        <Image source={{ uri: getPosterByContent(content) }} style={styles.posterImage} />
-        {/* Movie Info */}
-        <View style={styles.infoSection}>
-          <Text style={styles.title}>{content && content.title}</Text>
-          <View style={styles.attributeContainer} >
-            {/* <Text style={styles.rating}>⭐ 4.7/5</Text> */}
-            <StarRating
-              rating={rating}
-              onChange={setRating}
-            />
-          </View>
-          <View style={styles.attributeContainer} >
-            <TouchableOpacity
-              style={styles.button}
-              onPress={() => setAddToListModal(true)}
-            >
-              <Text style={styles.buttonText}>Add to List</Text>
-            </TouchableOpacity>
-
-            <Modal
-              transparent={true}
-              visible={addToListModal}
-              animationType="fade"
-              onRequestClose={() => setAddToListModal(false)}
-            >
-              {/* so that the modal will close when u tap outside */}
-              <Pressable
-                style={styles.modalOverlay}
-                onPress={() => setAddToListModal(false)}
+    <View style={styles.screen} >
+      <ScrollView >
+        <View style={styles.movieContainer}>
+          {/* Movie Poster */}
+          <Image source={{ uri: getPosterByContent(content) }} style={styles.posterImage} />
+          {/* Movie Info */}
+          <View style={styles.infoSection}>
+            <Text style={styles.title}>{content && content.title}</Text>
+            <View style={styles.attributeContainer} >
+              {/* <Text style={styles.rating}>⭐ 4.7/5</Text> */}
+              <StarRating
+                rating={rating}
+                onChange={setRating}
+              />
+            </View>
+            <View style={styles.attributeContainer} >
+              <TouchableOpacity
+                style={styles.button}
+                onPress={() => setAddToListModal(true)}
               >
-                <View style={styles.modalContent}>
-                  {Object.keys(lists).slice(0,3).map((list, index) => (
-                    <Pressable 
-                      key={index}
-                      style={[styles.optionPressable, isItemInList(list, lists) && styles.selectedOptionPressable]} 
-                      onPress={() => moveItemToList(content, list)}
-                    >
-                      <Text style={styles.optionText}>
-                        {list} {isItemInList(list, lists) ? "✓" : ""}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </Pressable>
-            </Modal>
-            <Heart 
-                heartColor={(heartColor && heartColor[content.id]) || unselectedHeartColor}
-                size={45}
-                onPress={() => moveItemToFavoriteList(content.id)}
-            />
+                <Text style={styles.buttonText}>Add to List</Text>
+              </TouchableOpacity>
+
+              <Modal
+                transparent={true}
+                visible={addToListModal}
+                animationType="fade"
+                onRequestClose={() => setAddToListModal(false)}
+              >
+                {/* so that the modal will close when u tap outside */}
+                <Pressable
+                  style={styles.modalOverlay}
+                  onPress={() => setAddToListModal(false)}
+                >
+                  <View style={styles.modalContent}>
+                    {Object.keys(lists).slice(0,3).map((list, index) => (
+                      <Pressable 
+                        key={index}
+                        style={[styles.optionPressable, isItemInList(list, lists) && styles.selectedOptionPressable]} 
+                        onPress={() => moveItemToList(content, list)}
+                      >
+                        <Text style={styles.optionText}>
+                          {list} {isItemInList(list, lists) ? "✓" : ""}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </Pressable>
+              </Modal>
+              <Heart 
+                  heartColor={(heartColors && heartColors[content.id]) || unselectedHeartColor}
+                  size={45}
+                  onPress={() => moveItemToFavoriteList(content.id)}
+              />
+            </View>
           </View>
         </View>
-      </View>
 
-      <View style={styles.tabContainer}>
-        {['About', 'Reviews', 'Recommended'].map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[
-              styles.tab,
-              activeTab === tab && styles.activeTab,
-            ]}
-            onPress={() => setActiveTab(tab)}
+        <View style={styles.tabContainer}>
+          {['About', 'Reviews', 'Recommended'].map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              style={[
+                styles.tab,
+                activeTab === tab && styles.activeTab,
+              ]}
+              onPress={() => setActiveTab(tab)}
+            >
+              <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
+                {tab}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {renderTabContent()}
+      </ScrollView>
+
+      {/* Move Modal */}
+      {selectedRecommendation && (
+        <Modal
+            transparent={true}
+            visible={infoModalVisible}
+            animationType="fade"
+            onRequestClose={() => setInfoModalVisible(false)}
           >
-            <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-              {tab}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {renderTabContent()}
-    </ScrollView>
+            <Pressable
+              style={appStyles.modalOverlay}
+              onPress={() => setInfoModalVisible(false)}
+            >
+              <View style={appStyles.modalContent}>
+                <Text style={appStyles.modalTitle}>
+                  Move "{selectedRecommendation?.title}" to:
+                </Text>
+                {selectedRecommendation && Object.keys(lists).map((tab, index) => (
+                  tab === "Favorite" ? (
+                    <View key={`LandingPage-${selectedRecommendation.id}-heart-${index}`} style={{paddingTop: 10}}>
+                      <Heart 
+                        heartColor={heartColors[selectedRecommendation?.id] || unselectedHeartColor}
+                        size={35}
+                        onPress={() => moveItemToFavoriteList(selectedRecommendation?.id)}
+                      />
+                    </View>
+                  ) : (
+                     <TouchableOpacity
+                        key={`LandingPage-${selectedRecommendation.id}-${tab}-${index}`}
+                        style={appStyles.modalButton}
+                        onPress={() => moveItemToList(selectedRecommendation, tab)}
+                      >
+                        <Text style={appStyles.modalButtonText}>{tab}</Text>
+                      </TouchableOpacity>
+                  )
+                ))}
+              </View>
+            </Pressable>
+        </Modal>
+      )}
+    </View>
   );
 }
 
