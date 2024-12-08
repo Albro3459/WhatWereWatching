@@ -12,7 +12,14 @@ import { Colors } from '@/constants/Colors';
 const SpinnerPage = () => {
     const pathname = usePathname();
 
-    const [moviesAndShows, setMoviesAndShows] = useState<Content[]>([]);    
+    const [moviesAndShows, setMoviesAndShows] = useState<Content[]>([]);   
+
+    const [winner, setWinner] = useState<Content | null>(null);
+
+    const handleWinner = (selectedWinner: Content) => {
+        setWinner(selectedWinner); // Update state with the winner
+        console.log('Winner is:', selectedWinner.title); // Log the winner
+      };
 
     useEffect(() => {
         const fetchContent  = async () => {
@@ -31,11 +38,29 @@ const SpinnerPage = () => {
   
     return (
         <GestureHandlerRootView>
-            {/* <View style={{backgroundColor: Colors.backgroundColor}} > */}
-                <Spinner list={moviesAndShows} />
-            {/* </View> */}
+                <Spinner list={moviesAndShows} onFinish={handleWinner} />
+                {winner && (
+                    <View style={styles.winnerContainer}>
+                        <Text style={styles.winnerText}>You should watch: {winner.title}</Text>
+                    </View>
+                )}
         </GestureHandlerRootView>
     );
-  };
+};
+
+const styles = StyleSheet.create({
+    winnerContainer: {
+        marginTop: 30,
+        padding: 20,
+        backgroundColor: "#6c6c91",
+        borderRadius: 5,
+      },
+      winnerText: {
+        color: "#fff",
+        fontSize: 20,
+        fontWeight: "bold",
+        textAlign: "center",
+      },
+});
 
 export default SpinnerPage;

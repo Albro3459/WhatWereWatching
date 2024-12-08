@@ -30,16 +30,45 @@ import { Colors } from "@/constants/Colors";
 const { width } = Dimensions.get("window");
 const WHEEL_SIZE = width * 0.8;
 
-export const Spinner: React.FC<{list: Content[]}> = ({list}) => {
-  const [segments, setSegments] = useState<string[]>([]);
+export const Spinner: React.FC<{list: Content[], onFinish: (winnder: Content) => void}> = ({list, onFinish}) => {
+  // const [segments, setSegments] = useState<string[]>([]);
+  type Segment = {
+    index: number; 
+    content: Content; 
+    path: string; 
+    color: string; 
+    segmentAngle: number; 
+    textAngle: number; 
+  };
+  const [segmentMap, setSegmentMap] = useState<Segment[]>([]);
   const [inputText, setInputText] = useState<string>(""); // Input for adding movies
-  const [selectedSegment, setSelectedSegment] = useState<string | null>(null); // Winner
-  const [isSpinning, setIsSpinning] = useState(false); // Spin state
+  // const [selectedSegment, setSelectedSegment] = useState<string | null>(null); // Winner
+  // const [isSpinning, setIsSpinning] = useState(false); // Spin state
 
   const rotation = useSharedValue(0);
-  const [currentAngle, setCurrentAngle] = useState(rotation.value);
-  const handleAngle = (value: number) => {
-    setCurrentAngle(parseInt(value.toFixed(), 10));
+  const handlePickWinner = (value: number) => {
+    const angle = parseInt(value.toFixed(), 10);
+
+    const sliceAngle = 360 / segmentMap.length; // Angle covered by each segment
+    const normalizedAngle = (angle+90) % 360;
+
+    // Find the winner by checking which segment contains the angle
+    const winner = segmentMap.find(({ segmentAngle }, index) => {
+      const startAngle = segmentAngle;
+      const endAngle = (segmentAngle + sliceAngle) % 360;
+
+      // Check if the normalized angle is within this segment
+      return (
+        (startAngle <= normalizedAngle && normalizedAngle < endAngle) ||
+        (startAngle > endAngle && (normalizedAngle >= startAngle || normalizedAngle < endAngle))
+      );
+    });
+
+    if (winner) {
+      console.log('Winner:', winner.content);
+      // Notify parent with the winner
+      runOnJS(onFinish)(winner.content);
+    }
   };
   const easing = Easing.bezier(0.23, 1, 0.32, 1);
   const gesture = Gesture.Pan().onUpdate(e => {
@@ -49,24 +78,28 @@ export const Spinner: React.FC<{list: Content[]}> = ({list}) => {
         duration: 1000,
         easing: easing,
       },
-      () => runOnJS(handleAngle)(rotation.value % 360),
+      (isFinished) => {
+        if (isFinished) {
+          runOnJS(handlePickWinner)(rotation.value % 360);
+        }
+      }
     );
   });
 
   // Function to add a movie to the wheel
-  const addSegment = () => {
-    if (inputText.trim() === "") {
-      Alert.alert("Error", "Please enter a movie name.");
-      return;
-    }
-    setSegments((prev) => [...prev, inputText.trim()]);
-    setInputText("");
-  };
+  // const addSegment = () => {
+  //   if (inputText.trim() === "") {
+  //     Alert.alert("Error", "Please enter a movie name.");
+  //     return;
+  //   }
+  //   setSegments((prev) => [...prev, inputText.trim()]);
+  //   setInputText("");
+  // };
 
   // Function to remove a movie from the wheel
-  const removeSegment = (movie: string) => {
-    setSegments((prev) => prev.filter((item) => item !== movie));
-  };
+  // const removeSegment = (movie: string) => {
+  //   setSegments((prev) => prev.filter((item) => item !== movie));
+  // };
 
   const animatedStyles = useAnimatedStyle(() => {
     return {
@@ -76,7 +109,7 @@ export const Spinner: React.FC<{list: Content[]}> = ({list}) => {
 
   // Generate SVG Path for Each Segment
   const generateSegmentPath = (index: number) => {
-    const segmentAngle = (2 * Math.PI) / segments.length;
+    const segmentAngle = (2 * Math.PI) / list.length;
     const startAngle = index * segmentAngle;
     const endAngle = startAngle + segmentAngle;
 
@@ -88,18 +121,27 @@ export const Spinner: React.FC<{list: Content[]}> = ({list}) => {
     const x2 = WHEEL_SIZE / 2 + (WHEEL_SIZE / 2) * Math.cos(endAngle);
     const y2 = WHEEL_SIZE / 2 - (WHEEL_SIZE / 2) * Math.sin(endAngle);
 
-    return `M ${WHEEL_SIZE / 2},${WHEEL_SIZE / 2} L ${x1},${y1} A ${WHEEL_SIZE /
-      2},${WHEEL_SIZE / 2} 0 ${largeArcFlag} 0 ${x2},${y2} Z`;
+    return `M ${WHEEL_SIZE / 2},${WHEEL_SIZE / 2} L ${x1 ? x1 : 0},${y1 ? y1 : 0} A ${WHEEL_SIZE /
+      2},${WHEEL_SIZE / 2} 0 ${largeArcFlag} 0 ${x2 ? x2 : 0},${y2 ? y2 : 0} Z`;
   };
 
   // Generate dynamic colors for segments
   const generateSegmentColor = (index: number) => {
-    const hue = (index * 360) / segments.length;
+    const hue = (index * 360) / list.length;
     return `hsl(${hue}, 80%, 70%)`; // HSL color distribution
   };
 
   useEffect(() => {
-    setSegments(list.map((item) => (item.title.split(":").length == 0 ? item.title : item.title.split(":")[0])));
+    if (list.length > 0) {
+      const map: Segment[] = list.map((item, index) => {
+          const path = generateSegmentPath(index);
+          const color = generateSegmentColor(index);
+          const segmentAngle = (360 / list.length) * index;
+          const textAngle = (segmentAngle + 360 / (2 * list.length)) % 360;
+          return { index, content: item, path, color, segmentAngle, textAngle };
+      });
+      setSegmentMap(map);
+    }
   }, [list]);
 
   return (
@@ -114,22 +156,18 @@ export const Spinner: React.FC<{list: Content[]}> = ({list}) => {
             ]}
           >
             <Svg width={WHEEL_SIZE} height={WHEEL_SIZE}>
-              {segments.map((segment, index) => {
-                const path = generateSegmentPath(index);
-                const color = generateSegmentColor(index);
-                const segmentAngle = (360 / segments.length) * index;
-                const textAngle = (segmentAngle + 360 / (2 * segments.length)) % 360;
+              {segmentMap.map((segment) => {
 
                 const textX =
                   WHEEL_SIZE / 2 +
-                  (WHEEL_SIZE / 3.333) * Math.cos((textAngle * Math.PI) / 180);
+                  (WHEEL_SIZE / 3.333) * Math.cos((segment.textAngle * Math.PI) / 180);
                 const textY = 
                   WHEEL_SIZE / 2 -
-                  (WHEEL_SIZE / 3.3333) * Math.sin((textAngle * Math.PI) / 180);
+                  (WHEEL_SIZE / 3.3333) * Math.sin((segment.textAngle * Math.PI) / 180);
 
                 return (
-                  <React.Fragment key={index}>
-                    <Path d={path} fill={color} />
+                  <React.Fragment key={segment.index}>
+                    <Path d={segment.path} fill={segment.color} />
                     <SvgText
                       x={textX}
                       y={textY}
@@ -137,9 +175,10 @@ export const Spinner: React.FC<{list: Content[]}> = ({list}) => {
                       fontSize="12"
                       fontWeight="bold"
                       textAnchor="middle"
-                      transform={`rotate(${(segments.length <= 2 ? 0 : -textAngle -3)}, ${textX}, ${textY})`}
+                      transform={`rotate(${(segmentMap.length <= 2 ? 0 : -segment.textAngle -3)}, ${textX}, ${textY})`}
                     >
-                      {segment ? segment : ""}
+                      {/*splitting long titles that have a colon and also if the title doesnt exist then put an empty string*/}
+                      {(segment ? segment.content.title.split(":").length == 0 ? segment.content.title : segment.content.title.split(":")[0] : "")}
                     </SvgText>
                   </React.Fragment>
                 );
