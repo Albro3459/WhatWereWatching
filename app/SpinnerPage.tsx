@@ -19,7 +19,7 @@ const SpinnerPage = () => {
           if (pathname === "/SpinnerPage") {
             if (!moviesAndShows || moviesAndShows.length == 0) {
   
-              const randomContent = await getRandomContent(15);
+              const randomContent = await getRandomContent(10);
               if (randomContent) {
                 setMoviesAndShows(randomContent);
               }

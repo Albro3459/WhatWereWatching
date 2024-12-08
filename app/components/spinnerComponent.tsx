@@ -5,20 +5,20 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Animated,
-  Easing,
+  // Animated,
+  // Easing,
   Dimensions,
   FlatList,
   Alert,
   SafeAreaView,
 } from "react-native";
 import 
-  // Animated, 
+  Animated, 
   {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
-  // Easing,
+  Easing,
   runOnJS,
 } from 'react-native-reanimated';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
@@ -35,11 +35,7 @@ export const Spinner: React.FC<{list: Content[]}> = ({list}) => {
   const [inputText, setInputText] = useState<string>(""); // Input for adding movies
   const [selectedSegment, setSelectedSegment] = useState<string | null>(null); // Winner
   const [isSpinning, setIsSpinning] = useState(false); // Spin state
-  const spinValue = useRef(new Animated.Value(0)).current;
 
-  const SEGMENT_ANGLE = segments.length ? 360 / segments.length : 0;
-
-  // old stuff
   const rotation = useSharedValue(0);
   const [currentAngle, setCurrentAngle] = useState(rotation.value);
   const handleAngle = (value: number) => {
@@ -57,35 +53,6 @@ export const Spinner: React.FC<{list: Content[]}> = ({list}) => {
     );
   });
 
-  // Function to start spinning the wheel
-  const spinWheel = () => {
-    if (segments.length === 0) {
-      Alert.alert("Error", "Please add movies to the wheel first!");
-      return;
-    }
-
-    setIsSpinning(true);
-
-    // Random spins between 3 and 5 full spins
-    const randomSpins = Math.floor(Math.random() * 2) + 3;
-    const randomExtraDegrees = Math.random() * 360; // Extra degrees to land on a random segment
-    const totalRotation = randomSpins * 360 + randomExtraDegrees;
-
-    // Animate the spin
-    Animated.timing(spinValue, {
-      toValue: totalRotation,
-      duration: 4000,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start(() => {
-      const normalizedAngle = totalRotation % 360; // Get the angle within a 360-degree circle
-      const selectedIndex = Math.floor((360 - normalizedAngle) / SEGMENT_ANGLE) % segments.length;
-
-      setSelectedSegment(segments[selectedIndex]);
-      setIsSpinning(false);
-    });
-  };
-
   // Function to add a movie to the wheel
   const addSegment = () => {
     if (inputText.trim() === "") {
@@ -101,10 +68,10 @@ export const Spinner: React.FC<{list: Content[]}> = ({list}) => {
     setSegments((prev) => prev.filter((item) => item !== movie));
   };
 
-  // Interpolation for rotation
-  const rotateInterpolate = spinValue.interpolate({
-    inputRange: [0, 360],
-    outputRange: ["0deg", "360deg"],
+  const animatedStyles = useAnimatedStyle(() => {
+    return {
+      transform: [{rotateZ: `${rotation.value}deg`}],
+    };
   });
 
   // Generate SVG Path for Each Segment
@@ -143,7 +110,7 @@ export const Spinner: React.FC<{list: Content[]}> = ({list}) => {
           <Animated.View
             style={[
               styles.wheel,
-              { transform: [{ rotate: rotateInterpolate }] },
+              animatedStyles
             ]}
           >
             <Svg width={WHEEL_SIZE} height={WHEEL_SIZE}>
@@ -156,7 +123,7 @@ export const Spinner: React.FC<{list: Content[]}> = ({list}) => {
                 const textX =
                   WHEEL_SIZE / 2 +
                   (WHEEL_SIZE / 3.333) * Math.cos((textAngle * Math.PI) / 180);
-                const textY =
+                const textY = 
                   WHEEL_SIZE / 2 -
                   (WHEEL_SIZE / 3.3333) * Math.sin((textAngle * Math.PI) / 180);
 
@@ -170,7 +137,7 @@ export const Spinner: React.FC<{list: Content[]}> = ({list}) => {
                       fontSize="12"
                       fontWeight="bold"
                       textAnchor="middle"
-                      transform={`rotate(${(segments.length <= 2 ? 0 : -textAngle)}, ${textX}, ${textY})`}
+                      transform={`rotate(${(segments.length <= 2 ? 0 : -textAngle -3)}, ${textX}, ${textY})`}
                     >
                       {segment ? segment : ""}
                     </SvgText>
