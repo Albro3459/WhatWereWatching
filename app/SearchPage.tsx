@@ -1,7 +1,7 @@
 import { Colors } from '@/constants/Colors';
 import React, { useState } from 'react';
 import { View, Text, TextInput, FlatList, Image, StyleSheet, Pressable, TouchableOpacity, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Dimensions, ScrollView } from 'react-native';
-import { Heart } from './components/heartComponent';
+import Heart from './components/heartComponent';
 import { Content } from './types/contentType';
 import { getPosterByContent, getRandomContent } from './helpers/fetchHelper';
 import { router } from 'expo-router';
@@ -13,7 +13,7 @@ import { appStyles } from '@/styles/appStyles';
 //    - by genre, or show/movie
 
 
-const screenWidth = Dimensions.get("window").width;
+const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const scale = .75;
 const selectedHeartColor = "#FF2452";
 const unselectedHeartColor = "#ECE6F0";

@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, Image, StyleSheet, ScrollView, Button, TouchableOpacity, Dimensions, Pressable, Modal, FlatList } from 'react-native';
 import * as SplashScreen from "expo-splash-screen";
 import StarRating from 'react-native-star-rating-widget';
-import { Heart } from './components/heartComponent';
+import Heart from './components/heartComponent';
 import { Content } from './types/contentType';
 import { useLocalSearchParams, usePathname } from 'expo-router/build/hooks';
 import { getContentById, getPosterByContent, getRandomContent } from './helpers/fetchHelper';

@@ -7,7 +7,7 @@ interface HeartTypes {
     onPress?: (any) => void;
 }
 
-export const Heart: React.FC<HeartTypes> = ({heartColor = "#FF2452", screenWidth, scale = 1, onPress = () => {}}) => {
+const Heart: React.FC<HeartTypes> = ({heartColor = "#FF2452", screenWidth, scale = 1, onPress = () => {}}) => {
     return (
         <Pressable 
             style={[
