@@ -99,7 +99,7 @@ export default function RootLayout() {
             <Stack.Screen
                 name="SpinnerPage"
                 options={({ navigation }) => ({
-                    title: "What To Watch Wheel",
+                    title: "Spin to Pick",
                     headerBackButtonDisplayMode: "minimal",
                     headerTintColor: "white",
                     headerTitleStyle: {

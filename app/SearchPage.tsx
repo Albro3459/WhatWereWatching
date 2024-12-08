@@ -10,6 +10,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEY } from '@/Global';
 import { WatchList } from './types/listsType';
 import { isItemInList } from './helpers/listHelper';
+import DropDownPicker from 'react-native-dropdown-picker';
+import { Ionicons } from '@expo/vector-icons';
+import FilterModal from './components/filterModalComponent';
+import { InitialValues } from './types/filterModalType';
 
 
 // TODO:
@@ -24,8 +28,13 @@ const unselectedHeartColor = "#ECE6F0";
 
 const SearchPage = () => {
   const pathname = usePathname();
+
   const [searchText, setSearchText] = useState('');
-  const [favoriteMovies, setFavoriteMovies] = useState<Set<string>>(new Set());
+  const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
+  const [selectedGenres, setSelectedGenres] = useState([]);
+  const [selectedTypes, setSelectedTypes] = useState([]);
+  const [selectedServices, setSelectedServices] = useState([]);
+  const [selectedPaidOptions, setSelectedPaidOptions] = useState([]);
 
   const [heartColors, setHeartColors] = useState<{ [key: string]: string }>();
 
@@ -37,13 +46,6 @@ const SearchPage = () => {
   });
   const [selectedResult, setSelectedResult] = useState<Content>(null);
   const [addSearchToListModal, setSearchAddToListModal] = useState(false);
-
-  const toggleHeartColor = (id: string) => {
-    setHeartColors((prevColors) => ({
-      ...prevColors,
-      [id]: prevColors[id] === selectedHeartColor ? unselectedHeartColor : selectedHeartColor,
-    }));
-  };
 
   type Movie = {
     id: string;
@@ -146,9 +148,21 @@ const SearchPage = () => {
     }
   };
 
-  const search = async (searchText: string) => {
+
+  const handleFilterModalClose = (values : InitialValues | null) => {
+    setIsFilterModalVisible(false);
+    if (!values) { return; }
+    setSelectedGenres(values.selectedGenres);
+    setSelectedTypes(values.selectedTypes);
+    setSelectedServices(values.selectedServices);
+    setSelectedPaidOptions(values.selectedPaidOptions);
+    const filters = [...values.selectedGenres, ...values.selectedTypes, ...values.selectedServices, ...values.selectedPaidOptions].join(',');
+    search(searchText || "", filters);
+  };
+
+  const search = async (searchText: string, filters: string) => {
     setSearchText(searchText);
-    const contents = await searchByKeywords(searchText);
+    const contents = await searchByKeywords(searchText, filters);
     if (contents) {
       const mappedMovies = contents.map((content, index) => ({
         id: content.id,
@@ -181,44 +195,58 @@ const SearchPage = () => {
   return (
     <View style={[styles.container]}>
         {/* Search Bar */}
-        <TextInput
-          style={styles.searchBar}
-          placeholder="Search for a movie..."
-          placeholderTextColor={Colors.reviewTextColor}
-          value={searchText}
-          onChangeText={async (text) => await search(text)}
-        />
+        <View style={{flexDirection: "row", columnGap: 10, justifyContent: "center"}} >
+          <TextInput
+            style={[styles.searchBar, {flex: 1}]}
+            placeholder="Search for a movie..."
+            placeholderTextColor={Colors.reviewTextColor}
+            value={searchText}
+            onChangeText={async (text) => await search(text, [...selectedGenres, ...selectedTypes, ...selectedServices, ...selectedPaidOptions].join(',') )}
+          />
+          <Pressable onPress={() => setIsFilterModalVisible(true)}>
+            <Ionicons name="filter-circle-outline" color={"white"} size={35} />
+          </Pressable>
+        </View>
 
         {/* ADD FILTERING */}
+        <FilterModal visible={isFilterModalVisible} onClose={handleFilterModalClose} initialValues={ {selectedGenres, selectedTypes, selectedServices, selectedPaidOptions} } />
 
         {/* Movie Cards */}
-        <FlatList
-          data={movies}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <Pressable
-                  onPress={() => router.push({
-                        pathname: '/InfoPage',
-                        params: { id: item.id },
-                    })}
-                  onLongPress={() => {setSelectedResult(item.content); setSearchAddToListModal(true);}}
-              >
-              <View style={appStyles.cardContainer}>
-                <Image source={{ uri: getPosterByContent(item.content) }} style={appStyles.cardPoster} />
-                <View style={appStyles.cardContent}>
-                  <Text style={appStyles.cardTitle}>{item.content.title}</Text>
-                  <Text style={[appStyles.cardDescription, {paddingLeft: 10}]}>{item.content.overview}</Text>
-                  <Text style={appStyles.cardRating}>⭐ {item.rating}</Text>
+        {(!movies || movies.length <= 0) ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ fontSize: 16, color: 'gray', textAlign: 'center' }}>
+              {searchText.length <= 0 ? "Try Searching for a Show or Movie!" : "No Results :("}
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={movies}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <Pressable
+                    onPress={() => router.push({
+                          pathname: '/InfoPage',
+                          params: { id: item.id },
+                      })}
+                    onLongPress={() => {setSelectedResult(item.content); setSearchAddToListModal(true);}}
+                >
+                <View style={appStyles.cardContainer}>
+                  <Image source={{ uri: getPosterByContent(item.content) }} style={appStyles.cardPoster} />
+                  <View style={appStyles.cardContent}>
+                    <Text style={appStyles.cardTitle}>{item.content.title}</Text>
+                    <Text style={[appStyles.cardDescription, {paddingLeft: 10}]}>{item.content.overview}</Text>
+                    <Text style={appStyles.cardRating}>⭐ {item.rating}</Text>
+                  </View>
+                  <Heart 
+                    heartColor={(heartColors && heartColors[item.id]) || unselectedHeartColor}
+                    size={40}
+                    onPress={() => moveItemToFavoriteList(item.id)}
+                  />
                 </View>
-                <Heart 
-                  heartColor={(heartColors && heartColors[item.id]) || unselectedHeartColor}
-                  size={40}
-                  onPress={() => moveItemToFavoriteList(item.id)}
-                />
-              </View>
-            </Pressable>
-          )}
-      />
+              </Pressable>
+            )}
+          />
+        )}
 
       {/* Move Modal */}
       {selectedResult && (

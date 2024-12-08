@@ -21,13 +21,13 @@ type Genre = {
     formatted: string;
   };
   
-  type ServiceImageSet = {
+  export type ServiceImageSet = {
     lightThemeImage: string;
     darkThemeImage: string;
     whiteImage: string;
   };
   
-  type Service = {
+  export type Service = {
     id: string;
     name: string;
     homePage: string;
@@ -94,7 +94,9 @@ type Genre = {
     directors: string[];
     cast: string[];
     rating: number;
-    runtime: number;
+    runtime: number | null;
+    seasonCount: number | null;
+    episodeCount: number | null;
     imageSet: ImageSet;
     streamingOptions: {
       [countryCode: string]: StreamingOption[];
