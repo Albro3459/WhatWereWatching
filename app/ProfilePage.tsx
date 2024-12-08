@@ -39,7 +39,23 @@ export default function ProfilePage() {
         Global.bio = bio;
         Global.genres = genres;
 
-        Alert.alert('Success', `Your profile has been updated!`);
+        Alert.alert(
+            'Success',
+            'Your profile has been updated!',
+            [
+                {
+                    text: 'OK',
+                    onPress: () => {
+                        if (Global.justSignedUp) {
+                            router.push('/LandingPage');
+                            Global.justSignedUp = false;
+                        } else {
+                            Global.justSignedUp = false;
+                        }
+                    },
+                },
+            ]
+        );
     };
 
     useEffect(() => {
@@ -171,8 +187,7 @@ export default function ProfilePage() {
             {/* Button container */}
             <View style={styles.buttonContainer} >
                 {/* logout Button */}
-                {/* <Pressable style={styles.button} onPress={() => (LogoutUser())}> */}
-                <Pressable style={styles.button} onPress={() => (saveProfile(nameText, birthdayText, locationText, bioText, selectedGenres))}>
+                <Pressable style={styles.button} onPress={() => {LogoutUser(); router.push('/');}}>
                         <Text style={{ color: "white", fontWeight: "bold", fontSize: 30 }}>Logout</Text>
                 </Pressable>
             </View>

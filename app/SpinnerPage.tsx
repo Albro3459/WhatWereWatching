@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {Dimensions, SafeAreaView, StyleSheet, Text, View, Image, TouchableOpacity, Pressable, Alert, Modal} from 'react-native';
 import { GestureHandlerRootView, TouchableWithoutFeedback} from 'react-native-gesture-handler';
-
+import DropDownPicker from 'react-native-dropdown-picker';
 import { Spinner } from './components/spinnerComponent';
 import { Content } from './types/contentType';
 import { getContentById, getPosterByContent, getRandomContent } from './helpers/fetchHelper';
@@ -15,6 +15,7 @@ import { WatchList } from './types/listsType';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEY } from '@/Global';
 import { isItemInList } from './helpers/listHelper';
+import { parse } from '@babel/core';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const scale = .75;
@@ -31,12 +32,15 @@ const SpinnerPage = () => {
     // const [heartColor, setHeartColor] = useState(unselectedHeartColor);
     const [heartColors, setHeartColors] = useState<{[key: string]: string}>();
 
+    const [selectedLists, setSelectedLists] = useState<string[]>([]);
     const [lists, setLists] = useState<WatchList>({
         Planned: [],
         Watching: [],
         Completed: [],
         Favorite: [],
       });
+    const [dropDownOpen, setDropDownOpen] = useState(false);
+
     const [addToListModal, setAddToListModal] = useState(false);
 
     const moveItemToFavoriteList = async (id: string) => {
@@ -151,7 +155,7 @@ const SpinnerPage = () => {
         } catch (error) {
             console.error("Error loading library content:", error);
         } 
-      };
+    };
 
     const handleWinner = (selectedWinner: Content) => {
         const updateLists = async () => {
@@ -165,105 +169,144 @@ const SpinnerPage = () => {
         setWinner(selectedWinner); // Update state with the winner
         setShowOverlay(true);
         console.log('Winner is:', selectedWinner.title); // Log the winner
-    };
+    }; 
 
     useEffect(() => {
-        const fetchContent  = async () => {
-          if (pathname === "/SpinnerPage") {
-            if (!moviesAndShows || moviesAndShows.length == 0) {
-  
-              const randomContent = await getRandomContent(10);
-              if (randomContent) {
-                setMoviesAndShows(randomContent);
-              }
+      const fetchListData = async () => {
+        if (selectedLists.length > 0) {
+          let combinedContent: Content[] = [];
+          try {
+            // Load saved tabs from AsyncStorage
+            const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+      
+            if (savedTabs) {
+              // console.log("getting content from storage for info");
+              const parsedTabs = JSON.parse(savedTabs);
+              // console.log(`does the planned list exist: ${parsedTabs["Planned"]}`);
+              setLists(parsedTabs);
+
+              combinedContent = selectedLists.flatMap((listKey) => {
+                return parsedTabs[listKey];
+              });
+
+              setMoviesAndShows(combinedContent);
+              // console.log("SHOULD BE DATA");
             }
+          } catch (error) {
+            console.error("Error loading library content:", error);
           }
+        } else {
+          // console.log("NO DATA");
+          setMoviesAndShows([]); // Reset when no list is selected
         }
-        fetchContent();
-    }, [pathname]);   
+      };
+
+      fetchListData();
+    }, [selectedLists]);
   
     return (
         <GestureHandlerRootView>
-            <Spinner list={moviesAndShows} onFinish={handleWinner} />
-            {winner && showOverlay && (
-                <View style={styles.overlay}>
-                    <View style={styles.winnerContainer}>
-                        <View style={{flexDirection: "row", alignItems: "center"}}>
-                            <Text style={styles.winnerText}>Winner!</Text>
-                            <Entypo name='circle-with-cross' size={25} color={"white"}
-                                style={{
-                                    position: "absolute",
-                                    padding: 0,
-                                    margin: 0,
-                                    left: screenWidth*0.48
-                                }} 
-                                onPress={() => setShowOverlay(false)} />
-                        </View>
-                        <Pressable
-                            onPress={() => router.push({
-                                    pathname: '/InfoPage',
-                                    params: { id: winner.id },
-                                })}
-                            onLongPress={() => {setAddToListModal(true);}}
-                        >
-                            <View style={[appStyles.cardContainer, {width: screenWidth*0.7, alignSelf: "center"}]}>
-                                <Image source={{ uri: getPosterByContent(winner) }} style={appStyles.cardPoster} />
-                                <View style={[appStyles.cardContent]}>
-                                    <Text style={[appStyles.cardTitle, {paddingBottom: 5}]}>{winner.title.split(":").length == 0 ? winner.title : winner.title.split(":")[0]}</Text>
-                                    <Text style={appStyles.cardRating}>⭐ 4.2</Text>
-                                </View>
-                                <Heart 
-                                    heartColor={(heartColors && heartColors[winner.id]) || unselectedHeartColor}
-                                    size={35}
-                                    onPress={() => moveItemToFavoriteList(winner.id)}
-                                />
-                            </View>
-                        </Pressable>
-                    </View>
-                </View>
-            )}
+          <View style={{paddingHorizontal: 20, paddingTop: 30, marginBottom: -80, backgroundColor: Colors.backgroundColor}}>
+            <DropDownPicker
+                multiple={true}
+                min={0}
+                max={5}
+                theme="DARK"
+                mode="BADGE"
+                badgeDotColors={["#e76f51", "#00b4d8", "#e9c46a", "#e76f51", "#8ac926", "#00b4d8", "#e9c46a"]}
+                placeholder='Select a list to shuffle...'
+                style={{backgroundColor: Colors.tabBarColor}}
 
-            {/* Move Modal */}
-            {winner && (
-                <Modal
-                    transparent={true}
-                    visible={addToListModal}
-                    animationType="fade"
-                    onRequestClose={() => setAddToListModal(false)}
-                >
-                    <Pressable
-                    style={appStyles.modalOverlay}
-                    onPress={() => setAddToListModal(false)}
-                    >
-                    <View style={appStyles.modalContent}>
-                        <Text style={appStyles.modalTitle}>
-                        Move "{winner?.title}" to:
-                        </Text>
-                        {winner && Object.keys(lists).slice(0,3).map((tab, index) => (
-                        tab === "Favorite" ? (
-                            <View key={`LandingPage-${winner.id}-heart-${index}`} style={{paddingTop: 10}}>
-                            <Heart 
-                                heartColor={heartColors[winner?.id] || unselectedHeartColor}
-                                size={35}
-                                onPress={() => moveItemToFavoriteList(winner?.id)}
-                            />
-                            </View>
-                        ) : (
-                            <TouchableOpacity
-                                key={`LandingPage-${winner.id}-${tab}-${index}`}
-                                style={[appStyles.modalButton, isItemInList(winner, tab, lists) && appStyles.selectedModalButton]}
-                                onPress={() => moveItemToList(winner, tab)}
-                            >
-                                <Text style={appStyles.modalButtonText}>
-                                {tab} {isItemInList(winner, tab, lists) ? "✓" : ""}
-                                </Text>
-                            </TouchableOpacity>
-                        )
-                        ))}
-                    </View>
-                    </Pressable>
-                </Modal>
-            )}
+                open={dropDownOpen}
+                setOpen={setDropDownOpen}
+                value={selectedLists}
+                setValue={setSelectedLists}
+                items={Object.keys(lists).map((list) => ({ label: list, value: list }))}
+              />
+          </View>
+          <Spinner 
+            list={moviesAndShows} 
+            onFinish={handleWinner} 
+          />
+          {winner && showOverlay && (
+              <View style={styles.overlay}>
+                  <View style={styles.winnerContainer}>
+                      <View style={{flexDirection: "row", alignItems: "center"}}>
+                          <Text style={styles.winnerText}>Winner!</Text>
+                          <Entypo name='circle-with-cross' size={25} color={"white"}
+                              style={{
+                                  position: "absolute",
+                                  padding: 0,
+                                  margin: 0,
+                                  left: screenWidth*0.48
+                              }} 
+                              onPress={() => setShowOverlay(false)} />
+                      </View>
+                      <Pressable
+                          onPress={() => router.push({
+                                  pathname: '/InfoPage',
+                                  params: { id: winner.id },
+                              })}
+                          onLongPress={() => {setAddToListModal(true);}}
+                      >
+                          <View style={[appStyles.cardContainer, {width: screenWidth*0.7, alignSelf: "center"}]}>
+                              <Image source={{ uri: getPosterByContent(winner) }} style={appStyles.cardPoster} />
+                              <View style={[appStyles.cardContent]}>
+                                  <Text style={[appStyles.cardTitle, {paddingBottom: 5}]}>{winner.title.split(":").length == 0 ? winner.title : winner.title.split(":")[0]}</Text>
+                                  <Text style={appStyles.cardRating}>⭐ 4.2</Text>
+                              </View>
+                              <Heart 
+                                  heartColor={(heartColors && heartColors[winner.id]) || unselectedHeartColor}
+                                  size={35}
+                                  onPress={() => moveItemToFavoriteList(winner.id)}
+                              />
+                          </View>
+                      </Pressable>
+                  </View>
+              </View>
+          )}
+
+          {/* Move Modal */}
+          {winner && (
+              <Modal
+                  transparent={true}
+                  visible={addToListModal}
+                  animationType="fade"
+                  onRequestClose={() => setAddToListModal(false)}
+              >
+                  <Pressable
+                  style={appStyles.modalOverlay}
+                  onPress={() => setAddToListModal(false)}
+                  >
+                  <View style={appStyles.modalContent}>
+                      <Text style={appStyles.modalTitle}>
+                      Move "{winner?.title}" to:
+                      </Text>
+                      {winner && Object.keys(lists).slice(0,3).map((tab, index) => (
+                      tab === "Favorite" ? (
+                          <View key={`LandingPage-${winner.id}-heart-${index}`} style={{paddingTop: 10}}>
+                          <Heart 
+                              heartColor={heartColors[winner?.id] || unselectedHeartColor}
+                              size={35}
+                              onPress={() => moveItemToFavoriteList(winner?.id)}
+                          />
+                          </View>
+                      ) : (
+                          <TouchableOpacity
+                              key={`LandingPage-${winner.id}-${tab}-${index}`}
+                              style={[appStyles.modalButton, isItemInList(winner, tab, lists) && appStyles.selectedModalButton]}
+                              onPress={() => moveItemToList(winner, tab)}
+                          >
+                              <Text style={appStyles.modalButtonText}>
+                              {tab} {isItemInList(winner, tab, lists) ? "✓" : ""}
+                              </Text>
+                          </TouchableOpacity>
+                      )
+                      ))}
+                  </View>
+                  </Pressable>
+              </Modal>
+          )}
         </GestureHandlerRootView>
     );
 };

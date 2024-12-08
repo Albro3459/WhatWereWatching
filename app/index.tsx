@@ -62,6 +62,8 @@ export default function Index() {
         Global.username = inputUsername;
         Global.password = inputPassword;
 
+        Global.justSignedUp = true;
+        
         router.push('/ProfilePage');
       };
     

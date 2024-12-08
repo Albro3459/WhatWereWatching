@@ -65,7 +65,7 @@ export const Spinner: React.FC<{list: Content[], onFinish: (winnder: Content) =>
     });
 
     if (winner) {
-      console.log('Winner:', winner.content);
+      // console.log('Winner:', winner.content);
       // Notify parent with the winner
       runOnJS(onFinish)(winner.content);
     }
@@ -132,7 +132,8 @@ export const Spinner: React.FC<{list: Content[], onFinish: (winnder: Content) =>
   };
 
   useEffect(() => {
-    if (list.length > 0) {
+    if (list && list.length > 0) {
+      // console.log("SPINNER HAS DATA");
       const map: Segment[] = list.map((item, index) => {
           const path = generateSegmentPath(index);
           const color = generateSegmentColor(index);
@@ -141,6 +142,9 @@ export const Spinner: React.FC<{list: Content[], onFinish: (winnder: Content) =>
           return { index, content: item, path, color, segmentAngle, textAngle };
       });
       setSegmentMap(map);
+    } else {
+        // console.log("empty spinerrrrrrr");
+        setSegmentMap([]); // Ensure state is reset when the list is empty
     }
   }, [list]);
 
@@ -262,6 +266,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   wheelContainer: {
+    backgroundColor: Colors.tabBarColor,
     width: WHEEL_SIZE,
     height: WHEEL_SIZE,
     borderRadius: WHEEL_SIZE / 2,

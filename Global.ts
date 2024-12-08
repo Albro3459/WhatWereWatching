@@ -9,6 +9,8 @@ export const Global = {
     location: "",
     bio: "",
     genres: new Set<string>(),
+
+    justSignedUp: false,
 };
 
 export const LogoutUser = () => {
@@ -19,6 +21,8 @@ export const LogoutUser = () => {
     Global.location = "";
     Global.bio = "";
     Global.genres = new Set<string>();
+
+    Global.justSignedUp = false;
 }
 
 export const FetchUserProfile = () => {
