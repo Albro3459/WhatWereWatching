@@ -1,113 +1,296 @@
 import { Colors } from '@/constants/Colors';
-import React, { useState } from 'react';
-import { View, Text, TextInput, FlatList, Image, StyleSheet, Pressable, TouchableOpacity, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Dimensions } from 'react-native';
-import { Heart } from './components/heartComponent';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TextInput, FlatList, Image, StyleSheet, Pressable, TouchableOpacity, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Dimensions, ScrollView, Alert, Modal } from 'react-native';
+import Heart from './components/heartComponent';
+import { Content } from './types/contentType';
+import { getContentById, getPosterByContent, getRandomContent, searchByKeywords } from './helpers/fetchHelper';
+import { router, usePathname } from 'expo-router';
+import { appStyles } from '@/styles/appStyles';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { STORAGE_KEY } from '@/Global';
+import { WatchList } from './types/listsType';
+import { isItemInList } from './helpers/listHelper';
+import DropDownPicker from 'react-native-dropdown-picker';
+import { Ionicons } from '@expo/vector-icons';
+import FilterModal from './components/filterModalComponent';
+import { InitialValues } from './types/filterModalType';
 
-const screenWidth = Dimensions.get("window").width;
+
+// TODO:
+//  - ADD FILTERING
+//    - by genre, or show/movie
+
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const scale = .75;
 const selectedHeartColor = "#FF2452";
 const unselectedHeartColor = "#ECE6F0";
 
 const SearchPage = () => {
+  const pathname = usePathname();
+
   const [searchText, setSearchText] = useState('');
-  const [favoriteMovies, setFavoriteMovies] = useState<Set<string>>(new Set());
+  const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
+  const [selectedGenres, setSelectedGenres] = useState([]);
+  const [selectedTypes, setSelectedTypes] = useState([]);
+  const [selectedServices, setSelectedServices] = useState([]);
+  const [selectedPaidOptions, setSelectedPaidOptions] = useState([]);
 
-  const [heartColors, setHeartColors] = useState<{ [key: string]: string }>({
-    '1': unselectedHeartColor,
-    '2': unselectedHeartColor,
-    '3': unselectedHeartColor,
+  const [heartColors, setHeartColors] = useState<{ [key: string]: string }>();
+
+  const [lists, setLists] = useState<WatchList>({
+    Planned: [],
+    Watching: [],
+    Completed: [],
+    Favorite: [],
   });
+  const [selectedResult, setSelectedResult] = useState<Content>(null);
+  const [addSearchToListModal, setSearchAddToListModal] = useState(false);
 
-  const toggleHeartColor = (id: string) => {
-    setHeartColors((prevColors) => ({
-      ...prevColors,
-      [id]: prevColors[id] === selectedHeartColor ? unselectedHeartColor : selectedHeartColor,
-    }));
+  type Movie = {
+    id: string;
+    rating: number;
+    content: Content | null;
   };
+  const [movies, setMovies] = useState<Movie[]>([]);
 
-  const movies = [
-    {
-      id: '1',
-      title: 'Joker',
-      description: 'A gritty character study of Arthur Fleck.',
-      rating: 4.8,
-      poster: require('../assets/images/posters/joker.png'),
-    },
-    {
-      id: '2',
-      title: 'Elf',
-      description: 'A funny Christmas adventure.',
-      rating: 4.6,
-      poster: require('../assets/images/posters/elf.png'),
-    },
-    {
-      id: '3',
-      title: 'Shrek',
-      description: 'An ogre’s hilarious journey to rescue a princess.',
-      rating: 4.9,
-      poster: require('../assets/images/posters/shrek.png'),
-    },
-  ];
-
-  const toggleFavorite = (id: string) => {
-    setFavoriteMovies((prevFavorites) => {
-      const newFavorites = new Set(prevFavorites);
-      if (newFavorites.has(id)) {
-        newFavorites.delete(id);
-      } else {
-        newFavorites.add(id);
+  const moveItemToFavoriteList = async (id: string) => {
+    try {
+      // Update heartColors locally
+      setHeartColors((prevColors = {}) => ({
+        ...prevColors,
+        [id]: prevColors[id] === selectedHeartColor ? unselectedHeartColor : selectedHeartColor,
+      }));
+  
+      // Fetch tabs from AsyncStorage
+      const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+      const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
+  
+      // Find the item in all tabs
+      let item = Object.values<Content>(tabs)
+        .flat()
+        .find((content: Content) => content.id === id);
+  
+      if (!item) {
+        item = await getContentById(id);
+        if (!item) {
+          console.log(`LandingPage: item with id: ${id} doesn't exist`);
+          return;
+        }
       }
-      return newFavorites;
-    });
-    toggleHeartColor(id);
+  
+      // Check if the item is already in the Favorite tab
+      const isFavorite = tabs.Favorite.some((fav) => fav.id === id);
+  
+      // Update the Favorite tab
+      const updatedFavorites = isFavorite
+        ? tabs.Favorite.filter((content) => content.id !== id) // Remove if already in Favorites
+        : [...tabs.Favorite, item]; // Add if not in Favorites
+  
+      const updatedTabs = {
+        ...tabs,
+        Favorite: updatedFavorites,
+      };
+      
+      setLists(updatedTabs);
+      // Save updated tabs to AsyncStorage
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
+
+      setSearchAddToListModal(false);
+  
+      // Show success alert
+      Alert.alert(
+        "Success",
+        isFavorite
+          ? `Removed "${item.title}" from Favorites`
+          : `Added "${item.title}" to Favorites`
+      );
+  
+    } catch (error) {
+      console.error("Error updating Favorites:", error);
+      // Alert.alert("Error", "Unable to update Favorites. Please try again.");
+    }
   };
 
-  const filteredMovies = movies.filter((movie) =>
-    movie.title.toLowerCase().includes(searchText.toLowerCase())
-  );
+  const moveItemToList = async (item: Content, targetTab: string) => {
+    try {
+      // Load tabs from AsyncStorage
+      const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+      const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
+  
+      // Check if the item is already in the target tab
+      const isItemInTargetTab = tabs[targetTab].some((content) => content.id === item.id);
+  
+      // Update the target tab
+      const updatedTabs = {
+        ...tabs,
+        [targetTab]: isItemInTargetTab
+          ? tabs[targetTab].filter((content) => content.id !== item.id) // Remove if already exists
+          : [...tabs[targetTab], item], // Add if it doesn't exist
+      };
+
+      setLists(updatedTabs);
+  
+      // Save updated tabs back to AsyncStorage
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
+      
+      setSearchAddToListModal(false);
+      // Show success alert
+      Alert.alert(
+        "Success",
+        isItemInTargetTab
+          ? `Removed "${item.title}" from "${targetTab}"`
+          : `Moved "${item.title}" to "${targetTab}"`
+      );
+  
+    } catch (error) {
+      console.error("Error updating tabs:", error);
+    }
+  };
+
+
+  const handleFilterModalClose = (values : InitialValues | null) => {
+    setIsFilterModalVisible(false);
+    if (!values) { return; }
+    setSelectedGenres(values.selectedGenres);
+    setSelectedTypes(values.selectedTypes);
+    setSelectedServices(values.selectedServices);
+    setSelectedPaidOptions(values.selectedPaidOptions);
+    const filters = [...values.selectedGenres, ...values.selectedTypes, ...values.selectedServices, ...values.selectedPaidOptions].join(',');
+    search(searchText || "", filters);
+  };
+
+  const search = async (searchText: string, filters: string) => {
+    setSearchText(searchText);
+    const contents = await searchByKeywords(searchText, filters);
+    if (contents) {
+      const mappedMovies = contents.map((content, index) => ({
+        id: content.id,
+        rating: 4 + ((index + 2) * 3) * 0.01,
+        content: content,
+      }));
+      setMovies(mappedMovies);
+
+      try {
+        // Load saved tabs from AsyncStorage
+        const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+        if (savedTabs) {
+          const parsedTabs = JSON.parse(savedTabs);
+          setLists(parsedTabs);
+          // Initialize heartColors based on the Favorite tab
+          const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc, content: Content) => {
+            acc[content.id] = parsedTabs.Favorite.some((fav) => fav.id === content.id)
+              ? selectedHeartColor
+              : unselectedHeartColor;
+            return acc;
+          }, {});
+          setHeartColors(savedHeartColors);
+        }
+      } catch (error) {
+        console.error('Error loading library content:', error);
+      }
+    }
+  };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior="padding"
-      keyboardVerticalOffset={90}
-    >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View>
-          {/* Search Bar */}
+    <View style={[styles.container]}>
+        {/* Search Bar */}
+        <View style={{flexDirection: "row", columnGap: 10, justifyContent: "center"}} >
           <TextInput
-            style={styles.searchBar}
+            style={[styles.searchBar, {flex: 1}]}
             placeholder="Search for a movie..."
-            placeholderTextColor="#ccc"
+            placeholderTextColor={Colors.reviewTextColor}
             value={searchText}
-            onChangeText={(text) => setSearchText(text)}
-            
+            onChangeText={async (text) => await search(text, [...selectedGenres, ...selectedTypes, ...selectedServices, ...selectedPaidOptions].join(',') )}
           />
+          <Pressable onPress={() => setIsFilterModalVisible(true)}>
+            <Ionicons name="filter-circle-outline" color={"white"} size={35} />
+          </Pressable>
+        </View>
 
-          {/* Movie Cards */}
+        {/* ADD FILTERING */}
+        <FilterModal visible={isFilterModalVisible} onClose={handleFilterModalClose} initialValues={ {selectedGenres, selectedTypes, selectedServices, selectedPaidOptions} } />
+
+        {/* Movie Cards */}
+        {(!movies || movies.length <= 0) ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ fontSize: 16, color: 'gray', textAlign: 'center' }}>
+              {searchText.length <= 0 ? "Try Searching for a Show or Movie!" : "No Results :("}
+            </Text>
+          </View>
+        ) : (
           <FlatList
-            data={filteredMovies}
+            data={movies}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
-              <View style={styles.card}>
-                <Image source={item.poster} style={styles.poster} />
-                <View style={styles.cardContent}>
-                  <Text style={styles.title}>{item.title}</Text>
-                  <Text style={styles.description}>{item.description}</Text>
-                  <Text style={styles.rating}>⭐ {item.rating}</Text>
+              <Pressable
+                    onPress={() => router.push({
+                          pathname: '/InfoPage',
+                          params: { id: item.id },
+                      })}
+                    onLongPress={() => {setSelectedResult(item.content); setSearchAddToListModal(true);}}
+                >
+                <View style={appStyles.cardContainer}>
+                  <Image source={{ uri: getPosterByContent(item.content) }} style={appStyles.cardPoster} />
+                  <View style={appStyles.cardContent}>
+                    <Text style={appStyles.cardTitle}>{item.content.title}</Text>
+                    <Text style={[appStyles.cardDescription, {paddingLeft: 10}]}>{item.content.overview}</Text>
+                    <Text style={appStyles.cardRating}>⭐ {item.rating}</Text>
+                  </View>
+                  <Heart 
+                    heartColor={(heartColors && heartColors[item.id]) || unselectedHeartColor}
+                    size={40}
+                    onPress={() => moveItemToFavoriteList(item.id)}
+                  />
                 </View>
-                <Heart 
-                  heartColor={heartColors[item.id]}
-                  screenWidth={screenWidth}
-                  scale={scale}
-                  onPress={() => toggleFavorite(item.id)}
-                />
-              </View>
+              </Pressable>
             )}
           />
-        </View>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+        )}
+
+      {/* Move Modal */}
+      {selectedResult && (
+        <Modal
+            transparent={true}
+            visible={addSearchToListModal}
+            animationType="fade"
+            onRequestClose={() => setSearchAddToListModal(false)}
+          >
+            <Pressable
+              style={appStyles.modalOverlay}
+              onPress={() => setSearchAddToListModal(false)}
+            >
+              <View style={appStyles.modalContent}>
+                <Text style={appStyles.modalTitle}>
+                  Move "{selectedResult?.title}" to:
+                </Text>
+                {selectedResult && Object.keys(lists).map((tab, index) => (
+                  tab === "Favorite" ? (
+                    <View key={`LandingPage-${selectedResult.id}-heart-${index}`} style={{paddingTop: 10}}>
+                      <Heart 
+                        heartColor={heartColors[selectedResult?.id] || unselectedHeartColor}
+                        size={35}
+                        onPress={() => moveItemToFavoriteList(selectedResult?.id)}
+                      />
+                    </View>
+                  ) : (
+                     <TouchableOpacity
+                        key={`LandingPage-${selectedResult.id}-${tab}-${index}`}
+                        style={[appStyles.modalButton, isItemInList(selectedResult, tab, lists) && appStyles.selectedModalButton]}
+                        onPress={() => moveItemToList(selectedResult, tab)}
+                      >
+                        <Text style={appStyles.modalButtonText}>
+                          {tab} {isItemInList(selectedResult, tab, lists) ? "✓" : ""}
+                        </Text>
+                      </TouchableOpacity>
+                  )
+                ))}
+              </View>
+            </Pressable>
+        </Modal>
+      )}
+
+    </View>
   );
 };
 
@@ -116,7 +299,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.backgroundColor,
     padding: 16,
-    paddingTop: 50,
+    paddingVertical: 50,
   },
   searchBar: {
     backgroundColor: Colors.cardBackgroundColor,
@@ -126,43 +309,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginBottom: 20,
     fontSize: 16,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.cardBackgroundColor,
-    borderRadius: 10,
-    marginBottom: 15,
-    padding: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  poster: {
-    height: 80,
-    width: 60,
-    borderRadius: 5,
-    marginRight: 10,
-  },
-  cardContent: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 5,
-  },
-  description: {
-    fontSize: 14,
-    color: '#AAAAAA',
-    marginBottom: 5,
-  },
-  rating: {
-    fontSize: 14,
-    color: '#FFD700', // Gold star color
   },
 });
 

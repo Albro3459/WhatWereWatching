@@ -1,47 +1,200 @@
-import { Text, View, Image, TouchableOpacity, Animated, ScrollView, TextInput, StyleSheet} from "react-native";
+import { Text, View, Image, TouchableOpacity, Animated, ScrollView, TextInput, StyleSheet, Alert} from "react-native";
 import React, { useState } from "react";
-import { Link, Href } from "expo-router"
+import { Link, Href, usePathname, router } from "expo-router"
 import { Colors } from "@/constants/Colors";
+import { KuraleFont, RalewayFont } from "@/styles/appStyles";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Global, LogoutUser } from "@/Global";
 
 export default function Index() {
+    // const pathname = usePathname();
 
-    // State to manage the height of the white rectangle
-    const [isExpanded, setIsExpanded] = useState(false);
-
+    const [inputUsername, setInputUsername] = useState<string>("");
+    const [inputPassword, setInputPassword] = useState<string>("");
+    const [inputConfirmPassword, setInputConfirmPassword] = useState<string>("");
+  
+    // State to manage if the user is signing in or signing up
+    const [isSigningIn, setIsSigningIn] = useState(false);
+    const [isSigningUp, setIsSigningUp] = useState(false);
+  
     // Create an Animated value to handle the height change
-    const animatedHeight = useState(new Animated.Value(500))[0]; // Start at 500px height
+    const animatedHeight = useState(new Animated.Value(470))[0];
 
-    // Toggle function to expand or collapse the white rectangle
-    const handleSignInPress = () => {
-        setIsExpanded(!isExpanded);
+    const handleSignIn = async () => {
+        if (!inputUsername.trim() || !inputPassword) {
+          Alert.alert("Error", "Please enter a username and password.");
+          return;
+        }
+        Global.username = inputUsername.trim();
+        Global.password = inputPassword;
+
+        router.push('/LandingPage');
+    };
+    
+      // Toggle function to expand or collapse the white rectangle
+      const handleSignInPress = async () => {
+        setIsSigningIn(true);
+        setIsSigningUp(false);
         // Animate the height change
         Animated.timing(animatedHeight, {
-            toValue: isExpanded ? 450 : 600, // Toggle between 500px and 600px
-            duration: 500, // Animation duration (in milliseconds)
-            useNativeDriver: false // Use native driver for better performance
+          toValue: 625, // Toggle between 465px and 615px
+          duration: 500, // Animation duration (in milliseconds)
+          useNativeDriver: false,
         }).start();
-    };
+      };
+    
+      const handleSignUp = async () => {
+        LogoutUser();
+        if (!inputUsername || !inputPassword || !inputConfirmPassword) {
+          Alert.alert("Error", "Please fill out all fields.");
+          return;
+        }
+        if (inputPassword !== inputConfirmPassword) {
+          Alert.alert("Error", "Passwords Must Match.");
+          return;
+        }
+    
+        // if (inputPassword.length < 6 || inputConfirmPassword.length < 6) {
+        //   Alert.alert("Error", "Passwords Must Be At Least 6 Characters.");
+        //   return;
+        // }
+    
+        Global.username = inputUsername;
+        Global.password = inputPassword;
+
+        Global.justSignedUp = true;
+        
+        router.push('/ProfilePage');
+      };
+    
+      // Toggle function to expand or collapse the white rectangle
+      const handleSignUpPress = async () => {
+        LogoutUser();
+        setIsSigningUp(true);
+        setIsSigningIn(false);
+        // Animate the height change
+        Animated.timing(animatedHeight, {
+          toValue: 660, // Toggle between 465px and 665px
+          duration: 500, // Animation duration (in milliseconds)
+          useNativeDriver: false,
+        }).start();
+      };
+
+    // const clearAllStorage = async () => {
+    //     try {
+    //       await AsyncStorage.clear(); // Clears all keys and values
+    //       console.log('AsyncStorage cleared!');
+    //       Alert.alert('Success', 'All storage cleared!');
+    //     } catch (error) {
+    //       console.error('Error clearing AsyncStorage:', error);
+    //       Alert.alert('Error', 'Failed to clear storage.');
+    //     }
+    //   };
 
     return (
-        <ScrollView contentContainerStyle={{ flexGrow: 1 }} style={{ backgroundColor: Colors.backgroundColor }}>
-            // white rectangle (no absolute positioning now)
-            <Animated.View style={[styles.animatedView, {height: animatedHeight}]} >
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }} style={{ backgroundColor: Colors.backgroundColor, padding: "5%" }}>
+            <Animated.View // white rectangle (no absolute positioning now)
+                style={{
+                height: animatedHeight,
+                backgroundColor: "white",
+                borderRadius: 15,
+                marginTop: 110, // Added a margin to space it from the top
+                }}
+            >
                 {/* Top Section with welcome text and image */}
-                <View style={styles.textContainer}>
-                    <Text style={{ fontSize: 32 }}>Welcome to</Text>
+                <View style={{ alignItems: "center", paddingTop: 30 }}>
+                    <View style={[styles.textContainer, (isSigningIn || isSigningUp) && {paddingBottom: 0}]}>
+                        <Text style={{ fontSize: 30 }}>This is</Text>
 
-                    <Text style={styles.appNameText}>What We're Watching</Text>
+                        <Text style={styles.appNameText}>What We're Watching</Text>
 
-                </View>
+                    </View>
 
-                {/* Button container */}
-                <View style={styles.buttonContainer} >
-                    {/* Sign In Button */}
-                    <Link href="./LandingPage" asChild>
-                        <TouchableOpacity style={styles.button} >
-                            <Text style={{ color: "white", fontWeight: "bold", fontSize: 30 }}>ENTER</Text>
+                    {/*Username and password entry*/}
+                    {(isSigningIn || isSigningUp) && (
+                    <View style={styles.inputContainer}>
+                        <View style={styles.inputGroup}>
+                        <TextInput
+                            style={styles.textField}
+                            placeholder="Username"
+                            placeholderTextColor={Colors.italicTextColor}
+                            value={inputUsername}
+                            onChangeText={setInputUsername}
+                            autoCapitalize="none"
+                        />
+                        {isSigningIn && (
+                            <Text style={styles.italicText}>Forgot Username?</Text>
+                        )}
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                        <TextInput
+                            style={styles.textField}
+                            placeholder="Password"
+                            placeholderTextColor={Colors.italicTextColor}
+                            value={inputPassword}
+                            onChangeText={setInputPassword}
+                            secureTextEntry={true}
+                            onSubmitEditing={async () => { await handleSignIn(); }}
+                            submitBehavior={isSigningUp ? null : isSigningIn ? "submit" : null}
+                        />
+                        {isSigningIn && (
+                            <Text style={styles.italicText}>Forgot Password?</Text>
+                        )}
+                        </View>
+
+                        {/*Confirm password entry*/}
+                        {isSigningUp && (
+                        <View style={styles.inputGroup}>
+                            <TextInput
+                            style={styles.textField}
+                            placeholder="Confirm Password"
+                            placeholderTextColor={Colors.italicTextColor}
+                            value={inputConfirmPassword}
+                            onChangeText={setInputConfirmPassword}
+                            secureTextEntry={true}
+                            />
+                        </View>
+                        )}
+                    </View>
+                    )}
+
+                    {/* Button container */}
+                    <View style={styles.buttonContainer}>
+                        {/* Sign In Button */}
+                        <TouchableOpacity
+                            style={{
+                            ...styles.button,
+                            ...(isSigningUp && styles.smallButton), // Manually merge styles
+                            }}
+                            onPress={
+                            !isSigningUp && isSigningIn ? async () => { await handleSignIn(); } : async () => { await handleSignInPress(); }
+                            }
+                        >
+                            <Text
+                            style={[styles.buttonText, isSigningUp && styles.smallButtonText]}
+                            >
+                            SIGN IN
+                            </Text>
                         </TouchableOpacity>
-                    </Link>
+
+                        {/* Sign Up Button */}
+                        <TouchableOpacity
+                            style={{
+                            ...styles.button,
+                            ...(isSigningIn && styles.smallButton), // Manually merge styles
+                            }}
+                            onPress={
+                            !isSigningIn && isSigningUp ? async () => { await handleSignUp(); } : async () => { await handleSignUpPress(); }
+                            }
+                        >
+                            <Text
+                            style={[styles.buttonText, isSigningIn && styles.smallButtonText]}
+                            >
+                            SIGN UP
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </Animated.View>
         </ScrollView>
@@ -49,46 +202,96 @@ export default function Index() {
 }
 
 const styles = StyleSheet.create({
-    animatedView: {
-        width: 350,
-        height: 450, // Bind the animated value to the height
-        backgroundColor: "white",
-        borderRadius: 16,
-        justifyContent: "flex-start",
-        alignItems: "center",
-        paddingVertical: 20,
-        marginTop: 150, // Added a margin to space it from the top
-        alignSelf: "center"
-    },
     textContainer: { 
         alignItems: "center", 
         textAlign: "center",
         justifyContent: "center",
-        paddingTop: 40 
-    },
-    buttonContainer: {
-        flex: 1,
-        justifyContent: "flex-end",
-        marginBottom: 75
+        paddingTop: 20,
+        paddingBottom: 50 
     },
     appNameText: {
-        padding: 20,
+        paddingTop: 10,
         fontSize: 52, 
-        fontFamily: 'Raleway_800ExtraBold', 
+        fontFamily: RalewayFont, 
         color: Colors.backgroundColor,
         alignSelf: "center",
         flexWrap: "wrap",
         textAlign: "center"
     },
-    button: {
-        backgroundColor: Colors.buttonColor,
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        borderRadius: 10,
-        marginTop: 10,
-        width: 200,
-        height: 100,
+    background: {
+        backgroundColor: Colors.backgroundColor,
+        // paddingHorizontal: "5%",
+        padding: "5%",
+      },
+      inputContainer: {
+        width: "100%",
+        backgroundColor: "white",
+        paddingTop: 20,
+        // marginBottom: -15,
+        borderRadius: 15,
+      },
+      inputGroup: {
+        width: "87.5%",
+        alignSelf: "center",
+        marginBottom: 10,
+      },
+      textField: {
+        backgroundColor: Colors.grayCell,
+        width: "100%",
+        height: 50,
+        borderRadius: 15,
+        marginBottom: 20,
+        fontSize: 18,
+        color: Colors.tabBarColor,
+        padding: 10,
+        textAlign: "left",
+      },
+      buttonContainer: {
+        flex: 1,
+        flexDirection: "column",
+        paddingHorizontal: "5%",
         justifyContent: "center",
-        alignItems: "center"
-    },
+        rowGap: 15,
+        alignSelf: "center",
+        marginTop: 70,
+      },
+      button: {
+        backgroundColor: Colors.buttonColor,
+        width: 225,
+        height: 70,
+        borderRadius: 15,
+        paddingHorizontal: 20,
+        justifyContent: "center",
+        alignItems: "center",
+        shadowRadius: 10,
+        shadowColor: "black",
+        shadowOpacity: 0.3,
+        shadowOffset: { width: 0, height: 5 },
+        elevation: 5, // Added for Android compatibility
+      },
+      smallButton: {
+        width: 225 * 0.7,
+        height: 70 * 0.7,
+        alignSelf: "center",
+      },
+      bigText: {
+        fontSize: 54,
+        fontFamily: KuraleFont,
+      },
+      italicText: {
+        color: Colors.reviewTextColor,
+        fontStyle: "italic",
+        alignSelf: "flex-start",
+        paddingLeft: 20,
+        paddingBottom: 15,
+        marginTop: -10,
+      },
+      buttonText: {
+        color: "white",
+        fontSize: 35,
+        fontFamily: RalewayFont,
+      },
+      smallButtonText: {
+        fontSize: 35 * 0.7,
+      },
 });

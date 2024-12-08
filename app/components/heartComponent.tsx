@@ -1,20 +1,24 @@
 import { Pressable, StyleSheet, View } from "react-native";
 
+const unselectedHeartColor = "#ECE6F0";
+
 interface HeartTypes {
-    heartColor: string;
-    screenWidth: number;
+    heartColor?: string;
+    size?: number;
+    screenWidth?: number;
     scale?: number;
     onPress?: (any) => void;
 }
 
-export const Heart: React.FC<HeartTypes> = ({heartColor = "#FF2452", screenWidth, scale = 1, onPress = () => {}}) => {
+const Heart: React.FC<HeartTypes> = ({heartColor = unselectedHeartColor, size = 40, screenWidth = 420, scale = 1, onPress = () => {}}) => {
+    scale = scale ? scale : 1;
     return (
         <Pressable 
             style={[
                 heartStyles.heartContainer,
                 {
-                    width: (screenWidth / 10) * scale,
-                    height: ((4 * screenWidth) / 50) * scale,
+                    width: size,
+                    height: size*0.8,
                 }
             ]} 
             onPress={onPress} 
@@ -23,9 +27,9 @@ export const Heart: React.FC<HeartTypes> = ({heartColor = "#FF2452", screenWidth
             style={[
                 heartStyles.heartLeft, 
                 { 
-                    backgroundColor: heartColor,
-                    width: 0.079 * screenWidth * scale,
-                    height: (screenWidth / 20) * scale, 
+                    backgroundColor: heartColor ? heartColor : unselectedHeartColor,
+                    width: size*0.8,
+                    height: size/2, 
                 }
             ]}
             />
@@ -34,8 +38,8 @@ export const Heart: React.FC<HeartTypes> = ({heartColor = "#FF2452", screenWidth
                 heartStyles.heartRight, 
                 { 
                     backgroundColor: heartColor,
-                    width: 0.079 * screenWidth * scale,
-                    height: (screenWidth / 20) * scale, 
+                    width: size*0.8,
+                    height: size/2, 
                 }
             ]}
             />
@@ -66,3 +70,5 @@ const heartStyles = StyleSheet.create({
         right: 0,
       },
 });
+
+export default Heart;

@@ -1,5 +1,17 @@
+
+
+
+
+
+
+
 const backgroundColor = "#1c2237";
 const cardBackgroundColor = "#2a2f45";
+
+const tabBarColor = "#4f4f77";
+const selectedTabColor = '#6c6c91';
+
+const grayCell = "#ECE6F0";
 
 const unselectedColor = "#65709D";
 const unselectedTextColor = "#FFFFFF";
@@ -10,10 +22,16 @@ const selectedTextColor = "#FFFFFF";
 const reviewTextColor = "#ccc";
 const italicTextColor = "#bbb";
 
+const goldColor = "#FFD700";
+
 export const Colors = {
   backgroundColor: backgroundColor,
   cardBackgroundColor: cardBackgroundColor,
+  tabBarColor: tabBarColor,
+  selectedTabColor: selectedTabColor,
   buttonColor: unselectedColor,
+
+  grayCell: grayCell,
 
   unselectedColor: unselectedColor,
   unselectedTextColor: unselectedTextColor,
@@ -21,5 +39,7 @@ export const Colors = {
   selectedTextColor: selectedTextColor,
   
   reviewTextColor: reviewTextColor,
-  italicTextColor:italicTextColor
+  italicTextColor: italicTextColor,
+
+  goldColor: goldColor,
 };
