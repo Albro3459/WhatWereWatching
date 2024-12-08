@@ -21,11 +21,11 @@ export default function Index() {
     const animatedHeight = useState(new Animated.Value(470))[0];
 
     const handleSignIn = async () => {
-        if (!inputUsername || !inputPassword) {
+        if (!inputUsername.trim() || !inputPassword) {
           Alert.alert("Error", "Please enter a username and password.");
           return;
         }
-        Global.username = inputUsername;
+        Global.username = inputUsername.trim();
         Global.password = inputPassword;
 
         router.push('/LandingPage');

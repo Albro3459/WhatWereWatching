@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {Dimensions, SafeAreaView, StyleSheet, Text, View, Image, TouchableOpacity, Pressable} from 'react-native';
+import {Dimensions, SafeAreaView, StyleSheet, Text, View, Image, TouchableOpacity, Pressable, Alert, Modal} from 'react-native';
 import { GestureHandlerRootView, TouchableWithoutFeedback} from 'react-native-gesture-handler';
 
 import { Spinner } from './components/spinnerComponent';
@@ -11,6 +11,10 @@ import { Colors } from '@/constants/Colors';
 import { appStyles, RalewayFont } from '@/styles/appStyles';
 import Heart from './components/heartComponent';
 import { Entypo } from '@expo/vector-icons';
+import { WatchList } from './types/listsType';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { STORAGE_KEY } from '@/Global';
+import { isItemInList } from './helpers/listHelper';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const scale = .75;
@@ -24,13 +28,144 @@ const SpinnerPage = () => {
 
     const [winner, setWinner] = useState<Content | null>(null);
     const [showOverlay, setShowOverlay] = useState(false);
-    const [heartColor, setHeartColor] = useState(unselectedHeartColor);
+    // const [heartColor, setHeartColor] = useState(unselectedHeartColor);
+    const [heartColors, setHeartColors] = useState<{[key: string]: string}>();
+
+    const [lists, setLists] = useState<WatchList>({
+        Planned: [],
+        Watching: [],
+        Completed: [],
+        Favorite: [],
+      });
+    const [addToListModal, setAddToListModal] = useState(false);
+
+    const moveItemToFavoriteList = async (id: string) => {
+        try {
+          // Update heartColors locally
+          setHeartColors((prevColors = {}) => ({
+            ...prevColors,
+            [id]: prevColors[id] === selectedHeartColor ? unselectedHeartColor : selectedHeartColor,
+          }));
+      
+          // Fetch tabs from AsyncStorage
+          const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+          const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
+      
+          // Find the item in all tabs
+          let item = Object.values<Content>(tabs)
+            .flat()
+            .find((content: Content) => content.id === id);
+      
+          if (!item) {
+            item = await getContentById(id);
+            if (!item) {
+              console.log(`LandingPage: item with id: ${id} doesn't exist`);
+              return;
+            }
+          }
+      
+          // Check if the item is already in the Favorite tab
+          const isFavorite = tabs.Favorite.some((fav) => fav.id === id);
+      
+          // Update the Favorite tab
+          const updatedFavorites = isFavorite
+            ? tabs.Favorite.filter((content) => content.id !== id) // Remove if already in Favorites
+            : [...tabs.Favorite, item]; // Add if not in Favorites
+      
+          const updatedTabs = {
+            ...tabs,
+            Favorite: updatedFavorites,
+          };
+          
+          setLists(updatedTabs);
+          // Save updated tabs to AsyncStorage
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
+          
+          // Show success alert
+          Alert.alert(
+            "Success",
+            isFavorite
+              ? `Removed "${item.title}" from Favorites`
+              : `Added "${item.title}" to Favorites`
+          );
+      
+        } catch (error) {
+          console.error("Error updating Favorites:", error);
+          // Alert.alert("Error", "Unable to update Favorites. Please try again.");
+        }
+    };
+    
+    const moveItemToList = async (item: Content, targetTab: string) => {
+        try {
+          // Load tabs from AsyncStorage
+          const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+          const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
+      
+          // Check if the item is already in the target tab
+          const isItemInTargetTab = tabs[targetTab].some((content) => content.id === item.id);
+      
+          // Update the target tab
+          const updatedTabs = {
+            ...tabs,
+            [targetTab]: isItemInTargetTab
+              ? tabs[targetTab].filter((content) => content.id !== item.id) // Remove if already exists
+              : [...tabs[targetTab], item], // Add if it doesn't exist
+          };
+    
+          setLists(updatedTabs);
+      
+          // Save updated tabs back to AsyncStorage
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
+          
+          setAddToListModal(false);
+          // Show success alert
+          Alert.alert(
+            "Success",
+            isItemInTargetTab
+              ? `Removed "${item.title}" from "${targetTab}"`
+              : `Moved "${item.title}" to "${targetTab}"`
+          );
+      
+        } catch (error) {
+          console.error("Error updating tabs:", error);
+        }
+    };
+
+    const getContentObject = async (content: Content) => {
+        try {
+            // Load saved tabs from AsyncStorage
+            const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+        
+            if (savedTabs && content) {
+                const parsedTabs = JSON.parse(savedTabs);
+                setLists(parsedTabs);
+                // Initialize heartColors based on the Favorite tab
+                const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc) => {
+                acc[content.id] = parsedTabs.Favorite.some((fav) => fav.id === content.id)
+                    ? selectedHeartColor
+                    : unselectedHeartColor;
+                return acc;
+                }, {});
+                setHeartColors(savedHeartColors);
+            }
+        } catch (error) {
+            console.error("Error loading library content:", error);
+        } 
+      };
 
     const handleWinner = (selectedWinner: Content) => {
+        const updateLists = async () => {
+            try {
+                await getContentObject(selectedWinner);
+            } catch (error) {
+                console.error('Error updating lists:', error);
+            }
+        };
+        updateLists();
         setWinner(selectedWinner); // Update state with the winner
         setShowOverlay(true);
         console.log('Winner is:', selectedWinner.title); // Log the winner
-      };
+    };
 
     useEffect(() => {
         const fetchContent  = async () => {
@@ -70,6 +205,7 @@ const SpinnerPage = () => {
                                     pathname: '/InfoPage',
                                     params: { id: winner.id },
                                 })}
+                            onLongPress={() => {setAddToListModal(true);}}
                         >
                             <View style={[appStyles.cardContainer, {width: screenWidth*0.7, alignSelf: "center"}]}>
                                 <Image source={{ uri: getPosterByContent(winner) }} style={appStyles.cardPoster} />
@@ -78,16 +214,56 @@ const SpinnerPage = () => {
                                     <Text style={appStyles.cardRating}>⭐ 4.2</Text>
                                 </View>
                                 <Heart 
-                                    heartColor={heartColor}
+                                    heartColor={(heartColors && heartColors[winner.id]) || unselectedHeartColor}
                                     size={35}
-                                    // screenWidth={screenWidth}
-                                    // scale={scale}
-                                    onPress={() => setHeartColor(heartColor === selectedHeartColor ? unselectedHeartColor : selectedHeartColor)}
+                                    onPress={() => moveItemToFavoriteList(winner.id)}
                                 />
                             </View>
                         </Pressable>
                     </View>
                 </View>
+            )}
+
+            {/* Move Modal */}
+            {winner && (
+                <Modal
+                    transparent={true}
+                    visible={addToListModal}
+                    animationType="fade"
+                    onRequestClose={() => setAddToListModal(false)}
+                >
+                    <Pressable
+                    style={appStyles.modalOverlay}
+                    onPress={() => setAddToListModal(false)}
+                    >
+                    <View style={appStyles.modalContent}>
+                        <Text style={appStyles.modalTitle}>
+                        Move "{winner?.title}" to:
+                        </Text>
+                        {winner && Object.keys(lists).slice(0,3).map((tab, index) => (
+                        tab === "Favorite" ? (
+                            <View key={`LandingPage-${winner.id}-heart-${index}`} style={{paddingTop: 10}}>
+                            <Heart 
+                                heartColor={heartColors[winner?.id] || unselectedHeartColor}
+                                size={35}
+                                onPress={() => moveItemToFavoriteList(winner?.id)}
+                            />
+                            </View>
+                        ) : (
+                            <TouchableOpacity
+                                key={`LandingPage-${winner.id}-${tab}-${index}`}
+                                style={[appStyles.modalButton, isItemInList(winner, tab, lists) && appStyles.selectedModalButton]}
+                                onPress={() => moveItemToList(winner, tab)}
+                            >
+                                <Text style={appStyles.modalButtonText}>
+                                {tab} {isItemInList(winner, tab, lists) ? "✓" : ""}
+                                </Text>
+                            </TouchableOpacity>
+                        )
+                        ))}
+                    </View>
+                    </Pressable>
+                </Modal>
             )}
         </GestureHandlerRootView>
     );

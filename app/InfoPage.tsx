@@ -102,7 +102,7 @@ function InfoPage() {
   ]);
 
   const [recommendedContent, setRecommendedContent] = useState<Content[]>([]); 
-  const [selectedRecommendation, setSelectedRecommendation] = useState<Content>(null);
+  const [selectedRecommendation, setSelectedRecommendation] = useState<Content | null>(null);
   const [infoModalVisible, setInfoModalVisible] = useState(false);   
 
   const moveItemToFavoriteList = async (id: string) => {
@@ -199,6 +199,72 @@ function InfoPage() {
       console.error("Error updating tabs:", error);
     }
   };
+
+  useEffect(() => {
+    const getContentObject = async () => {
+      try {
+        if (pathname === "/InfoPage" && contentID) {
+          // console.log(`INFO PAGE ID: ${contentID}`);
+          setActiveTab('About');
+          const getContent = await getContentById(contentID);
+          if (getContent) {
+            // console.log(`Getting content for ${getContent.title}`);
+            setContent(getContent);
+
+            try {
+              // Load saved tabs from AsyncStorage
+              const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+        
+              if (savedTabs && getContent) {
+                // console.log("getting content from storage for info");
+                const parsedTabs = JSON.parse(savedTabs);
+                // console.log(`does the planned list exist: ${parsedTabs["Planned"]}`);
+                setLists(parsedTabs);
+                // Initialize heartColors based on the Favorite tab
+                const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc) => {
+                  acc[getContent.id] = parsedTabs.Favorite.some((fav) => fav.id === getContent.id)
+                    ? selectedHeartColor
+                    : unselectedHeartColor;
+                  return acc;
+                }, {});
+                setHeartColors(savedHeartColors);
+              }
+            } catch (error) {
+              console.error("Error loading library content:", error);
+            }
+
+            const randomContent = await getRandomContent(4);
+            if (randomContent) {
+              setRecommendedContent(randomContent);
+            }
+
+            const updatedReviews = await Promise.all(
+              reviews.map(async (review) => {
+                const content = await getContentById(review.contentID);
+                // console.log(`review id: ${review.id} has title ${content.title}`);
+                return {
+                  ...review,
+                  contentTitle: content?.title || "Unknown",
+                };
+              })
+            );
+            setReviews(updatedReviews);
+          } else {
+            console.log(`Content not found for ID: ${contentID}`);
+          }
+        } else {
+          console.log("Content ID is null or pathname mismatch.");
+        }
+      } catch (error) {
+        console.error("Error fetching content:", error);
+      } finally {
+        setIsLoading(false);
+        await SplashScreen.hideAsync();
+      }
+    };
+
+    getContentObject();
+  }, [pathname, contentID]);
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -312,74 +378,6 @@ function InfoPage() {
       </View>
     );
   };
-
-  useEffect(() => {
-    const getContentObject = async () => {
-      try {
-        if (pathname === "/InfoPage" && contentID) {
-          // console.log(`INFO PAGE ID: ${contentID}`);
-          setActiveTab('About');
-          const getContent = await getContentById(contentID);
-          if (getContent) {
-            // console.log(`Getting content for ${getContent.title}`);
-            setContent(getContent);
-
-            try {
-              // Load saved tabs from AsyncStorage
-              const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
-        
-              if (savedTabs && getContent) {
-                // console.log("getting content from storage for info");
-                const parsedTabs = JSON.parse(savedTabs);
-                // console.log(`does the planned list exist: ${parsedTabs["Planned"]}`);
-                setLists(parsedTabs);
-                // Initialize heartColors based on the Favorite tab
-                const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc) => {
-                  acc[getContent.id] = parsedTabs.Favorite.some((fav) => fav.id === getContent.id)
-                    ? selectedHeartColor
-                    : unselectedHeartColor;
-                  return acc;
-                }, {});
-                setHeartColors(savedHeartColors);
-              }
-            } catch (error) {
-              console.error("Error loading library content:", error);
-            } finally {
-              setIsLoading(false);
-            }
-
-            const randomContent = await getRandomContent(4);
-            if (randomContent) {
-              setRecommendedContent(randomContent);
-            }
-
-            const updatedReviews = await Promise.all(
-              reviews.map(async (review) => {
-                const content = await getContentById(review.contentID);
-                // console.log(`review id: ${review.id} has title ${content.title}`);
-                return {
-                  ...review,
-                  contentTitle: content?.title || "Unknown",
-                };
-              })
-            );
-            setReviews(updatedReviews);
-          } else {
-            console.log(`Content not found for ID: ${contentID}`);
-          }
-        } else {
-          console.log("Content ID is null or pathname mismatch.");
-        }
-      } catch (error) {
-        console.error("Error fetching content:", error);
-      } finally {
-        setIsLoading(false);
-        await SplashScreen.hideAsync();
-      }
-    };
-
-    getContentObject();
-  }, [pathname, contentID]);
   
   if (isLoading) {
     return null; // Prevent rendering until loaded

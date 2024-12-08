@@ -1,7 +1,7 @@
 import { router, Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { Pressable, Button, TouchableOpacity, View } from "react-native";
-import Feather from '@expo/vector-icons/Feather';
+import { Fontisto, Feather } from '@expo/vector-icons';
 import { Colors } from "@/constants/Colors";
 import { useEffect } from "react";
 import { useFonts, Raleway_800ExtraBold } from '@expo-google-fonts/raleway';
@@ -131,7 +131,7 @@ export default function RootLayout() {
                     },
                     headerRight: () => (
                         <TouchableOpacity onPress={() => router.push('/SpinnerPage')}>
-                            <Feather name="circle" size={28} color="white" />
+                            <Fontisto name="spinner" size={28} color="white" />
                         </TouchableOpacity>
                     ),
                 })}
