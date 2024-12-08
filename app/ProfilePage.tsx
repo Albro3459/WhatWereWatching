@@ -1,63 +1,71 @@
 import { Text, TextInput, View, StyleSheet,TouchableOpacity, ScrollView, Image, Button, Pressable, Dimensions, Alert } from "react-native";
-import React, { Dispatch, SetStateAction, useEffect, useState } from 'react';
+import React, { Dispatch, SetStateAction, useEffect, useLayoutEffect, useState } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { PressableBubblesGroup,} from './components/formComponents';
-import { Link, Href } from "expo-router"
+import { Link, Href, usePathname, useNavigation, router } from "expo-router"
 import { Colors } from "@/constants/Colors";
 import { dateToString, stringToDate } from "./helpers/dateHelper";
 import { KuraleFont } from "@/styles/appStyles";
+import { Global, LogoutUser } from "@/Global";
+import { Feather } from "@expo/vector-icons";
 
 
 export default function ProfilePage() {
-
-    const setAttributeTrue = (attribute: string, setState: Dispatch<SetStateAction<Set<string>>>) => {
-        setState((prevSelected) => {
-            const updatedSet = new Set(prevSelected);
-            updatedSet.add(attribute); // Add the attribute, ensuring it's selected
-            return updatedSet;
-        });
-    };
+    const navigation = useNavigation();
+    const pathname = usePathname();
 
     // State for text inputs
-    const [birthdayText, setBirthdayText] = useState<string>('09/22/2002'); // temporary placeholder, will be from the db
+    const [nameText, setNameText] = useState<string>(Global.name);
+    const [birthdayText, setBirthdayText] = useState<string>(Global.birthday);
     // Date picker for birthday
-    const [selectedDate, setSelectedDate] = useState<Date | null>(stringToDate(birthdayText));
+    const [selectedDate, setSelectedDate] = useState<Date | null>(stringToDate(birthdayText) || new Date());
     const handleConfirmDate = (birthdayDate: Date) => {
         setBirthdayText(dateToString(birthdayDate));
         setSelectedDate(birthdayDate);
     };
-    const [locationText, setLocationText] = useState('Baton Rouge, LA'); // temporary placeholder, will be from the db
-    const [bioText, setBioText] = useState('I\'m a super cool guy!'); // temporary placeholder, will be from the db
+    const [locationText, setLocationText] = useState(Global.location); // temporary placeholder, will be from the db
+    const [bioText, setBioText] = useState(Global.bio); // temporary placeholder, will be from the db
 
     //pronoun options
-    const [pronouns, setPronouns] = useState<string[]>(["Fantasy", "Horror", "Action", "Comedy", "Romantic", "Sci-Fi", "Adventure", "Other"]);
-    const addPronoun = (newAttribute: string) => {
-        if (pronouns.includes(newAttribute)) {
-            setAttributeTrue(newAttribute, setSelectedPronouns);
-        }
-        else {
-            setPronouns((prevPronouns) => [...prevPronouns, newAttribute]);
-        }
-    };
+    const [genres, setGenres] = useState<string[]>(["Fantasy", "Horror", "Action", "Comedy", "Romantic", "Sci-Fi", "Adventure", "Other"]);
 
-    
     // State for selected attributes
-    const [selectedPronouns, setSelectedPronouns] = useState(new Set<string>(['He/Him']));
+    const [selectedGenres, setSelectedGenres] = useState<Set<string>>(Global.genres);
 
+    const saveProfile = (name: string, birthday: string, location: string, bio: string, genres: Set<string>) => {
+        Global.name = name;
+        Global.birthday = birthday;
+        Global.location = location;
+        Global.bio = bio;
+        Global.genres = genres;
 
-    // When the user clicks the plus to add a new attribute
-    const HandleAddAttributePress = (addHandler: (newAttribute: string) => void) => {
-        // Prompt user for the new attribute
-        Alert.prompt(
-            `Add Attribute`,
-            `Enter a new attribute`, // Remove 's' for singular (e.g., "Language")
-            [
-                { text: "Cancel", style: "cancel" },
-                { text: "OK", onPress: (text) => text && addHandler(text) }
-            ],
-            "plain-text"
-        );
+        Alert.alert('Success', `Your profile has been updated!`);
     };
+
+    useEffect(() => {
+        const fetchProfile = () => {
+            if (pathname === "/ProfilePage") {
+                setNameText(Global.name);
+                setBirthdayText(Global.birthday);
+                setLocationText(Global.location);
+                setBioText(Global.bio);
+                setSelectedGenres(Global.genres);
+            }
+        };  
+        fetchProfile();
+    }, [pathname, Global]);
+
+
+    // Adding a working save button to the top nav bar
+    useLayoutEffect(() => {
+        navigation.setOptions({
+          headerRight: () => (
+            <Pressable onPress={() => saveProfile(nameText, birthdayText, locationText, bioText, selectedGenres)}>
+                <Feather name="save" size={35} />                
+            </Pressable>
+          ),
+        });
+      }, [navigation, nameText, birthdayText, locationText, bioText, selectedGenres]);
 
     return (
         <ScrollView style={styles.background}>
@@ -67,11 +75,24 @@ export default function ProfilePage() {
                     source={require("../assets/images/ProfilePic.png")}
                     style={styles.image}
                 />
-                <Text style={[styles.nameText, { marginTop: -55 }]}>John Slade</Text>
+                {/* <Text style={[styles.nameText, { marginTop: -55 }]}>John Slade</Text> */}
             </View>
 
             {/* First container */}
-            <View style={[styles.container, { marginTop: 0 }]}>
+            <View style={[styles.container, { marginTop: 0-15 }]}>
+                <View style={styles.labelContainer}>
+                    <Text style={styles.labelText}>Name:</Text>
+                    <Text style={{ color: 'red', marginLeft: 2 }}>*</Text>
+                    <View style={{ flex: 1, flexDirection: "row", justifyContent: "flex-end" }}>
+                    </View>
+                </View>
+                <TextInput
+                    style={[styles.textField, nameText.length > 0 ? styles.selectedTextBox : null]}
+                    value={nameText}
+                    onChangeText={(newText) => setNameText(newText)}
+                />
+
+
                 <View style={styles.labelContainer}>
                     <Text style={styles.labelText}>Birthday:</Text>
                     <Text style={{ color: "red", marginLeft: 2 }}>*</Text>
@@ -120,9 +141,9 @@ export default function ProfilePage() {
                 </View>
                 <View style={styles.pressableContainer}>
                     <PressableBubblesGroup
-                        labels={pronouns}
-                        selectedLabels={selectedPronouns}
-                        setLabelState={setSelectedPronouns}
+                        labels={genres}
+                        selectedLabels={selectedGenres}
+                        setLabelState={setSelectedGenres}
                         styles={styles}
                     />
                 </View>
@@ -150,11 +171,10 @@ export default function ProfilePage() {
             {/* Button container */}
             <View style={styles.buttonContainer} >
                 {/* logout Button */}
-                <Link href="./" asChild>
-                    <TouchableOpacity style={styles.button}>
+                {/* <Pressable style={styles.button} onPress={() => (LogoutUser())}> */}
+                <Pressable style={styles.button} onPress={() => (saveProfile(nameText, birthdayText, locationText, bioText, selectedGenres))}>
                         <Text style={{ color: "white", fontWeight: "bold", fontSize: 30 }}>Logout</Text>
-                    </TouchableOpacity>
-                </Link>
+                </Pressable>
             </View>
 
             {/* <View style={{ padding: "8%" }}></View> */}
@@ -183,7 +203,7 @@ const styles = StyleSheet.create({
     topContainer: {
         justifyContent: "space-around",
         alignItems: "center",
-        marginVertical: "5%",
+        // marginVertical: "5%",
         marginTop: -35,
     },
     container: {
@@ -286,7 +306,7 @@ const styles = StyleSheet.create({
         alignItems: "center"
     },
     button: {
-        backgroundColor: Colors.backgroundColor,
+        backgroundColor: Colors.tabBarColor,
         paddingVertical: 10,
         paddingHorizontal: 10,
         borderRadius: 10,

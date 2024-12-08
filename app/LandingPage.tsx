@@ -9,7 +9,7 @@ import { Content } from "./types/contentType";
 import { appStyles, RalewayFont } from "@/styles/appStyles";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Heart from "./components/heartComponent";
-import { STORAGE_KEY } from "@/Global";
+import { Global, STORAGE_KEY } from "@/Global";
 import { isItemInList } from "./helpers/listHelper";
 
 
@@ -22,6 +22,8 @@ const LIBRARY_OVERLAY_HEIGHT = screenHeight*.095
 
 function LandingPage () {
     const pathname = usePathname();
+
+    const [name, setName] = useState<string>(Global.name);
 
     const tabList = ["Planned", "Watching", "Completed", "Favorite"];
     const [heartColors, setHeartColors] = useState<{ [key: string]: string }>({});  
@@ -82,6 +84,15 @@ function LandingPage () {
         contentTitle: ""
       },
     ]);
+
+    useEffect(() => {
+      const fetchProfile = () => {
+          if (pathname === "/LandingPage") {
+              setName(Global.name);
+          }
+      };  
+      fetchProfile();
+  }, [pathname, Global.name]);
 
     useEffect(() => {
       setListModalVisible(false);
@@ -277,7 +288,7 @@ function LandingPage () {
   return (
     <View style={styles.container} >
       <ScrollView style={{ marginBottom: LIBRARY_OVERLAY_HEIGHT}} showsVerticalScrollIndicator={false}>
-        <Text style={styles.welcomeText}>WELCOME BACK JOHN!</Text>
+        <Text style={styles.welcomeText}>WELCOME BACK {Global.name.length > 0 ? Global.name.toUpperCase() : "USER"}!</Text>
         {/* Trending Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>TRENDING</Text>

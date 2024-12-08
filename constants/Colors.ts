@@ -11,6 +11,8 @@ const cardBackgroundColor = "#2a2f45";
 const tabBarColor = "#4f4f77";
 const selectedTabColor = '#6c6c91';
 
+const grayCell = "#ECE6F0";
+
 const unselectedColor = "#65709D";
 const unselectedTextColor = "#FFFFFF";
 
@@ -28,6 +30,8 @@ export const Colors = {
   tabBarColor: tabBarColor,
   selectedTabColor: selectedTabColor,
   buttonColor: unselectedColor,
+
+  grayCell: grayCell,
 
   unselectedColor: unselectedColor,
   unselectedTextColor: unselectedTextColor,

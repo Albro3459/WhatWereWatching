@@ -10,7 +10,7 @@ export function stringToDate(dateString: string): Date | null {
     const dateMatch = isValidDateFormat(dateString);
 
     if (!dateMatch) {
-      console.warn(`Invalid date format: ${dateString}`);
+      // console.log(`Invalid date format: ${dateString}`);
       return null;
     }
   
@@ -34,7 +34,7 @@ export function stringToDate(dateString: string): Date | null {
         date.getDate() === parseInt(day, 10)) {
       return date;
     } else {
-      console.warn("Invalid date");
+      // console.log("Invalid date");
       return null;
     }
 }
