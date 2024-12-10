@@ -6,9 +6,11 @@ import { Content, StreamingOption } from '../types/contentType';
 import db from '../data/db.json';
 import { API_KEY } from '@/apiKey';
 import { Filter, Genres, PaidOptions, Services, Types } from '../types/filterTypes';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { STORAGE_KEY } from '@/Global';
 
 // While the app is running, this api 
-const API_BASE_URL = 'https://streaming-availability.p.rapidapi.com/shows/search/title';
+const API_BASE_URL = 'https://streaming-availability.p.rapidapi.com/shows/search/';
 // ******* DO NOT PUSH UR API KEY *******
 const API_HEADERS = {
     'x-rapidapi-key': API_KEY,
@@ -17,7 +19,7 @@ const API_HEADERS = {
 
 
 const filePath = `${FileSystem.documentDirectory}db.json`;
-const CURRENT_DB_VERSION = 1.01
+const CURRENT_DB_VERSION = 1.01;
 
 // these interact with the actual file
 
@@ -37,13 +39,19 @@ export const loadDbFile = async (): Promise<Content[] | null> => {
         console.error('Error parsing existing db.json:', error.message);
         fileDb = null;
       }
-      // Check if version exists and matches
-      if (fileDb && typeof fileDb === 'object' && fileDb.version) {
-        if (fileDb.version >= CURRENT_DB_VERSION) {
-          // console.log("returning at new content");
-          return fileDb.data as Content[]; // only return the data
-        }
-      }
+    }
+
+    // Check if version exists and matches
+    if (fileDb && typeof fileDb === 'object' && fileDb.version && fileDb.version >= CURRENT_DB_VERSION) {
+        // console.log("returning at new content");
+        return fileDb.data as Content[]; // only return the data
+    }
+    else {
+      // the db is null so we need to reset it, so reset the tabs too since they are stale now
+      console.log('Fetch Helper; clearing tabs and database');
+      fileDb = null;
+      await AsyncStorage.removeItem(STORAGE_KEY);
+      await FileSystem.writeAsStringAsync(filePath, "");
     }
 
     // Either the file doesn't exist, or the version is outdated. Recopy it.
@@ -292,61 +300,88 @@ export const getPosterByContent = (content: Content, vertical = true) => {
 // };
 
 const mapFiltersToApiParams = (filter: Filter) => {
-  const genres = filter.selectedGenres.map((genre) =>
-    Genres.find((g) => g.label === genre)?.value
-  ).filter(Boolean);
+  // const genres = filter.selectedGenres.map((genre) =>
+  //   Genres.find((g) => g.label === genre)?.value
+  // ).filter(Boolean);
 
-  const types = filter.selectedTypes.map((type) =>
-    Types.find((t) => t.label === type)?.value
-  ).filter(Boolean);
+  // const types = filter.selectedTypes.map((type) =>
+  //   Types.find((t) => t.label === type)?.value
+  // ).filter(Boolean);
 
-  const paidOptions = filter.selectedPaidOptions.map((option) =>
-    PaidOptions.find((p) => p.label === option)?.value
-  ).filter(Boolean);
+  // const paidOptions = filter.selectedPaidOptions.map((option) =>
+  //   PaidOptions.find((p) => p.label === option)?.value
+  // ).filter(Boolean);
 
-  const services = filter.selectedServices.map((service) =>
-    Services.find((s) => s.label === service)?.value
-  ).filter(Boolean);
+  // const services = filter.selectedServices.map((service) =>
+  //   Services.find((s) => s.label === service)?.value
+  // ).filter(Boolean);
+
+  // return {
+  //   genres: genres.join(',') || undefined,
+  //   show_type: types.join(',') || undefined,
+  //   paid_options: paidOptions.join(',') || undefined,
+  //   services: services.join(',') || undefined,
+  // };
 
   return {
-    genres: genres.join(',') || undefined,
-    show_type: types.join(',') || undefined,
-    paid_options: paidOptions.join(',') || undefined,
-    services: services.join(',') || undefined,
+    genres: filter.selectedGenres && filter.selectedGenres.length > 0 ? filter.selectedGenres.join(',') : undefined,
+    show_type: filter.selectedTypes && filter.selectedTypes.length > 0 ? filter.selectedTypes.join(',') : undefined,
+    paid_options: filter.selectedPaidOptions && filter.selectedPaidOptions.length > 0 ? filter.selectedPaidOptions.join(',') : undefined,
+    services: filter.selectedServices && filter.selectedServices.length > 0 ? filter.selectedServices.join(',') : undefined,
   };
 };
 
-const fetchWithFilters = async (keyword: string, filter: Filter): Promise<Content[]> => {
+const isFilterEmpty = (filter: Filter) => {
+  return filter.selectedGenres.length === 0 && filter.selectedTypes.length === 0 && 
+         filter.selectedServices.length === 0 && filter.selectedPaidOptions.length === 0;
+};
 
+const fetchWithFilters = async (filter: Filter): Promise<Content[]> => {
+
+  // use the ... spread to only include it if I want to
   const options = {
     method: 'GET',
-    url: API_BASE_URL,
+    url: `${API_BASE_URL+"filters"}`,
     params: {
       country: 'us',
       series_granularity: 'show',
-      genres: filter.selectedGenres.join(','),
-      keyword: keyword,
+      ...filter.selectedGenres.length > 0 && { genres: filter.selectedGenres.join(',') },
       order_direction: 'asc',
-      genres_relation: 'or', // include content from any selected genre
+      order_by: 'popularity_1year',
+      ...filter.selectedGenres.length > 0 && { genres_relation: 'or' }, // include content from any selected genre
       output_language: 'en',
-      catalogs: filter.selectedServices.join(','),
-      show_type: filter.selectedTypes.length != 1 ? "" : filter.selectedTypes[0] // leave blank for both shows and movies
+      ...filter.selectedServices.length > 0 && { catalogs: filter.selectedServices.join(',') },
+      ...filter.selectedTypes.length === 1 && { show_type: filter.selectedTypes[0] } // Include only if exactly one type is specified
     },
     headers: API_HEADERS
   };
 
   try {
-    console.log(`Fetching data with keyword: ${keyword} and filters`);
+    console.log(`Fetching data filters`);
+    console.log("Request Parameters:", {
+      country: 'us',
+      series_granularity: 'show',
+      ...filter.selectedGenres.length > 0 && { genres: filter.selectedGenres.join(',') },
+      order_direction: 'asc',
+      order_by: 'popularity_1year',
+      ...filter.selectedGenres.length > 0 && { genres_relation: 'or' },
+      output_language: 'en',
+      ...filter.selectedServices.length > 0 && { catalogs: filter.selectedServices.join(',') },
+      ...filter.selectedTypes.length === 1 && { show_type: filter.selectedTypes[0] }
+    });
+
     const response = await axios.request(options);
-    const data: Content[] = response.data;
-    if (!data) {
-      console.warn(`No results found for keyword: "${keyword}" and filters`);
+    const data = response.data;
+    if (!data || !Array.isArray(data.shows)) {
+      console.warn(`No results found for filters`);
       return [];
     }
-
-    return data;
+    
+    const shows: Content[] = data.shows;
+    console.log(`Fetched ${shows.length} content for filters`);
+    return shows;
   } catch (error) {
-    console.error(`Error fetching data with keywords "${keyword}" and filters:`, error.message);
+    console.error(`Error fetching data with filters:`, error.message);
     return [];
   }
 };
@@ -355,7 +390,7 @@ const fetchWithFilters = async (keyword: string, filter: Filter): Promise<Conten
 const fetchWithKeywordOnly = async (keyword: string): Promise<Content | null> => {
   const options = {
     method: 'GET',
-    url: API_BASE_URL,
+    url: `${API_BASE_URL+"title"}`,
     params: {
       country: 'us',
       title: keyword,
@@ -404,7 +439,7 @@ export const filterLocalDB = async (keyword: string, filter: Filter) : Promise<C
           content.showType?.toLowerCase(),
           ...(content.cast?.map((c) => c.toLowerCase()) || []),
           ...(content.directors?.map((d) => d.toLowerCase()) || []),
-          ...(content.genres?.map((g) => g.name.toLowerCase()) || []),
+          ...(content.genres?.map((g) => g.id.toLowerCase()) || []),
           ...(Object.values(content.streamingOptions?.us || {}).flatMap((option) => [
             option.service.id.toLowerCase(),
             option.type.toString().toLowerCase(),
@@ -418,23 +453,34 @@ export const filterLocalDB = async (keyword: string, filter: Filter) : Promise<C
 
         // console.log(`Are there are any local db keyword matches for ${keyword} : ${keywordMatches}`);
 
-        // using every to be strict with filers
-        // const filterMatches: boolean =
-        //   filters.length === 0 ||
-        //   filters.every((filterValue) =>
-        //     (filterValue === 'series' || filterValue === 'movie') ? contentFields.includes(filterValue) :
-        //     contentFields.some((field) => field && field.includes(filterValue))
-        //   );
-
+        // using every to be strict with filers, like theuy all have to be included
         const filterParams = mapFiltersToApiParams(filter);
         const filterMatches =
-          !filterParams.genres && !filterParams.show_type && !filterParams.services && !filterParams.paid_options
-            ? true // No filters
-            : Object.entries(filterParams).every(([key, value]) =>
-                value?.split(',').some((filterValue) =>
+            isFilterEmpty(filter) ? true // No filters
+            : Object.entries(filterParams).every(([key, value]) => {
+              const filterValues = value ? value.split(',').map(v => v.trim()) : [];
+              if (key === "show_type") {
+                // Must strictly match "series" or "movie"
+                return filterValues.some((filterValue) => {
+                  if (filterValue === "series") {
+                    return contentFields.some((field) => field === "series");
+                  } else if (filterValue === "movie") {
+                    return contentFields.some((field) => field === "movie");
+                  }
+                  return false;
+                });
+              } else if (key === "genre" || key === "streaming_service") {
+                // OR condition: at least one of the listed genres or services must match
+                return filterValues.some((filterValue) =>
                   contentFields.some((field) => field?.includes(filterValue))
-                )
-              );
+                );
+              } else {
+                // Default: AND logic for other filters
+                return filterValues.every((filterValue) =>
+                  contentFields.some((field) => field?.includes(filterValue))
+                );
+              }
+            });
 
         // Add to results if it matches and is not already in the Set
         if ((keyword.length > 0 ? keywordMatches && filterMatches : filterMatches) && !uniqueResults.has(content.id)) {
@@ -455,45 +501,139 @@ export const filterLocalDB = async (keyword: string, filter: Filter) : Promise<C
 
 export const searchByKeywords = async (keyword: string, filter: Filter): Promise<Content[] | null> => {
   try {
-    if (keyword.length === 0) {
-      console.warn('No keywords provided.');
-      return null;
-    }
-    keyword = keyword.toLowerCase().trim();
+    if (!keyword) { keyword = ""; }
+    else { keyword = keyword.toLowerCase().trim() || ""; }
 
     let apiResults: Content[] = [];
-    const filteredLocalData: Content[] = await filterLocalDB(keyword, filter) || [];
-    if (!filteredLocalData || filteredLocalData.length === 0) {
-      console.log(`No search results found in local db.json for ${keyword} and filters. ... Searcing the API`);
+    const filteredLocalData: Content[] = isFilterEmpty(filter) ? await filterLocalDB(keyword, filter) || [] : []; // dont use local data with filters
+    if (!filteredLocalData || filteredLocalData.length === 0 || !isFilterEmpty(filter)) {
+      if (!filteredLocalData || filteredLocalData.length === 0) {
+        console.log(`No search results found in local db.json for ${keyword} and filters. ... Searching the API`);
+      }
+      else {
+        console.log(`Filters sent to search, so searching the API`);
+      }
     
 
       // Fetch data from the API based on the presence of filters
-      if (Object.values(filter).every((arr) => arr.length === 0)) {
+      if (isFilterEmpty(filter)) {
         // No filters provided, use fetchWithKeywordOnly
         console.log(`Fetching data for keyword only: ${keyword}`);
-        const keywordResult: Content = await fetchWithKeywordOnly(keyword) || null;
+        const keywordResult: Content | null = await fetchWithKeywordOnly(keyword) || null;
         if (keywordResult) {
           console.log(`Fetching this content: ${keywordResult.title} from this keyword: ${keyword}`);
           apiResults.push(keywordResult)
         }
       } 
-      // else {
-      //   // Filters are provided, use fetchWithFilters
-      //   console.log(`Fetching data for keyword with filters: ${keyword}`);
-      //   apiResults = await fetchWithFilters(keyword, filter) || [];
-      // }
+      else {
+        // filter is not empty, meaning that no local data was used so apiResults is empty
+        let keywordResult: Content | null = null;
+        if (keyword.length > 0) {
+          keywordResult = await fetchWithKeywordOnly(keyword) || null;
+          if (keywordResult) {
+            console.log(`Fetching this content: ${keywordResult.title} from this keyword: ${keyword}`);
+            // wait to check with the filters before adding
+          }
+        }
+        // Filters are provided, use fetchWithFilters
+        console.log(`Fetching data for keyword with filters: ${keyword}`);
+        const filterResults: Content[] = await fetchWithFilters(filter) || [];
+        if (filterResults.length <= 0 && keywordResult) {
+          apiResults.push(keywordResult);
+        }
+        else if (filterResults.length >= 0 && keywordResult) {
+            apiResults = filterResults;
+           // Now, check if the keyword result satisfies the applied filters
 
-      // Fetch local data from the database
-      
+           console.log("keywordResult details:", {
+            title: keywordResult.title,
+            originalTitle: keywordResult.originalTitle,
+            overview: keywordResult.overview,
+            showType: keywordResult.showType,
+            cast: keywordResult.cast,
+            directors: keywordResult.directors,
+            genres: keywordResult.genres?.map(g => g.id),
+            streamingOptions: keywordResult.streamingOptions?.us
+          });
 
-      // Add new items from API results to the database
-      const newContents = apiResults.filter(
-        (apiContent) => !(filteredLocalData || []).some((localContent) => localContent.id === apiContent.id)
-      );
+           const keywordContentFields = [
+            keywordResult.title?.toLowerCase(),
+            keywordResult.originalTitle?.toLowerCase(),
+            keywordResult.overview?.toLowerCase(),
+            keywordResult.showType?.toLowerCase(),
+            ...(keywordResult.cast?.map((c) => c.toLowerCase()) || []),
+            ...(keywordResult.directors?.map((d) => d.toLowerCase()) || []),
+            ...(keywordResult.genres?.map((g) => g.id.toLowerCase()) || []),
+            ...(Object.values(keywordResult.streamingOptions?.us || {}).flatMap((option) => [
+              option.service.id.toLowerCase(),
+              option.type.toString().toLowerCase(),
+            ])),
+          ].filter(Boolean);
 
-      if (newContents.length > 0) {
-        console.log(`Adding ${newContents.length} new items to the database.`);
-        await updateDB(newContents); // update the db with new items found in search
+          console.log("keywordContentFields:", keywordContentFields);
+        
+          const filterParams = mapFiltersToApiParams(filter);
+          console.log("filterParams:", filterParams);
+
+          const matchesAllFilters = isFilterEmpty(filter)
+                ? true
+                : Object.entries(filterParams).every(([key, value]) => {
+                  const filterValues = value ? value.split(',').map(v => v.trim().toLowerCase()) : [];
+                  console.log(`Checking filter: ${key} with values: ${filterValues}`);
+                  if (key === "show_type") {
+                    return filterValues.some((filterValue) => {
+                      if (filterValue === "series") {
+                        const result = keywordContentFields.some((field) => field === "series");
+                        console.log("show_type series match:", result);
+                        return result;
+                      } else if (filterValue === "movie") {
+                        const result = keywordContentFields.some((field) => field === "movie");
+                        console.log("show_type movie match:", result);
+                        return result;
+                      }
+                      return false;
+                    });
+                  } else if (key === "genre" || key === "streaming_service") {
+                    // OR condition for genres and streaming services
+                    const result = filterValues.some((filterValue) =>
+                      keywordContentFields.some((field) => field.includes(filterValue))
+                    );
+                    console.log(`${key} OR match:`, result);
+                    return result;
+                  } else {
+                    if (filter.selectedGenres && filter.selectedGenres.length <= 0) { 
+                      console.log("No selected genres, defaulting to true");
+                      return true; 
+                    }
+                    // Default: AND logic for other filters
+                    const result = filterValues.every((filterValue) =>
+                      keywordContentFields.some((field) => field.includes(filterValue))
+                    );
+                    console.log(`${key} AND match:`, result);
+                    return result;
+                  }
+                });
+
+          if (matchesAllFilters) {
+            console.log(`The search ${keyword} matches with the filters!`);
+            apiResults.push(keywordResult);
+          }
+          else {
+            console.log(`The search ${keyword} DOES NOT match with the filters!`);
+          }
+        }
+      }      
+
+      // Add any unique new items from API results to the database
+      if (apiResults.length > 0) {
+        const newContents = apiResults.filter(
+          (apiContent) => !(filteredLocalData || []).some((localContent) => localContent.id === apiContent.id)
+        );
+
+        if (newContents.length > 0) {
+          console.log(`Adding ${newContents.length} new items to the database.`);
+          await updateDB(newContents); // update the db with new items found in search
+        }
       }
     }
     else {
