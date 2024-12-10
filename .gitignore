@@ -20,4 +20,4 @@ expo-env.d.ts
 # @end expo-cli
 
 
-/apiKey.ts
+**/keys.ts

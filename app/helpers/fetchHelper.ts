@@ -1,25 +1,26 @@
 import * as FileSystem from 'expo-file-system';
 import axios from 'axios';
-import { Content, StreamingOption } from '../types/contentType';
+import { Content, PosterContent, Posters, StreamingOption } from '../types/contentType';
 
 
 import db from '../data/db.json';
-import { API_KEY } from '@/apiKey';
+import { RAPIDAPI_KEY, TMDB_BEARER_TOKEN } from '@/keys';
 import { Filter, Genres, PaidOptions, Services, Types } from '../types/filterTypes';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEY } from '@/Global';
+import { TMDB } from '../types/tmdbType';
 
 // While the app is running, this api 
 const API_BASE_URL = 'https://streaming-availability.p.rapidapi.com/shows/search/';
 // ******* DO NOT PUSH UR API KEY *******
 const API_HEADERS = {
-    'x-rapidapi-key': API_KEY,
+    'x-rapidapi-key': RAPIDAPI_KEY,
     'x-rapidapi-host': 'streaming-availability.p.rapidapi.com'
 };
 
 
 const filePath = `${FileSystem.documentDirectory}db.json`;
-const CURRENT_DB_VERSION = 1.01;
+const CURRENT_DB_VERSION = 1.2;
 
 // these interact with the actual file
 
@@ -126,6 +127,57 @@ export const updateDB = async (newContents: Content[]): Promise<Boolean> => {
   }
 };
 
+export const updatePosterInDB = async (newContent: Content, url: string, vertical = true): Promise<boolean> => {
+  try {
+    if (!newContent) {
+      console.warn('No new content to update.');
+      return false;
+    }
+
+    const currFileData: Content[] = await loadDbFile();
+    if (!currFileData || !Array.isArray(currFileData)) {
+      console.warn('Failed to load local db.json or invalid data format.');
+      return false;
+    }
+
+    // Find the index of the existing content by ID
+    const existingIndex = currFileData.findIndex((existingContent) => existingContent.id === newContent.id);
+
+    if (existingIndex !== -1) {
+      // Update the poster path for the existing content
+      if (vertical) {
+        currFileData[existingIndex].imageSet.verticalPoster = {
+          ...currFileData[existingIndex].imageSet.verticalPoster,
+          w360: url, // Update the vertical poster path (adjust the resolution as needed)
+        };
+      } else {
+        currFileData[existingIndex].imageSet.horizontalPoster = {
+          ...currFileData[existingIndex].imageSet.horizontalPoster,
+          w1080: url, // Update the horizontal poster path (adjust the resolution as needed)
+        };
+      }
+    } else {
+      // Add the new content to the database
+      currFileData.push(newContent);
+    }
+
+    // Write updated data back to the db.json file
+    const updatedDb: { version: number; data: Content[] } = {
+      version: CURRENT_DB_VERSION,
+      data: currFileData,
+    };
+
+    await FileSystem.writeAsStringAsync(filePath, JSON.stringify(updatedDb));
+
+    console.log(`Database successfully updated with poster for content ID: ${newContent.id}`);
+    return true;
+  } catch (error) {
+    console.error('Error updating db.json:', error.message);
+    return false;
+  }
+};
+
+
 // Function to fetch a movie or TV show by its ID
 export const getContentById = async (ID: string): Promise<Content | null> => {
   try {
@@ -206,123 +258,125 @@ export const getRandomContent = async (count: number): Promise<Content[] | null>
 };
 
 // helpers
-export const getPosterByContent = (content: Content, vertical = true) => {
-    try {
-        if (content) {
-            // Validate nested properties
-            let resolution = 'w360';
-            let posterData = content.imageSet?.verticalPoster?.[resolution];
 
-            if (!vertical) {
-                resolution = 'w1080'
-                posterData = content.imageSet?.horizontalPoster?.[resolution];
-            }
 
-            if (posterData) {
-                // console.log(`poster url: ${posterData}`);
-                return posterData;
-            } else {
-                console.log(`${(vertical ? `Vertical ${resolution}` : `Horizontal ${resolution}`)} poster resolution not found for ID: ${content.id}`);
-                return null;
-            }
-        }
-        else {
-            // console.log(`content passed in is null in getPosterByContent`);
-            return null;
-        }
-    } catch (error) {
-      console.log('Error fetching the poster in getPosterByContent:', error.message);
-      return null;
+const getPosterURI = async (imdbID: string): Promise<Posters> => {
+  const options = {
+    method: 'GET',
+    headers: {
+      accept: 'application/json',
+      Authorization: TMDB_BEARER_TOKEN
     }
+  };
+
+  const baseURL = "https://api.themoviedb.org/3/find/";
+  const ending = "?external_source=imdb_id";
+  
+  try {
+    const response = await fetch(`${baseURL}${imdbID}${ending}`, options);
+    const data: TMDB = await response.json();
+
+    if (data.tv_results.length > 0) {
+      const tvResult = data.tv_results[0];
+      return {
+        vertical: tvResult.poster_path || "",
+        horizontal: tvResult.backdrop_path || "",
+      };
+    } else if (data.movie_results.length > 0) {
+      const movieResult = data.movie_results[0];
+      return {
+        vertical: movieResult.poster_path || "",
+        horizontal: movieResult.backdrop_path || "",
+      };
+    }
+
+    return { vertical: "", horizontal: "" }; // No results found
+  } catch (err) {
+    console.error("Error in getPosterURI:", err);
+    return { vertical: "", horizontal: "" }; // Error case
+  }
+};
+
+async function getGoodPoster(url: string, imdbID: string, vertical = true) : Promise<string | null> {
+  const isBadPoster = url.startsWith("https://www."); // good posters are cdn. or image.
+  if (!isBadPoster) return null;
+
+  console.log(`bad poster found for ${url}`);
+
+  const posters: Posters = await getPosterURI(imdbID);
+  
+  const baseURL = vertical
+    ? "https://image.tmdb.org/t/p/w500/"
+    : "https://image.tmdb.org/t/p/w1280/";
+
+  const posterPath = vertical ? posters.vertical : posters.horizontal;
+
+  return posterPath.length > 0 ? baseURL + posterPath : null;
+
+}
+
+export const getPostersFromContent = async (content: Content): Promise<Posters> => {
+  try {
+    if (!content) {
+      console.log(`content passed in is null in getPostersFromContent`);
+      return { vertical: '', horizontal: '' };
+    }
+
+    const resolutionVertical = 'w360';
+    const resolutionHorizontal = 'w1080';
+
+    let verticalPoster: string | null = null;
+    let horizontalPoster: string | null = null;
+
+    // Fetch vertical poster
+    if (content.imageSet?.verticalPoster?.[resolutionVertical]) {
+      verticalPoster = await getGoodPoster(
+        content.imageSet.verticalPoster[resolutionVertical],
+        content.imdbId
+      );
+
+      if (verticalPoster) {
+        const success = await updatePosterInDB(content, verticalPoster, true);
+        if (!success) {
+          verticalPoster = content.imageSet.verticalPoster[resolutionVertical];
+        }
+      } else {
+        verticalPoster = content.imageSet.verticalPoster[resolutionVertical];
+      }
+    }
+
+    // Fetch horizontal poster
+    if (content.imageSet?.horizontalPoster?.[resolutionHorizontal]) {
+      horizontalPoster = await getGoodPoster(
+        content.imageSet.horizontalPoster[resolutionHorizontal],
+        content.imdbId,
+        false
+      );
+
+      if (horizontalPoster) {
+        const success = await updatePosterInDB(content, horizontalPoster, false);
+        if (!success) {
+          horizontalPoster = content.imageSet.horizontalPoster[resolutionHorizontal];
+        }
+      } else {
+        horizontalPoster = content.imageSet.horizontalPoster[resolutionHorizontal];
+      }
+    }
+
+    // console.log(`Vertical Poster: ${verticalPoster}, Horizontal Poster: ${horizontalPoster}`);
+
+    return {
+      vertical: verticalPoster || '',
+      horizontal: horizontalPoster || '',
+    };
+  } catch (error) {
+    console.log('Error fetching the poster in getPosterByContent:', error.message);
+    return { vertical: '', horizontal: '' };
+  }
 };
 
 
-// old, outdate, and will no longer work, since we switched to searching with the API for better results
-// export const searchByKeywords = async (keywords: string, filter: string = "") : Promise<Content[] | null> => {
-//   try {
-//     if (keywords.length >= 0) {
-//       const data: Content[] = await loadDbFile();
-//       if (!data) {
-//         console.warn('Failed to load db.json.');
-//         return null;
-//       }
-//       if (!Array.isArray(data)) {
-//         console.warn('Invalid data format in db.json. Expected an array.');
-//         return null;
-//       }
-
-//       const keywordArray = keywords.toLowerCase().split(" ");
-//       const filters = filter ? filter.split(",").map((f) => f.trim().toLowerCase()) : [];
-//       const uniqueResults: Set<string> = new Set(); // used to check for uniqueness
-
-//       const results: Content[] = data.filter((content: Content) => {
-//         const contentFields = [
-//           content.title?.toLowerCase(),
-//           content.originalTitle?.toLowerCase(),
-//           content.overview?.toLowerCase(),
-//           content.showType?.toLowerCase(),
-//           ...(content.cast?.map((c) => c.toLowerCase()) || []),
-//           ...(content.directors?.map((d) => d.toLowerCase()) || []),
-//           ...(content.genres?.map((g) => g.name.toLowerCase()) || []),
-//           ...(Object.values(content.streamingOptions?.us || {}).flatMap((option) => [
-//             option.service.name.toLowerCase(),
-//             option.type.toString().toLowerCase(),
-//           ])),
-//         ];
-
-//         // Check if ANY keyword matches any field
-//         const keywordMatches: boolean = keywordArray.length > 0 ? keywordArray.some((keyword) =>
-//           contentFields.some((field) => field?.includes(keyword))
-//         ): false;
-
-//         // using every to be strict with filers
-//         const filterMatches: boolean =
-//           filters.length === 0 ||
-//           filters.every((filterValue) =>
-//             (filterValue === 'series' || filterValue === 'movie') ? contentFields.includes(filterValue) :
-//             contentFields.some((field) => field && field.includes(filterValue))
-//           );
-
-//         // Add to results if it matches and is not already in the Set
-//         if ((keywordArray.length > 0 ? keywordMatches && filterMatches : filterMatches) && !uniqueResults.has(content.id)) {
-//           uniqueResults.add(content.id); // Track unique content by ID
-//           return true; // Include in results
-//         }
-//         return false; // Exclude duplicates
-//       });
-
-//       return results.sort((a, b) => a.title.localeCompare(b.title));
-//     }
-//   } catch (error) {
-//     console.log(`Error searching for ${keywords}:`, error.message);
-//     return null;
-//   }
-// };
-
 const mapFiltersToApiParams = (filter: Filter) => {
-  // const genres = filter.selectedGenres.map((genre) =>
-  //   Genres.find((g) => g.label === genre)?.value
-  // ).filter(Boolean);
-
-  // const types = filter.selectedTypes.map((type) =>
-  //   Types.find((t) => t.label === type)?.value
-  // ).filter(Boolean);
-
-  // const paidOptions = filter.selectedPaidOptions.map((option) =>
-  //   PaidOptions.find((p) => p.label === option)?.value
-  // ).filter(Boolean);
-
-  // const services = filter.selectedServices.map((service) =>
-  //   Services.find((s) => s.label === service)?.value
-  // ).filter(Boolean);
-
-  // return {
-  //   genres: genres.join(',') || undefined,
-  //   show_type: types.join(',') || undefined,
-  //   paid_options: paidOptions.join(',') || undefined,
-  //   services: services.join(',') || undefined,
-  // };
-
   return {
     genres: filter.selectedGenres && filter.selectedGenres.length > 0 ? filter.selectedGenres.join(',') : undefined,
     show_type: filter.selectedTypes && filter.selectedTypes.length > 0 ? filter.selectedTypes.join(',') : undefined,
@@ -490,7 +544,6 @@ export const filterLocalDB = async (keyword: string, filter: Filter) : Promise<C
         return false; // Exclude duplicates
       });
 
-
       return results.sort((a, b) => a.title.localeCompare(b.title));
     
   } catch (error) {
@@ -499,7 +552,7 @@ export const filterLocalDB = async (keyword: string, filter: Filter) : Promise<C
   }
 };
 
-export const searchByKeywords = async (keyword: string, filter: Filter): Promise<Content[] | null> => {
+export const searchByKeywords = async (keyword: string, filter: Filter): Promise<PosterContent[] | null> => {
   try {
     if (!keyword) { keyword = ""; }
     else { keyword = keyword.toLowerCase().trim() || ""; }
@@ -648,7 +701,16 @@ export const searchByKeywords = async (keyword: string, filter: Filter): Promise
       return unique;
     }, [] as Content[]);
 
-    return allResults.sort((a, b) => a.title.localeCompare(b.title));
+    const sortedResults: Content[] = allResults.sort((a, b) => a.title.localeCompare(b.title));
+
+    const posterContentResults = await Promise.all(
+      sortedResults.map(async (content: Content) => {
+        const posters = await getPostersFromContent(content);
+        return { ...content, posters };
+      })
+    );
+
+    return posterContentResults;
   } catch (error) {
     console.error(`Error searching for "${keyword}":`, error.message);
     return null;

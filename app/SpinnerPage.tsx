@@ -3,8 +3,8 @@ import {Dimensions, SafeAreaView, StyleSheet, Text, View, Image, TouchableOpacit
 import { GestureHandlerRootView, TouchableWithoutFeedback} from 'react-native-gesture-handler';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { Spinner } from './components/spinnerComponent';
-import { Content } from './types/contentType';
-import { getContentById, getPosterByContent, getRandomContent } from './helpers/fetchHelper';
+import { Content, PosterContent, Posters } from './types/contentType';
+import { getContentById, getPostersFromContent } from './helpers/fetchHelper';
 import { router, usePathname } from 'expo-router';
 import moviesAndTvShows from './data/moviesAndTvShows';
 import { Colors } from '@/constants/Colors';
@@ -25,9 +25,9 @@ const unselectedHeartColor = "#ECE6F0";
 const SpinnerPage = () => {
     const pathname = usePathname();
 
-    const [moviesAndShows, setMoviesAndShows] = useState<Content[]>([]);   
+    const [moviesAndShows, setMoviesAndShows] = useState<PosterContent[]>([]);   
 
-    const [winner, setWinner] = useState<Content | null>(null);
+    const [winner, setWinner] = useState<PosterContent | null>(null);
     const [showOverlay, setShowOverlay] = useState(false);
     // const [heartColor, setHeartColor] = useState(unselectedHeartColor);
     const [heartColors, setHeartColors] = useState<{[key: string]: string}>();
@@ -39,9 +39,39 @@ const SpinnerPage = () => {
         Completed: [],
         Favorite: [],
       });
+    const [posterLists, setPosterLists] = useState<{
+        [key: string]: PosterContent[];
+      }>({});
     const [dropDownOpen, setDropDownOpen] = useState(false);
 
     const [addToListModal, setAddToListModal] = useState(false);
+
+    const turnTabsIntoPosterTabs = async (tabs: WatchList) => {
+      const updatedPosterLists = await Promise.all(
+        Object.keys(tabs).map(async (tabKey) => {
+          if (!tabs[tabKey] || tabs[tabKey].length === 0) {
+            console.warn(`No data for tab: ${tabKey}`);
+            return { [tabKey]: [] };
+          }
+    
+          const posterContents = await Promise.all(
+            tabs[tabKey].map(async (content) => {
+              try {
+                const posters = await getPostersFromContent(content);
+                return { ...content, posters };
+              } catch (error) {
+                console.error(`Error fetching posters for content ID: ${content.id}`, error);
+                return { ...content, posters: null };
+              }
+            })
+          );
+    
+          return { [tabKey]: posterContents };
+        })
+      );
+    
+      return updatedPosterLists.reduce((acc, tab) => ({ ...acc, ...tab }), {});
+    };
 
     const moveItemToFavoriteList = async (id: string) => {
         try {
@@ -84,14 +114,19 @@ const SpinnerPage = () => {
           setLists(updatedTabs);
           // Save updated tabs to AsyncStorage
           await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
+
+          // turnign the Contents into posterContents
+          const newPosterLists = await turnTabsIntoPosterTabs(updatedTabs);
+          setPosterLists(newPosterLists);
+
           
           // Show success alert
-          Alert.alert(
-            "Success",
-            isFavorite
-              ? `Removed "${item.title}" from Favorites`
-              : `Added "${item.title}" to Favorites`
-          );
+          // Alert.alert(
+          //   "Success",
+          //   isFavorite
+          //     ? `Removed "${item.title}" from Favorites`
+          //     : `Added "${item.title}" to Favorites`
+          // );
       
         } catch (error) {
           console.error("Error updating Favorites:", error);
@@ -117,18 +152,21 @@ const SpinnerPage = () => {
           };
     
           setLists(updatedTabs);
+
+          const newPosterLists = await turnTabsIntoPosterTabs(updatedTabs);
+          setPosterLists(newPosterLists);
       
           // Save updated tabs back to AsyncStorage
           await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
           
           setAddToListModal(false);
           // Show success alert
-          Alert.alert(
-            "Success",
-            isItemInTargetTab
-              ? `Removed "${item.title}" from "${targetTab}"`
-              : `Moved "${item.title}" to "${targetTab}"`
-          );
+          // Alert.alert(
+          //   "Success",
+          //   isItemInTargetTab
+          //     ? `Removed "${item.title}" from "${targetTab}"`
+          //     : `Moved "${item.title}" to "${targetTab}"`
+          // );
       
         } catch (error) {
           console.error("Error updating tabs:", error);
@@ -143,6 +181,9 @@ const SpinnerPage = () => {
             if (savedTabs && content) {
                 const parsedTabs = JSON.parse(savedTabs);
                 setLists(parsedTabs);
+                const newPosterLists = await turnTabsIntoPosterTabs(parsedTabs);
+                setPosterLists(newPosterLists);
+
                 // Initialize heartColors based on the Favorite tab
                 const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc) => {
                 acc[content.id] = parsedTabs.Favorite.some((fav) => fav.id === content.id)
@@ -158,17 +199,21 @@ const SpinnerPage = () => {
     };
 
     const handleWinner = (selectedWinner: Content) => {
-        const updateLists = async () => {
-            try {
-                await getContentObject(selectedWinner);
-            } catch (error) {
-                console.error('Error updating lists:', error);
-            }
-        };
-        updateLists();
-        setWinner(selectedWinner); // Update state with the winner
-        setShowOverlay(true);
-        console.log('Winner is:', selectedWinner.title); // Log the winner
+
+      setWinner({ ...selectedWinner, posters: null }); // Placeholder update
+      setShowOverlay(true);
+      const updateLists = async () => {
+          try {
+              await getContentObject(selectedWinner);
+              const posters = await getPostersFromContent(selectedWinner);
+              setWinner({ ...selectedWinner, posters }); // Update with full data
+              console.log('Winner is:', selectedWinner.title); // Log the winner
+          } catch (error) {
+              console.error('Error updating lists:', error);
+          }
+      };
+
+      updateLists();
     }; 
 
     useEffect(() => {
@@ -185,11 +230,21 @@ const SpinnerPage = () => {
               // console.log(`does the planned list exist: ${parsedTabs["Planned"]}`);
               setLists(parsedTabs);
 
+              const newPosterLists = await turnTabsIntoPosterTabs(parsedTabs);
+              setPosterLists(newPosterLists);
+
               combinedContent = selectedLists.flatMap((listKey) => {
                 return parsedTabs[listKey];
               });
 
-              setMoviesAndShows(combinedContent);
+              const combinedPosterContent = await Promise.all(
+                combinedContent.map(async (content: Content) => {
+                  const posters = await getPostersFromContent(content);
+                  return { ...content, posters }; 
+                })
+              );
+
+              setMoviesAndShows(combinedPosterContent);
               // console.log("SHOULD BE DATA");
             }
           } catch (error) {
@@ -249,7 +304,7 @@ const SpinnerPage = () => {
                           onLongPress={() => {setAddToListModal(true);}}
                       >
                           <View style={[appStyles.cardContainer, {width: screenWidth*0.7, alignSelf: "center"}]}>
-                              <Image source={{ uri: getPosterByContent(winner) }} style={appStyles.cardPoster} />
+                              <Image source={{ uri: winner.posters && winner.posters.vertical }} style={appStyles.cardPoster} />
                               <View style={[appStyles.cardContent]}>
                                   <Text style={[appStyles.cardTitle, {paddingBottom: 5}]}>{winner.title.split(":").length == 0 ? winner.title : winner.title.split(":")[0]}</Text>
                                   <Text style={appStyles.cardRating}>⭐ 4.2</Text>

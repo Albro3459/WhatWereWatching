@@ -10,7 +10,7 @@
 // ///// RUN THIS IN THE TERMINAL TO USE:
 // ///// npm run populate-db
 
-// import { API_KEY } from '@/apiKey';
+// import { RAPIDAPI_KEY } from '@/keys';
 
 // const dbFilePath = path.join(__dirname, '..', 'data', 'db.json');
 

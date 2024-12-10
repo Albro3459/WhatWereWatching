@@ -2,8 +2,8 @@ import { Colors } from '@/constants/Colors';
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, FlatList, Image, StyleSheet, Pressable, TouchableOpacity, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Dimensions, ScrollView, Alert, Modal } from 'react-native';
 import Heart from './components/heartComponent';
-import { Content } from './types/contentType';
-import { getContentById, getPosterByContent, getRandomContent, searchByKeywords } from './helpers/fetchHelper';
+import { Content, PosterContent } from './types/contentType';
+import { getContentById, getPostersFromContent, searchByKeywords } from './helpers/fetchHelper';
 import { router, usePathname } from 'expo-router';
 import { appStyles } from '@/styles/appStyles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -44,15 +44,46 @@ const SearchPage = () => {
     Completed: [],
     Favorite: [],
   });
+  const [posterLists, setPosterLists] = useState<{
+    [key: string]: PosterContent[];
+  }>({});
+
   const [selectedResult, setSelectedResult] = useState<Content>(null);
   const [addSearchToListModal, setSearchAddToListModal] = useState(false);
 
   type Movie = {
     id: string;
     rating: number;
-    content: Content | null;
+    content: PosterContent | null;
   };
   const [movies, setMovies] = useState<Movie[]>([]);
+
+  const turnTabsIntoPosterTabs = async (tabs: WatchList) => {
+    const updatedPosterLists = await Promise.all(
+      Object.keys(tabs).map(async (tabKey) => {
+        if (!tabs[tabKey] || tabs[tabKey].length === 0) {
+          console.warn(`No data for tab: ${tabKey}`);
+          return { [tabKey]: [] };
+        }
+  
+        const posterContents = await Promise.all(
+          tabs[tabKey].map(async (content) => {
+            try {
+              const posters = await getPostersFromContent(content);
+              return { ...content, posters };
+            } catch (error) {
+              console.error(`Error fetching posters for content ID: ${content.id}`, error);
+              return { ...content, posters: null };
+            }
+          })
+        );
+  
+        return { [tabKey]: posterContents };
+      })
+    );
+  
+    return updatedPosterLists.reduce((acc, tab) => ({ ...acc, ...tab }), {});
+  };
 
   const moveItemToFavoriteList = async (id: string) => {
     try {
@@ -93,18 +124,21 @@ const SearchPage = () => {
       };
       
       setLists(updatedTabs);
+      const newPosterLists = await turnTabsIntoPosterTabs(updatedTabs);
+      setPosterLists(newPosterLists);
+
       // Save updated tabs to AsyncStorage
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
 
       setSearchAddToListModal(false);
   
       // Show success alert
-      Alert.alert(
-        "Success",
-        isFavorite
-          ? `Removed "${item.title}" from Favorites`
-          : `Added "${item.title}" to Favorites`
-      );
+      // Alert.alert(
+      //   "Success",
+      //   isFavorite
+      //     ? `Removed "${item.title}" from Favorites`
+      //     : `Added "${item.title}" to Favorites`
+      // );
   
     } catch (error) {
       console.error("Error updating Favorites:", error);
@@ -130,18 +164,20 @@ const SearchPage = () => {
       };
 
       setLists(updatedTabs);
+      const newPosterLists = await turnTabsIntoPosterTabs(updatedTabs);
+      setPosterLists(newPosterLists);
   
       // Save updated tabs back to AsyncStorage
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
       
       setSearchAddToListModal(false);
       // Show success alert
-      Alert.alert(
-        "Success",
-        isItemInTargetTab
-          ? `Removed "${item.title}" from "${targetTab}"`
-          : `Moved "${item.title}" to "${targetTab}"`
-      );
+      // Alert.alert(
+      //   "Success",
+      //   isItemInTargetTab
+      //     ? `Removed "${item.title}" from "${targetTab}"`
+      //     : `Moved "${item.title}" to "${targetTab}"`
+      // );
   
     } catch (error) {
       console.error("Error updating tabs:", error);
@@ -167,9 +203,9 @@ const SearchPage = () => {
         return;
     }
     setSearchText(searchText);
-    const contents = await searchByKeywords(searchText, filter);
+    const contents: PosterContent[] = await searchByKeywords(searchText, filter);
     if (contents) {
-      const mappedMovies = contents.map((content, index) => ({
+      const mappedMovies = contents.map((content: PosterContent, index) => ({
         id: content.id,
         rating: (() => {
                     const result = 4 + ((index + 2) * 3) * 0.01;
@@ -247,7 +283,7 @@ const SearchPage = () => {
                     onLongPress={() => {setSelectedResult(item.content); setSearchAddToListModal(true);}}
                 >
                 <View style={appStyles.cardContainer}>
-                  <Image source={{ uri: getPosterByContent(item.content) }} style={appStyles.cardPoster} />
+                  <Image source={{ uri: item.content.posters.vertical }} style={appStyles.cardPoster} />
                   <View style={appStyles.cardContent}>
                     <Text style={appStyles.cardTitle}>{item.content.title}</Text>
                     <Text style={[appStyles.cardDescription, {paddingHorizontal: 10}]}>{item.content.overview}</Text>

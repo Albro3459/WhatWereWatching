@@ -14,10 +14,10 @@ import {
 import PagerView from 'react-native-pager-view';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from "expo-splash-screen";
-import { getPosterByContent } from './helpers/fetchHelper';
+import { getContentById, getPostersFromContent } from './helpers/fetchHelper';
 import { router, usePathname } from 'expo-router';
 import Heart from './components/heartComponent';
-import { Content } from './types/contentType';
+import { Content, PosterContent } from './types/contentType';
 import { appStyles } from '@/styles/appStyles';
 import { STORAGE_KEY } from '@/Global';
 import { Colors } from '@/constants/Colors';
@@ -37,16 +37,21 @@ const LibraryPage = () => {
   const pagerViewRef = useRef(null);
 
   const [activeTab, setActiveTab] = useState(0);
+
   const [tabs, setTabs] = useState<WatchList>({
     Planned: [],
     Watching: [],
     Completed: [],
     Favorite: [],
   });
+  const [posterTabs, setPosterTabs] = useState<{
+    [key: string]: PosterContent[];
+  }>({});
+
   const [heartColors, setHeartColors] = useState<{ [key: string]: string }>({});  
 
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedItem, setSelectedItem] = useState<Content>(null);
+  const [selectedItem, setSelectedItem] = useState<PosterContent>(null);
   const [moveModalVisible, setMoveModalVisible] = useState(false);
 
   useEffect(() => {
@@ -57,8 +62,35 @@ const LibraryPage = () => {
           // Load saved tabs from AsyncStorage
           const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
           if (savedTabs) {
-            const parsedTabs = JSON.parse(savedTabs);
+            const parsedTabs: WatchList = JSON.parse(savedTabs);
             setTabs(parsedTabs);
+
+            const newPosterLists = await turnTabsIntoPosterTabs(parsedTabs);
+            setPosterTabs(newPosterLists);
+            
+            // turnign the Contents into posterContents
+            // const updatedTabs = await Promise.all(
+            //   Object.keys(tabs).map(async (tabKey) => {
+            //     const posterContents = await Promise.all(
+            //       tabs[tabKey as keyof WatchList].map(async (content) => {
+            //         const posters = await getPostersFromContent(content);
+            //         return { ...content, ...posters }; // Ensure this matches PosterContent
+            //       })
+            //     );
+            
+            //     return { [tabKey]: posterContents } as { [key: string]: PosterContent[] }; // Explicit typing
+            //   })
+            // );
+            
+            // // Merge the results into a single object
+            // const newPosterTabs = updatedTabs.reduce((acc, tab) => {
+            //   return { ...acc, ...tab };
+            // }, {} as { [key: string]: PosterContent[] }); // Explicitly define the final structure
+            
+            // // Update the state
+            // setPosterTabs(newPosterTabs);
+            
+
             // Initialize heartColors based on the Favorite tab
             const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc, content: Content) => {
               acc[content.id] = parsedTabs.Favorite.some((fav) => fav.id === content.id)
@@ -68,24 +100,6 @@ const LibraryPage = () => {
             }, {});
             setHeartColors(savedHeartColors);
           }
-          // We dont need random content anymore
-          //  else {
-          //   // If no saved data, load random content for "Planned" and "Watching"
-          //   const plannedContent = await getRandomContent(8);
-          //   const watchingContent = await getRandomContent(8);
-          //   const heartColors = [...plannedContent, ...watchingContent].reduce((acc, content) => {
-          //     acc[content.id] = unselectedHeartColor;
-          //     return acc;
-          //   }, {});
-          //   setHeartColors(heartColors);
-
-          //   setTabs(({
-          //     Planned: plannedContent,
-          //     Watching: watchingContent,
-          //     Completed: [],
-          //     Favorite: [],
-          //   }));
-          // }
         } catch (error) {
           console.error('Error loading library content:', error);
         } finally {
@@ -96,7 +110,35 @@ const LibraryPage = () => {
     };
 
     loadContent();
-  }, [pathname]);
+  }, []);
+
+  const turnTabsIntoPosterTabs = async (tabs: WatchList) => {
+    const updatedPosterLists = await Promise.all(
+      Object.keys(tabs).map(async (tabKey) => {
+        if (!tabs[tabKey] || tabs[tabKey].length === 0) {
+          console.warn(`No data for tab: ${tabKey}`);
+          return { [tabKey]: [] };
+        }
+  
+        const posterContents = await Promise.all(
+          tabs[tabKey].map(async (content) => {
+            try {
+              const posters = await getPostersFromContent(content);
+              return { ...content, posters };
+            } catch (error) {
+              console.error(`Error fetching posters for content ID: ${content.id}`, error);
+              return { ...content, posters: null };
+            }
+          })
+        );
+  
+        return { [tabKey]: posterContents };
+      })
+    );
+  
+    return updatedPosterLists.reduce((acc, tab) => ({ ...acc, ...tab }), {});
+  };
+  
 
   const saveTabsToStorage = async (updatedTabs) => {
     try {
@@ -106,44 +148,128 @@ const LibraryPage = () => {
     }
   };
 
-  const handleTabPress = (index) => {
+  const handleTabPress = async (index) => {
     setActiveTab(index);
     pagerViewRef.current?.setPage(index);
+
+
+    const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+    if (savedTabs) {
+      const parsedTabs: WatchList = JSON.parse(savedTabs);
+      setTabs(parsedTabs);
+      const newPosterLists = await turnTabsIntoPosterTabs(parsedTabs);
+      setPosterTabs(newPosterLists);
+    }
   };
 
-  const moveItemToFavoriteTab = (id: string) => {
-    setHeartColors((prevColors = {}) => {
-      const newColor = prevColors[id] === selectedHeartColor ? unselectedHeartColor : selectedHeartColor;
+  // const moveItemToFavoriteTab = (id: string) => {
+  //   setHeartColors((prevColors = {}) => {
+  //     const newColor = prevColors[id] === selectedHeartColor ? unselectedHeartColor : selectedHeartColor;
   
-      setTabs((prevTabs) => {
-        const item = Object.values(prevTabs)
-          .flat()
-          .find((content) => content.id === id);
+  //     setTabs((prevTabs) => {
+  //       const item = Object.values(prevTabs)
+  //         .flat()
+  //         .find((content) => content.id === id);
   
-        if (!item) return prevTabs;
+  //       if (!item) return prevTabs;
   
-        const isFavorite = newColor === selectedHeartColor;
+  //       const isFavorite = newColor === selectedHeartColor;
   
-        const updatedFavorites = isFavorite
-          ? [...prevTabs.Favorite, item]
-          : prevTabs.Favorite.filter((content) => content.id !== id);
+  //       const updatedFavorites = isFavorite
+  //         ? [...prevTabs.Favorite, item]
+  //         : prevTabs.Favorite.filter((content) => content.id !== id);
   
-        const updatedTabs = {
-          ...prevTabs,
-          Favorite: updatedFavorites,
-        };
+  //       const updatedTabs = {
+  //         ...prevTabs,
+  //         Favorite: updatedFavorites,
+  //       };
   
-        saveTabsToStorage(updatedTabs); // Save updated state to AsyncStorage
-        Alert.alert('Success', `${isFavorite ? "Added" : "Removed"} "${item.title}" ${isFavorite ? "to" : "from"} Favorite tab`);
-        return updatedTabs;
-      });
+  //       saveTabsToStorage(updatedTabs); // Save updated state to AsyncStorage
+  //       Alert.alert('Success', `${isFavorite ? "Added" : "Removed"} "${item.title}" ${isFavorite ? "to" : "from"} Favorite tab`);
+
+  //       setDidFavoriteTabUpdate(true);
+  //       return updatedTabs;
+  //     });
       
-      setMoveModalVisible(false);
-      return { ...prevColors, [id]: newColor };
-    });
-  };
+  //     setMoveModalVisible(false);
+  //     return { ...prevColors, [id]: newColor };
+  //   });
+  // };
 
-  const moveItemToTab = (item: Content, targetTab) => {
+  // useEffect(() => {
+  //   const updatedPosterTabs = async () => {
+  //     if (didFavoriteTabUpdate && tabs) {
+  //       const newPosterLists = await turnTabsIntoPosterTabs(tabs);
+  //       setPosterTabs(newPosterLists);
+  //       setDidFavoriteTabUpdate(false);
+  //     }
+  //   }
+  //   updatedPosterTabs();
+  // }, [didFavoriteTabUpdate, tabs]);
+
+  const moveItemToFavoriteTab = async (id: string) => {
+    try {
+      // Update heartColors locally
+      setHeartColors((prevColors = {}) => ({
+        ...prevColors,
+        [id]: prevColors[id] === selectedHeartColor ? unselectedHeartColor : selectedHeartColor,
+      }));
+  
+      // Fetch tabs from AsyncStorage
+      const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+      const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
+  
+      // Find the item in all tabs
+      let item = Object.values<Content>(tabs)
+        .flat()
+        .find((content: Content) => content.id === id);
+  
+      if (!item) {
+        item = await getContentById(id);
+        if (!item) {
+          console.log(`LibraryPage: item with id: ${id} doesn't exist`);
+          return;
+        }
+      }
+  
+      // Check if the item is already in the Favorite tab
+      const isFavorite = tabs.Favorite.some((fav) => fav.id === id);
+  
+      // Update the Favorite tab
+      const updatedFavorites = isFavorite
+        ? tabs.Favorite.filter((content) => content.id !== id) // Remove if already in Favorites
+        : [...tabs.Favorite, item]; // Add if not in Favorites
+  
+      const updatedTabs = {
+        ...tabs,
+        Favorite: updatedFavorites,
+      };
+      
+      setTabs(updatedTabs);
+      const newPosterLists = await turnTabsIntoPosterTabs(updatedTabs);
+      setPosterTabs(newPosterLists);
+
+      // Save updated tabs to AsyncStorage
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
+
+      setMoveModalVisible(false);
+  
+      // Show success alert
+      // Alert.alert(
+      //   "Success",
+      //   isFavorite
+      //     ? `Removed "${item.title}" from Favorites`
+      //     : `Added "${item.title}" to Favorites`
+      // );
+  
+    } catch (error) {
+      console.error("Error updating Favorites:", error);
+      // Alert.alert("Error", "Unable to update Favorites. Please try again.");
+    }
+  };
+  
+
+  const moveItemToTab = async (item: Content, targetTab) => {
     const sourceTab = Object.keys(tabs).find((tab) =>
       tabs[tab].some((content) => content.id === item.id)
     );
@@ -167,14 +293,22 @@ const LibraryPage = () => {
       }
 
       setTabs(updatedTabs);
+      const newPosterLists = await turnTabsIntoPosterTabs(updatedTabs);
+      setPosterTabs(newPosterLists);
+
       saveTabsToStorage(updatedTabs); // Save updated state to AsyncStorage
 
-      Alert.alert('Success', `${deleted ? "Removed" : "Moved"} "${item.title}" ${deleted ? "from" : "to"} "${targetTab}"`);
+      // Alert.alert('Success', `${deleted ? "Removed" : "Moved"} "${item.title}" ${deleted ? "from" : "to"} "${targetTab}"`);
     }
     setMoveModalVisible(false);
   };
 
-  const renderTabContent = (tabData) => {
+  // useEffect(() => {
+  //   console.log('PosterTabs updated:', posterTabs);
+  // }, [posterTabs]);
+
+
+  const renderTabContent = (tabData: PosterContent[], tab) => {
     if (!tabData || tabData.length === 0) {
       return (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -189,7 +323,7 @@ const LibraryPage = () => {
       <FlatList
         data={tabData}
         numColumns={2}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item, index) => `${item.id}-${index}-${tab}`}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.movieCard}
@@ -198,7 +332,7 @@ const LibraryPage = () => {
                 pathname: '/InfoPage',
                 params: { id: item.id },
               });
-              console.log(`Library clicked on: title ${item.title} | id ${item.id} `);
+              // console.log(`Library clicked on: title ${item.title} | id ${item.id} `);
             }}
             onLongPress={() => {
               setSelectedItem(item);
@@ -207,8 +341,11 @@ const LibraryPage = () => {
           >
             <Image
               source={{
-                uri: getPosterByContent(item) || 'https://via.placeholder.com/100x150',
-              }}
+                  uri: item.posters?.vertical || 
+                      (console.log(`Library poster missing for: ${item.title} | poster: ${item.posters?.vertical}`), 
+                        // reloadMissingImages(item), 
+                        "https://example.com/default-image.jpg")
+                }}
               style={styles.movieImage}
             />
             <Text style={styles.movieTitle}>{item.title}</Text>
@@ -238,7 +375,7 @@ const LibraryPage = () => {
           <TouchableOpacity
             key={index}
             style={[styles.tabItem, activeTab === index && styles.activeTabItem]}
-            onPress={() => handleTabPress(index)}
+            onPress={async () => await handleTabPress(index)}
           >
             <Text
               style={[styles.tabText, activeTab === index && styles.activeTabText]}
@@ -253,11 +390,12 @@ const LibraryPage = () => {
       <PagerView
         style={{ flex: 1, marginTop: 20, marginBottom: 50 }}
         initialPage={0}
+        key={Object.keys(posterTabs).join('-')}
         ref={pagerViewRef}
         onPageSelected={(e) => setActiveTab(e.nativeEvent.position)}
       >
-        {Object.keys(tabs).map((tab, index) => (
-          <View key={index}>{renderTabContent(tabs[tab])}</View>
+        {Object.keys(posterTabs).map((tab, index) => (
+          <View key={tab}>{renderTabContent(posterTabs[tab], tab)}</View>
         ))}
       </PagerView>
 
@@ -283,14 +421,14 @@ const LibraryPage = () => {
                     <Heart 
                       heartColor={heartColors[selectedItem?.id] || unselectedHeartColor}
                       size={35}
-                      onPress={() => moveItemToFavoriteTab(selectedItem?.id)}
+                      onPress={async () => await moveItemToFavoriteTab(selectedItem?.id)}
                     />
                   </View>
                 ) : (
                   <TouchableOpacity
                     key={`LandingPage-${selectedItem.id}-${tab}-${index}`}
                     style={[appStyles.modalButton, isItemInList(selectedItem, tab, tabs) && appStyles.selectedModalButton]}
-                    onPress={() => moveItemToTab(selectedItem, tab)}
+                    onPress={async () => await moveItemToTab(selectedItem, tab)}
                   >
                   <Text style={appStyles.modalButtonText}>
                     {tab} {isItemInList(selectedItem, tab, tabs) ? "✓" : ""}

@@ -4,9 +4,9 @@ import { View, Text, Image, StyleSheet, ScrollView, Button, TouchableOpacity, Di
 import * as SplashScreen from "expo-splash-screen";
 import StarRating from 'react-native-star-rating-widget';
 import Heart from './components/heartComponent';
-import { Content, Service, StreamingOption } from './types/contentType';
+import { Content, PosterContent, Service, StreamingOption } from './types/contentType';
 import { useLocalSearchParams, usePathname } from 'expo-router/build/hooks';
-import { getContentById, getPosterByContent, getRandomContent } from './helpers/fetchHelper';
+import { getContentById, getPostersFromContent, getRandomContent } from './helpers/fetchHelper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { appStyles, RalewayFont } from '@/styles/appStyles';
 import { router } from 'expo-router';
@@ -34,7 +34,7 @@ function InfoPage() {
   const { id } = useLocalSearchParams() as InfoPageParams;
   const contentID = id ? id.toString() : null;
 
-  const [content, setContent] = useState<Content>();
+  const [content, setContent] = useState<PosterContent>();
   const streamingServices: () => { serviceName: string, darkThemeImage: string, link: string }[] = () => {
     const set = new Set<string>(); // Use a Set to track unique service names
   
@@ -67,7 +67,10 @@ function InfoPage() {
     Completed: [],
     Favorite: [],
   });
-  // const [watchList, setWatchList] = useState<Set<string>>();
+  const [posterLists, setPosterLists] = useState<{
+    [key: string]: PosterContent[];
+  }>({});
+
   const [addToListModal, setAddToListModal] = useState(false);
 
   const [heartColors, setHeartColors] = useState<{[key: string]: string}>();
@@ -123,9 +126,36 @@ function InfoPage() {
     },
   ]);
 
-  const [recommendedContent, setRecommendedContent] = useState<Content[]>([]); 
-  const [selectedRecommendation, setSelectedRecommendation] = useState<Content | null>(null);
+  const [recommendedContent, setRecommendedContent] = useState<PosterContent[]>([]); 
+  const [selectedRecommendation, setSelectedRecommendation] = useState<PosterContent | null>(null);
   const [infoModalVisible, setInfoModalVisible] = useState(false);   
+
+  const turnTabsIntoPosterTabs = async (tabs: WatchList) => {
+    const updatedPosterLists = await Promise.all(
+      Object.keys(tabs).map(async (tabKey) => {
+        if (!tabs[tabKey] || tabs[tabKey].length === 0) {
+          console.warn(`No data for tab: ${tabKey}`);
+          return { [tabKey]: [] };
+        }
+  
+        const posterContents = await Promise.all(
+          tabs[tabKey].map(async (content) => {
+            try {
+              const posters = await getPostersFromContent(content);
+              return { ...content, posters };
+            } catch (error) {
+              console.error(`Error fetching posters for content ID: ${content.id}`, error);
+              return { ...content, posters: null };
+            }
+          })
+        );
+  
+        return { [tabKey]: posterContents };
+      })
+    );
+  
+    return updatedPosterLists.reduce((acc, tab) => ({ ...acc, ...tab }), {});
+  };
 
   const moveItemToFavoriteList = async (id: string) => {
     try {
@@ -166,18 +196,22 @@ function InfoPage() {
       };
       
       setLists(updatedTabs);
+
+      const newPosterLists = await turnTabsIntoPosterTabs(updatedTabs);
+      setPosterLists(newPosterLists);
+
       // Save updated tabs to AsyncStorage
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
 
       setInfoModalVisible(false);
   
       // Show success alert
-      Alert.alert(
-        "Success",
-        isFavorite
-          ? `Removed "${item.title}" from Favorites`
-          : `Added "${item.title}" to Favorites`
-      );
+      // Alert.alert(
+      //   "Success",
+      //   isFavorite
+      //     ? `Removed "${item.title}" from Favorites`
+      //     : `Added "${item.title}" to Favorites`
+      // );
   
     } catch (error) {
       console.error("Error updating Favorites:", error);
@@ -203,6 +237,9 @@ function InfoPage() {
       };
 
       setLists(updatedTabs);
+      
+      const newPosterLists = await turnTabsIntoPosterTabs(updatedTabs);
+      setPosterLists(newPosterLists);
   
       // Save updated tabs back to AsyncStorage
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
@@ -210,12 +247,12 @@ function InfoPage() {
       setAddToListModal(false);
       setInfoModalVisible(false);
       // Show success alert
-      Alert.alert(
-        "Success",
-        isItemInTargetTab
-          ? `Removed "${item.title}" from "${targetTab}"`
-          : `Moved "${item.title}" to "${targetTab}"`
-      );
+      // Alert.alert(
+      //   "Success",
+      //   isItemInTargetTab
+      //     ? `Removed "${item.title}" from "${targetTab}"`
+      //     : `Moved "${item.title}" to "${targetTab}"`
+      // );
   
     } catch (error) {
       console.error("Error updating tabs:", error);
@@ -238,7 +275,9 @@ function InfoPage() {
           const getContent = await getContentById(contentID);
           if (getContent) {
             // console.log(`Getting content for ${getContent.title}`);
-            setContent(getContent);
+            const posters = await getPostersFromContent(getContent);
+            const updatedContent: PosterContent = { ...getContent, posters };
+            setContent(updatedContent);
 
             try {
               // Load saved tabs from AsyncStorage
@@ -264,7 +303,13 @@ function InfoPage() {
 
             const randomContent = await getRandomContent(4);
             if (randomContent) {
-              setRecommendedContent(randomContent);
+              const updatedRandomContent: PosterContent[] = await Promise.all(
+                randomContent.map(async (content: Content): Promise<PosterContent> => {
+                  const posters = await getPostersFromContent(content);
+                  return { ...content, posters };
+                })
+              );
+              setRecommendedContent(updatedRandomContent);
             }
 
             const updatedReviews = await Promise.all(
@@ -396,7 +441,7 @@ function InfoPage() {
                   onLongPress={() => {setSelectedRecommendation(item); setInfoModalVisible(true);}}
                 >
                   <Image
-                    source={{uri: getPosterByContent(item)}}
+                    source={{uri: item && item.posters.vertical }}
                     style={appStyles.movieImage}
                   />
                   <Text style={appStyles.movieTitle}>{item.title}</Text>
@@ -507,7 +552,7 @@ function InfoPage() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.movieContainer}>
           {/* Movie Poster */}
-          <Image source={{ uri: getPosterByContent(content) }} style={styles.posterImage} />
+          <Image source={{ uri: content && content.posters.vertical }} style={styles.posterImage} />
           {/* Movie Info */}
           <View style={styles.infoSection}>
             <Text style={styles.title}>{content && content.title}</Text>
