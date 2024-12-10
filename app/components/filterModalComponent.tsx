@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
-import { InitialValues } from '../types/filterModalType';
+import { Filter, Genres, PaidOptions, Services, Types,  } from '../types/filterTypes';
 import { Colors } from '@/constants/Colors';
 import { rgbaColor } from 'react-native-reanimated/lib/typescript/Colors';
 import { RalewayFont } from '@/styles/appStyles';
 
-const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, onClose: (any) => void, initialValues: InitialValues}) => {
+const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, onClose: (any) => void, initialValues: Filter}) => {
   const [selectedGenres, setSelectedGenres] = useState(initialValues.selectedGenres || []);
   const [selectedTypes, setSelectedTypes] = useState(initialValues.selectedTypes || []);
   const [selectedServices, setSelectedServices] = useState(initialValues.selectedServices || []);
@@ -15,54 +15,6 @@ const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, on
   const [typeOpen, setTypeOpen] = useState(false);
   const [serviceOpen, setServiceOpen] = useState(false);
   const [paidOpen, setPaidOpen] = useState(false);
-
-  const genres = [
-    { label: 'Action', value: 'Action' },
-    { label: 'Adventure', value: 'Adventure' },
-    { label: 'Animation', value: 'Animation' },
-    { label: 'Comedy', value: 'Comedy' },
-    { label: 'Crime', value: 'Crime' },
-    { label: 'Drama', value: 'Drama' },
-    { label: 'Horror', value: 'Horror' },
-    { label: 'Sci-Fi', value: 'Science Fiction' },
-    { label: 'Romance', value: 'Romance' },
-    { label: 'Reality', value: 'Reality' },
-    { label: 'Thriller', value: 'Thriller' },
-    { label: 'Mystery', value: 'Mystery' },
-    { label: 'Fantasy', value: 'Fantasy' },
-    { label: 'Documentary', value: 'Documentary' },
-    { label: 'Family', value: 'Family' },
-    { label: 'Musical', value: 'Musical' },
-    { label: 'Biography', value: 'Biography' },
-    { label: 'History', value: 'History' },
-    { label: 'War', value: 'War' },
-    { label: 'Western', value: 'Western' },
-  ];
-
-  const types = [
-    { label: 'Movie', value: 'movie' },
-    { label: 'Show', value: 'series' },
-  ];
-
-  const services = [
-    { label: 'Netflix', value: 'Netflix' },
-    { label: 'Hulu', value: 'Hulu' },
-    { label: 'HBO Max', value: 'Max' },
-    { label: 'Amazon Prime', value: 'Prime Video' },
-    { label: 'Apple TV', value: 'Apple TV' },
-    { label: 'Disney+', value: 'Disney+' },
-    { label: 'Peacock', value: 'Peacock' },
-    { label: 'Paramount+', value: 'Paramount+' },
-    { label: 'Tubi', value: 'Tubi' },
-  ];
-
-  const paidOptions = [
-    { label: 'Free', value: 'free' },
-    { label: 'Subscription', value: 'subscription' },
-    { label: 'Rent', value: 'rent' },
-    { label: 'Buy', value: 'buy' },
-    { label: 'Add On', value: 'addon' },
-  ];
 
   const handleOpen = (modalName) => {
     setGenreOpen(modalName === 'genre' ? !genreOpen : false);
@@ -76,7 +28,7 @@ const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, on
         handleOpen("none");
         return;
     }
-    const filters: InitialValues = {
+    const filters: Filter = {
         selectedGenres: [...selectedGenres], // Ensures the current value is captured
         selectedTypes: [...selectedTypes],
         selectedServices: [...selectedServices],
@@ -105,7 +57,7 @@ const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, on
             setOpen={() => handleOpen('genre')}
             value={selectedGenres}
             setValue={setSelectedGenres}
-            items={genres}
+            items={Genres}
             placeholder="Select Genres"
             style={styles.dropdown}
             theme="DARK"
@@ -122,7 +74,7 @@ const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, on
             setOpen={() => handleOpen('type')}
             value={selectedTypes}
             setValue={setSelectedTypes}
-            items={types}
+            items={Types}
             placeholder="Select Types"
             style={styles.dropdown}
             theme="DARK"
@@ -139,7 +91,7 @@ const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, on
             setOpen={() => handleOpen('service')}
             value={selectedServices}
             setValue={setSelectedServices}
-            items={services}
+            items={Services}
             placeholder="Select Services"
             style={styles.dropdown}
             theme="DARK"
@@ -156,7 +108,7 @@ const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, on
             setOpen={() => handleOpen('paid')}
             value={selectedPaidOptions}
             setValue={setSelectedPaidOptions}
-            items={paidOptions}
+            items={PaidOptions}
             placeholder="Select Payment Option"
             style={styles.dropdown}
             theme="DARK"

@@ -11,9 +11,9 @@ import { STORAGE_KEY } from '@/Global';
 import { WatchList } from './types/listsType';
 import { isItemInList } from './helpers/listHelper';
 import DropDownPicker from 'react-native-dropdown-picker';
-import { Ionicons } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import FilterModal from './components/filterModalComponent';
-import { InitialValues } from './types/filterModalType';
+import { Filter } from './types/filterTypes';
 
 
 // TODO:
@@ -149,24 +149,24 @@ const SearchPage = () => {
   };
 
 
-  const handleFilterModalClose = (values : InitialValues | null) => {
+  const handleFilterModalClose = (filter : Filter | null) => {
     setIsFilterModalVisible(false);
-    if (!values) { return; }
-    setSelectedGenres(values.selectedGenres);
-    setSelectedTypes(values.selectedTypes);
-    setSelectedServices(values.selectedServices);
-    setSelectedPaidOptions(values.selectedPaidOptions);
-    const filters = [...values.selectedGenres, ...values.selectedTypes, ...values.selectedServices, ...values.selectedPaidOptions].join(',');
-    search(searchText || "", filters);
+    if (!filter) { return; }
+    setSelectedGenres(filter.selectedGenres);
+    setSelectedTypes(filter.selectedTypes);
+    setSelectedServices(filter.selectedServices);
+    setSelectedPaidOptions(filter.selectedPaidOptions);
+    // const filters = [...values.selectedGenres, ...values.selectedTypes, ...values.selectedServices, ...values.selectedPaidOptions].join(',');
+    search(searchText || "", filter);
   };
 
-  const search = async (searchText: string, filters: string) => {
+  const search = async (searchText: string, filter: Filter) => {
     setSearchText(searchText);
-    const contents = await searchByKeywords(searchText, filters);
+    const contents = await searchByKeywords(searchText, filter);
     if (contents) {
       const mappedMovies = contents.map((content, index) => ({
         id: content.id,
-        rating: 4 + ((index + 2) * 3) * 0.01,
+        rating: parseInt(`4 + ((${index} + 2) * 3) * 0.01`, 2),
         content: content,
       }));
       setMovies(mappedMovies);
@@ -196,12 +196,19 @@ const SearchPage = () => {
     <View style={[styles.container]}>
         {/* Search Bar */}
         <View style={{flexDirection: "row", columnGap: 10, justifyContent: "center"}} >
+          <Pressable style={{paddingTop: 5}} onPress={async () => await search(searchText, { selectedGenres, selectedTypes, selectedServices, selectedPaidOptions} as Filter )}>
+            <Feather name="search" size={28} color="white" />
+          </Pressable>
           <TextInput
             style={[styles.searchBar, {flex: 1}]}
             placeholder="Search for a movie..."
             placeholderTextColor={Colors.reviewTextColor}
             value={searchText}
-            onChangeText={async (text) => await search(text, [...selectedGenres, ...selectedTypes, ...selectedServices, ...selectedPaidOptions].join(',') )}
+            // onChangeText={async (text) => await search(text, { selectedGenres, selectedTypes, selectedServices, selectedPaidOptions} as Filter )}
+            onChangeText={(text) => setSearchText(text)}
+            //{/*// Trigger search on Enter */}
+            onSubmitEditing={async () => await search(searchText, { selectedGenres, selectedTypes, selectedServices, selectedPaidOptions} as Filter )}
+            returnKeyType="search" // makes the return key say search
           />
           <Pressable onPress={() => setIsFilterModalVisible(true)}>
             <Ionicons name="filter-circle-outline" color={"white"} size={35} />
