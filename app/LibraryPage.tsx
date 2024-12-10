@@ -193,10 +193,13 @@ const LibraryPage = () => {
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.movieCard}
-            onPress={() => router.push({
-              pathname: '/InfoPage',
-              params: { id: item.id },
-            })}
+            onPress={() => {
+                router.push({
+                pathname: '/InfoPage',
+                params: { id: item.id },
+              });
+              console.log(`Library clicked on: title ${item.title} | id ${item.id} `);
+            }}
             onLongPress={() => {
               setSelectedItem(item);
               setMoveModalVisible(true);

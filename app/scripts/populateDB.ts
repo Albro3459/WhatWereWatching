@@ -17,7 +17,7 @@
 // const API_BASE_URL = 'https://streaming-availability.p.rapidapi.com/shows/search/title';
 // // ******* DO NOT PUSH UR API KEY *******
 // const API_HEADERS = {
-//     'x-rapidapi-key': API_KEY,
+//     'x-rapidapi-key': 'YOUR API KEY',
 //     'x-rapidapi-host': 'streaming-availability.p.rapidapi.com'
 // };
 

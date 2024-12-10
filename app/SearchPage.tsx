@@ -161,12 +161,20 @@ const SearchPage = () => {
   };
 
   const search = async (searchText: string, filter: Filter) => {
+    if (searchText.length <= 0 && filter.selectedGenres.length === 0 && 
+        filter.selectedTypes.length === 0 && filter.selectedServices.length === 0 && filter.selectedPaidOptions.length === 0) {
+        setMovies([]);
+        return;
+    }
     setSearchText(searchText);
     const contents = await searchByKeywords(searchText, filter);
     if (contents) {
       const mappedMovies = contents.map((content, index) => ({
         id: content.id,
-        rating: parseInt(`4 + ((${index} + 2) * 3) * 0.01`, 2),
+        rating: (() => {
+                    const result = 4 + ((index + 2) * 3) * 0.01;
+                    return parseFloat(Math.min(result, 5).toFixed(2));
+                  })(), // All this just to round to 2 decimals. God damn js can suck sometimes
         content: content,
       }));
       setMovies(mappedMovies);
@@ -209,6 +217,7 @@ const SearchPage = () => {
             //{/*// Trigger search on Enter */}
             onSubmitEditing={async () => await search(searchText, { selectedGenres, selectedTypes, selectedServices, selectedPaidOptions} as Filter )}
             returnKeyType="search" // makes the return key say search
+            clearButtonMode='while-editing'
           />
           <Pressable onPress={() => setIsFilterModalVisible(true)}>
             <Ionicons name="filter-circle-outline" color={"white"} size={35} />
@@ -241,7 +250,7 @@ const SearchPage = () => {
                   <Image source={{ uri: getPosterByContent(item.content) }} style={appStyles.cardPoster} />
                   <View style={appStyles.cardContent}>
                     <Text style={appStyles.cardTitle}>{item.content.title}</Text>
-                    <Text style={[appStyles.cardDescription, {paddingLeft: 10}]}>{item.content.overview}</Text>
+                    <Text style={[appStyles.cardDescription, {paddingHorizontal: 10}]}>{item.content.overview}</Text>
                     <Text style={appStyles.cardRating}>⭐ {item.rating}</Text>
                   </View>
                   <Heart 

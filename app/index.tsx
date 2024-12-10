@@ -33,6 +33,12 @@ export default function Index() {
     
       // Toggle function to expand or collapse the white rectangle
       const handleSignInPress = async () => {
+        Global.username = inputUsername.trim();
+        Global.password = inputPassword;
+        router.push('/LandingPage');
+        return;
+
+        
         setIsSigningIn(true);
         setIsSigningUp(false);
         // Animate the height change
@@ -168,7 +174,7 @@ export default function Index() {
                             ...(isSigningUp && styles.smallButton), // Manually merge styles
                             }}
                             onPress={
-                            !isSigningUp && isSigningIn ? async () => { await handleSignIn(); } : async () => { await handleSignInPress(); }
+                              !isSigningUp && isSigningIn ? async () => { await handleSignIn(); } : async () => { await handleSignInPress(); }
                             }
                         >
                             <Text
