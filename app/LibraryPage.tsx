@@ -23,6 +23,8 @@ import { STORAGE_KEY } from '@/Global';
 import { Colors } from '@/constants/Colors';
 import { WatchList } from './types/listsType';
 import { isItemInList } from './helpers/listHelper';
+import DropDownPicker from 'react-native-dropdown-picker';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const scale = .75;
@@ -35,6 +37,10 @@ SplashScreen.preventAutoHideAsync();
 const LibraryPage = () => {
   const pathname = usePathname();
   const pagerViewRef = useRef(null);
+
+  const [selectedList, setSelectedList] = useState<string[]>([]);
+  const [dropDownOpen, setDropDownOpen] = useState(false);
+  const [libraryModal, setLibraryModal] = useState(false);
 
   const [activeTab, setActiveTab] = useState(0);
   const [tabs, setTabs] = useState<WatchList>({
@@ -230,8 +236,9 @@ const LibraryPage = () => {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.backgroundColor }}>
       {/* Tab Bar */}
-      <View style={styles.tabBar}>
-        {Object.keys(tabs).map((tab, index) => (
+      {/* <View style={[styles.tabBar]}> */}
+      <View style={[{backgroundColor: Colors.tabBarColor, paddingVertical: 10, paddingLeft: 60, flexDirection: "row", justifyContent: "center", alignItems: "center", alignSelf: "center"}]}>
+        {/* {Object.keys(tabs).map((tab, index) => (
           <TouchableOpacity
             key={index}
             style={[styles.tabItem, activeTab === index && styles.activeTabItem]}
@@ -243,7 +250,26 @@ const LibraryPage = () => {
               {tab}
             </Text>
           </TouchableOpacity>
-        ))}
+        ))} */}
+        <DropDownPicker
+            multiple={true}
+            min={0}
+            theme="DARK"
+            mode="BADGE"
+            badgeDotColors={["#e76f51", "#00b4d8", "#e9c46a", "#e76f51", "#8ac926", "#00b4d8", "#e9c46a"]}
+            placeholder='Select a list to shuffle...'
+            style={{backgroundColor: Colors.unselectedColor, width: "85%"}}
+
+            open={dropDownOpen}
+            setOpen={setDropDownOpen}
+            value={selectedList}
+            setValue={setSelectedList}
+            items={Object.keys(tabs).map((tab) => ({ label: tab, value: tab }))}
+          />
+
+          <View style={{marginLeft: -40, paddingRight: 40 }}>
+            <Ionicons name="add-circle-outline" size={35} color="white" />
+          </View>
       </View>
 
       {/* Pager View */}

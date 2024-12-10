@@ -5,29 +5,69 @@ import { Content, StreamingOption } from '../types/contentType';
 // import db from '../../assets/data/db.json';
 import db from '../data/db.json';
 
+import { API_KEY } from '@/apiKey';
+
+// While the app is running, this api 
+const API_BASE_URL = 'https://streaming-availability.p.rapidapi.com/shows/search/title';
+// ******* DO NOT PUSH UR API KEY *******
+const API_HEADERS = {
+    'x-rapidapi-key': API_KEY,
+    'x-rapidapi-host': 'streaming-availability.p.rapidapi.com'
+};
+
 
 const filePath = `${FileSystem.documentDirectory}db.json`;
+const CURRENT_DB_VERSION = 1.01
 
 // these interact with the actual file
 
-export const loadDbFile = async (): Promise<any | null> => {
+export const loadDbFile = async (): Promise<Content[] | null> => {
   try {
     // Check if the file is already in a writable directory
     const fileExists = await FileSystem.getInfoAsync(filePath);
+    let fileDb: { version?: number; data?: Content[] } | null = null;
+
     if (fileExists.exists) {
       // console.log('File already exists in writable directory:', filePath);
       const fileContent = await FileSystem.readAsStringAsync(filePath);
-      return JSON.parse(fileContent);
+      
+      try {
+        fileDb = JSON.parse(fileContent);
+      } catch (error) {
+        console.error('Error parsing existing db.json:', error.message);
+        fileDb = null;
+      }
+      // Check if version exists and matches
+      if (fileDb && typeof fileDb === 'object' && fileDb.version) {
+        if (fileDb.version >= CURRENT_DB_VERSION) {
+          // console.log("returning at new content");
+          return fileDb.data as Content[]; // only return the data
+        }
+      }
     }
 
+    // Either the file doesn't exist, or the version is outdated. Recopy it.
+    let validData: Content[] = Array.isArray(db)
+      ? db // If db is an array, use it directly
+      : Array.isArray((db as { data?: Content[] }).data) // Check if `db` has a valid `data` field
+      ? (db as { data?: Content[] }).data as Content[]
+      : []; 
+
+    // Either the file doesn't exist, or the version is outdated. Recopy it.
+    const updatedDb: { version: number; data: Content[] } = {
+      version: CURRENT_DB_VERSION,
+      data: fileDb && Array.isArray(fileDb.data) ? fileDb.data : validData
+    };
+
+    const updatedDbString = JSON.stringify(updatedDb);
+
     // Copy the file to a writable directory
-    await FileSystem.writeAsStringAsync(filePath, JSON.stringify(db));
+    await FileSystem.writeAsStringAsync(filePath, updatedDbString);
 
-    console.log('File copied to writable directory:', filePath);
+    console.log('Database updated or created:', filePath);
 
-    // Read and return the file content
-    const fileContent = await FileSystem.readAsStringAsync(filePath);
-    return JSON.parse(fileContent);
+    // console.log("returning at the end");
+    return updatedDb.data;
   } catch (error) {
     console.error('Error loading db.json:', error.message);
     return null;
