@@ -10,7 +10,7 @@ import moviesAndTvShows from './data/moviesAndTvShows';
 import { Colors } from '@/constants/Colors';
 import { appStyles, RalewayFont } from '@/styles/appStyles';
 import Heart from './components/heartComponent';
-import { Entypo } from '@expo/vector-icons';
+import { Entypo, Feather } from '@expo/vector-icons';
 import { PosterList, WatchList } from './types/listsType';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEY } from '@/Global';
@@ -89,15 +89,16 @@ const SpinnerPage = () => {
 
     const handleModalClose = () => {
       // inputRef.current?.blur(); // Blur the main input to prevent reopening the modal
+      // console.log("handle modal close");
+      setInputText(""); // Clear the input text
+      Keyboard.dismiss(); 
       setSearchModalVisible(false);
     };
 
-    const handleAddSegment = async () => {
+    const handleAddSegment = async (input: string) => {
       try {
-        await addSegment(inputText); // Perform your logic
-        setInputText(""); // Clear the input text
-        handleModalClose();
-        // setSearchModalVisible(false); // Hide the modal
+        // console.log(`inpput text: ${input}`);
+        await addSegment(input); // Perform your logic
       } catch (error) {
         console.error("Error adding segment:", error);
         Alert.alert("Error", "Failed to add the segment. Please try again.");
@@ -107,12 +108,12 @@ const SpinnerPage = () => {
     // Function to add a movie to the wheel
     const addSegment = async (inputText) => {
       if (!inputText || inputText.trim() === "") {
-        setInputText("");
-        // setSearchModalVisible(false);
-        // Alert.alert("Input Error", "Please enter a movie name.");
+        handleModalClose();
+        Alert.alert("Input Error", "Please enter a movie name.");
         return;
       }
       
+      handleModalClose();
       // setInputText("");
       // setSearchModalVisible(false);
       
@@ -165,8 +166,11 @@ const SpinnerPage = () => {
 
               const newPosterLists = await turnTabsIntoPosterTabs(parsedTabs);
               setPosterLists(newPosterLists);
-
+              
               const allContent = selectedLists.flatMap((listKey) => parsedTabs[listKey]);
+              if (searchedContent && searchedContent.length > 0) {
+                searchedContent.forEach((content) => allContent.push(content));
+              }
 
               const uniqueContentMap = new Map(allContent.map((c) => [c.id, c]));
               const uniqueContent = Array.from(uniqueContentMap.values());
@@ -221,38 +225,43 @@ const SpinnerPage = () => {
           {/* Input Section */}
           <View>
             <Pressable style={styles.inputContainer} onPress={() => setSearchModalVisible(true)}>
+              <View style={{paddingTop: 10, paddingRight: 15}}>
+                <Feather name="search" size={28} color="white" />
+              </View>
               <Text
                 style={[styles.input, {flex: 1, paddingTop: 15}]}
               >
-              {inputText && inputText.length > 0 ? inputText : "Add a show or movie to the wheel"}
+              {inputText && inputText.length > 0 ? inputText : "Find shows or movies to add..."}
               </Text>  
-              <TouchableOpacity style={styles.addButton} 
+              {/* <TouchableOpacity style={styles.addButton} 
                 onPress={() => setSearchModalVisible(true)}
                 // onPress={async () => await addSegment(inputText)}
                 >
                 <Text style={styles.addButtonText}>Add</Text>
-              </TouchableOpacity>
+              </TouchableOpacity> */}
             </Pressable>
           </View>
 
           {/* List of Movies */}
           {/* {searchedContent && searchedContent.length > 0 && (
-            <FlatList
-              data={searchedContent}
-              keyExtractor={(item, index) => index.toString()}
-              renderItem={({ item }) => (
-                <View style={styles.segmentItem}>
-                  <Text style={styles.segmentText}>{item.title}</Text>
-                  <TouchableOpacity onPress={() => removeSegment(item)}>
-                    <Text style={styles.removeButton}>Remove</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-              style={styles.list}
-              ListEmptyComponent={
-                <Text style={styles.emptyText}>No movies added to the wheel yet.</Text>
-              }
-            />
+            <View>
+              <FlatList
+                data={searchedContent}
+                keyExtractor={(item, index) => index.toString()}
+                renderItem={({ item }) => (
+                  <View style={styles.segmentItem}>
+                    <Text style={styles.segmentText}>{item.title}</Text>
+                    <TouchableOpacity onPress={() => removeSegment(item)}>
+                      <Text style={styles.removeButton}>Remove</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                style={styles.list}
+                ListEmptyComponent={
+                  <Text style={styles.emptyText}>No movies added to the wheel yet.</Text>
+                }
+              />
+            </View>
           )} */}
 
 
@@ -346,25 +355,25 @@ const SpinnerPage = () => {
               animationType="fade"
               onRequestClose={handleModalClose}
             >
-              <TouchableWithoutFeedback onPress={() => { Keyboard.dismiss(); handleModalClose(); }}>
+              <Pressable onPress={() => { Keyboard.dismiss(); handleModalClose(); }}>
                 <View style={styles.modalOverlay}>
                   <View style={styles.modalInput}>
                     <TextInput
                       style={[styles.input, {width: screenWidth * 0.7}]}
-                      placeholder="Add a show or movie to the wheel"
+                      placeholder="Search..."
                       placeholderTextColor="#aaa"
                       value={inputText}
                       onChangeText={setInputText}
-                      onSubmitEditing={async () => {Keyboard.dismiss(); await handleAddSegment(); }}
+                      onSubmitEditing={async () => { await handleAddSegment(inputText); }}
                       returnKeyType="search"
                       autoFocus
                     />
-                    <TouchableOpacity style={styles.addButton} onPress={async () => {Keyboard.dismiss(); await handleAddSegment(); }}>
+                    <TouchableOpacity style={styles.addButton} onPress={async () => { await handleAddSegment(inputText); }}>
                       <Text style={styles.addButtonText}>Add</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
-              </TouchableWithoutFeedback>
+              </Pressable>
             </Modal>
             
 

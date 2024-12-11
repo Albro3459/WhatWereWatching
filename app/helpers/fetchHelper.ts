@@ -626,11 +626,11 @@ export const searchByKeywords = async (keyword: string, filter: Filter): Promise
             console.log("failed to fully update the db with new content");
           }
           else {
-            console.log('successfully updated');
+            // console.log('successfully updated the database');
           }
         }
         else {
-          console.log(`no new contents`);
+          // console.log(`no new contents`);
         }
       }
 
