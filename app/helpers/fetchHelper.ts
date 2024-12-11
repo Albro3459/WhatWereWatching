@@ -1,12 +1,11 @@
 import * as FileSystem from 'expo-file-system';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { Content, PosterContent, Posters, StreamingOption } from '../types/contentType';
-
-
 import db from '../data/db.json';
 import { RAPIDAPI_KEY, TMDB_BEARER_TOKEN } from '@/keys';
 import { Filter, Genres, PaidOptions, Services, Types } from '../types/filterTypes';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEY } from '@/Global';
 import { TMDB } from '../types/tmdbType';
 
@@ -17,7 +16,6 @@ const API_HEADERS = {
     'x-rapidapi-key': RAPIDAPI_KEY,
     'x-rapidapi-host': 'streaming-availability.p.rapidapi.com'
 };
-
 
 const filePath = `${FileSystem.documentDirectory}db.json`;
 const CURRENT_DB_VERSION = 1.3;

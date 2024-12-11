@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {Dimensions, SafeAreaView, StyleSheet, Text, View, Image, TouchableOpacity, Pressable, Alert, Modal} from 'react-native';
+import {Dimensions, SafeAreaView, StyleSheet, Text, View, Image, TouchableOpacity, Pressable, Alert, Modal, FlatList, TextInput} from 'react-native';
 import { GestureHandlerRootView, TouchableWithoutFeedback} from 'react-native-gesture-handler';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { Spinner } from './components/spinnerComponent';
@@ -29,6 +29,9 @@ const SpinnerPage = () => {
 
     const [winner, setWinner] = useState<PosterContent | null>(null);
     const [showOverlay, setShowOverlay] = useState(false);
+
+    const [inputText, setInputText] = useState<string>("");
+
     // const [heartColor, setHeartColor] = useState(unselectedHeartColor);
     const [heartColors, setHeartColors] = useState<{[key: string]: string}>();
 
@@ -189,6 +192,21 @@ const SpinnerPage = () => {
       updateLists();
     }; 
 
+    // Function to add a movie to the wheel
+    const addSegment = () => {
+      // if (inputText.trim() === "") {
+      //   Alert.alert("Error", "Please enter a movie name.");
+      //   return;
+      // }
+      // setSegments((prev) => [...prev, inputText.trim()]);
+      // setInputText("");
+    };
+
+    // Function to remove a movie from the wheel
+    // const removeSegment = (movie: string) => {
+    //   setSegments((prev) => prev.filter((item) => item !== movie));
+    // };
+
     useEffect(() => {
       const fetchListData = async () => {
         if (selectedLists.length > 0) {
@@ -255,6 +273,39 @@ const SpinnerPage = () => {
             list={moviesAndShows} 
             onFinish={handleWinner} 
           />
+
+          {/* Input Section */}
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Add a show or movie to the wheel"
+              placeholderTextColor="#aaa"
+              value={inputText}
+              onChangeText={setInputText}
+            />
+            <TouchableOpacity style={styles.addButton} onPress={addSegment}>
+              <Text style={styles.addButtonText}>Add</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* List of Movies */}
+          {/* <FlatList
+            data={segments}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={({ item }) => (
+              <View style={styles.segmentItem}>
+                <Text style={styles.segmentText}>{item}</Text>
+                <TouchableOpacity onPress={() => removeSegment(item)}>
+                  <Text style={styles.removeButton}>Remove</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            style={styles.list}
+            ListEmptyComponent={
+              <Text style={styles.emptyText}>No movies added to the wheel yet.</Text>
+            }
+          /> */}
+
           {winner && showOverlay && (
               <View style={styles.overlay}>
                   <View style={styles.winnerContainer}>
@@ -367,6 +418,63 @@ const styles = StyleSheet.create({
         fontFamily: RalewayFont,
         textAlign: "center",
         paddingVertical: 20,
+      },
+
+      inputContainer: {
+        paddingHorizontal: 20,
+        flexDirection: "row",
+        marginTop: -50,
+        paddingBottom: 50,
+        width: "100%",
+        backgroundColor: Colors.backgroundColor
+      },
+      input: {
+        flex: 1,
+        backgroundColor: "#4f4f77",
+        color: "#fff",
+        padding: 10,
+        borderRadius: 5,
+        marginRight: 10,
+        height: 50,
+      },
+      addButton: {
+        backgroundColor: "#6c6c91",
+        padding: 10,
+        borderRadius: 5,
+        alignContent: "center",
+        justifyContent: "center"
+      },
+      addButtonText: {
+        color: "#fff",
+        fontWeight: "bold",
+        textAlign: "center"
+      },
+      list: {
+        flex: 1,
+        width: "100%",
+        marginBottom: 20,
+      },
+      segmentItem: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        backgroundColor: "#4f4f77",
+        padding: 10,
+        borderRadius: 5,
+        marginBottom: 10,
+      },
+      segmentText: {
+        color: "#fff",
+        fontSize: 16,
+      },
+      removeButton: {
+        color: "#ff4d4d",
+        fontWeight: "bold",
+      },
+      emptyText: {
+        color: "#aaa",
+        textAlign: "center",
+        marginTop: 20,
       },
 });
 

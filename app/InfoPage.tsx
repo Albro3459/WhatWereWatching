@@ -1,6 +1,6 @@
 import { Colors } from '@/constants/Colors';
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, Button, TouchableOpacity, Dimensions, Pressable, Modal, FlatList, Alert, Linking } from 'react-native';
+import { View, Text, Image, StyleSheet, ScrollView, Button, TouchableOpacity, Dimensions, Pressable, Modal, FlatList, Alert, TextInput, Linking } from 'react-native';
 import * as SplashScreen from "expo-splash-screen";
 import StarRating from 'react-native-star-rating-widget';
 import Heart from './components/heartComponent';
@@ -20,6 +20,8 @@ const screenWidth = Dimensions.get("window").width;
 const scale = 1;
 const selectedHeartColor = "#FF2452";
 const unselectedHeartColor = "#ECE6F0";
+
+const REVIEW_STORAGE_KEY = 'movie_reviews';
 
 interface InfoPageParams {
   id?: string;
@@ -77,58 +79,25 @@ function InfoPage() {
 
   const [activeTab, setActiveTab] = useState<string>('About');
 
-  type Review = {
+   // Reviews
+   const [reviews, setReviews] = useState([]);
+   const [newReviewText, setNewReviewText] = useState('');
+   const [newReviewRating, setNewReviewRating] = useState(0);
+   const [addReviewModal, setAddReviewModal] = useState(false);
+ 
+   const [recommendedContent, setRecommendedContent] = useState<PosterContent[]>([]);
+   const [selectedRecommendation, setSelectedRecommendation] = useState<PosterContent | null>(null);
+   const [infoModalVisible, setInfoModalVisible] = useState(false);
+
+   type Review = {
+    contentTitle: any;
     id: string;
     user: string;
     text: string;
     rating: number;
     avatar: string;
-    contentID: string,
-    contentTitle: string
+    contentID: string; // ID of the movie or show this review is for
   };
-  // Array of reviews
-  const [reviews, setReviews] = useState<Review[]>([
-    {
-      id: "1",
-      user: "@larryjustice",
-      text: "The movie made me shed so many tears.",
-      rating: 5,
-      avatar: "https://via.placeholder.com/50",
-      contentID: "110",
-      contentTitle: ""
-    },
-    {
-      id: "2",
-      user: "@janedoe",
-      text: "A fantastic emotional journey.",
-      rating: 4,
-      avatar: "https://via.placeholder.com/50",
-      contentID: "146",
-      contentTitle: ""
-    },
-    {
-      id: "3",
-      user: "@movielover",
-      text: "A must-watch for everyone!",
-      rating: 5,
-      avatar: "https://via.placeholder.com/50",
-      contentID: "396",
-      contentTitle: ""
-    },
-    {
-      id: "4",
-      user: "@cinemafan",
-      text: "Visually stunning and heartfelt.",
-      rating: 4,
-      avatar: "https://via.placeholder.com/50",
-      contentID: "462",
-      contentTitle: ""
-    },
-  ]);
-
-  const [recommendedContent, setRecommendedContent] = useState<PosterContent[]>([]); 
-  const [selectedRecommendation, setSelectedRecommendation] = useState<PosterContent | null>(null);
-  const [infoModalVisible, setInfoModalVisible] = useState(false);   
 
   const toHoursAndMinutes = (runtime) => {
     if (!runtime) { return "N/A" }
@@ -141,7 +110,6 @@ function InfoPage() {
     const getContentObject = async () => {
       try {
         if (pathname === "/InfoPage" && contentID) {
-          // console.log(`INFO PAGE ID: ${contentID}`);
           setActiveTab('About');
           const getContent = await getContentById(contentID);
           if (getContent) {
@@ -151,15 +119,10 @@ function InfoPage() {
             setContent(updatedContent);
 
             try {
-              // Load saved tabs from AsyncStorage
               const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
-        
-              if (savedTabs && getContent) {
-                // console.log("getting content from storage for info");
+              if (savedTabs) {
                 const parsedTabs = JSON.parse(savedTabs);
-                // console.log(`does the planned list exist: ${parsedTabs["Planned"]}`);
                 setLists(parsedTabs);
-                // Initialize heartColors based on the Favorite tab
                 const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc) => {
                   acc[getContent.id] = parsedTabs.Favorite.some((fav) => fav.id === getContent.id)
                     ? selectedHeartColor
@@ -183,22 +146,16 @@ function InfoPage() {
               setRecommendedContent(updatedRandomContent);
             }
 
-            const updatedReviews = await Promise.all(
-              reviews.map(async (review) => {
-                const content = await getContentById(review.contentID);
-                // console.log(`review id: ${review.id} has title ${content.title}`);
-                return {
-                  ...review,
-                  contentTitle: content?.title || "Unknown",
-                };
-              })
-            );
-            setReviews(updatedReviews);
+            // Load and filter reviews for the current content
+            const storedReviews = await AsyncStorage.getItem(REVIEW_STORAGE_KEY);
+            if (storedReviews) {
+              const parsedReviews = JSON.parse(storedReviews);
+              const filteredReviews = parsedReviews.filter((review) => review.contentID === contentID);
+              setReviews(filteredReviews);
+            }
           } else {
             console.log(`Content not found for ID: ${contentID}`);
           }
-        } else {
-          console.log("Content ID is null or pathname mismatch.");
         }
       } catch (error) {
         console.error("Error fetching content:", error);
@@ -210,6 +167,39 @@ function InfoPage() {
 
     getContentObject();
   }, [pathname, contentID]);
+
+  const handleAddReview = async () => {
+    if (!newReviewText || newReviewRating <= 0) {
+      Alert.alert('Error', 'Please provide a review text and a rating.');
+      return;
+    }
+
+    const newReview = {
+      id: `${Date.now()}`,
+      user: '@currentuser',
+      text: newReviewText,
+      rating: newReviewRating,
+      avatar: 'https://via.placeholder.com/50',
+      contentID,
+    };
+
+    const updatedReviews = [...reviews, newReview];
+    setReviews(updatedReviews);
+
+    try {
+      const storedReviews = await AsyncStorage.getItem(REVIEW_STORAGE_KEY);
+      const allReviews = storedReviews ? JSON.parse(storedReviews) : [];
+      const updatedAllReviews = [...allReviews, newReview];
+      await AsyncStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(updatedAllReviews));
+      Alert.alert('Success', 'Your review has been added!');
+    } catch (error) {
+      console.error('Error saving review:', error);
+    }
+
+    setNewReviewText('');
+    setNewReviewRating(0);
+    setAddReviewModal(false);
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -275,22 +265,79 @@ function InfoPage() {
             </Text>
           </View>
         );
-      case 'Reviews':
-        return (
-          <View style={styles.content}>
-            <Text style={[styles.sectionTitle, {paddingBottom: 10}]}>Reviews</Text>
-              {(!reviews || reviews.length <= 0) ? (
+        case 'Reviews':
+          return (
+            <View style={styles.content}>
+              <Text style={[styles.sectionTitle, { paddingBottom: 10 }]}>Reviews</Text>
+              {reviews.length === 0 ? (
                 <Text style={styles.text}>No reviews yet. Be the first to add one!</Text>
               ) : (
                 <FlatList
                   data={reviews}
-                  renderItem={renderReview}
-                  scrollEnabled={false}
+                  renderItem={({ item }) => (
+                    <View style={appStyles.reviewCard}>
+                      <Image source={{ uri: item.avatar }} style={appStyles.avatar} />
+                      <View style={appStyles.reviewTextContainer}>
+                        <Text style={appStyles.reviewUser}>{item.user}</Text>
+                        <Text style={appStyles.reviewText}>{item.text}</Text>
+                        <View style={appStyles.ratingContainer}>
+                          {Array.from({ length: 5 }).map((_, index) => (
+                            <MaterialIcons
+                              key={index}
+                              name={index < item.rating ? 'star' : 'star-border'}
+                              size={16}
+                              color="#FFD700"
+                            />
+                          ))}
+                        </View>
+                      </View>
+                    </View>
+                  )}
                   keyExtractor={(item) => item.id}
                 />
               )}
-          </View>
-        );
+              <Button title="Add Review" onPress={() => setAddReviewModal(true)} />
+  
+              <Modal
+                transparent
+                visible={addReviewModal}
+                animationType="slide"
+                onRequestClose={() => setAddReviewModal(false)}
+              >
+                <View style={styles.modalOverlay}>
+                  <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>Add a Review</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="Write your review..."
+                      placeholderTextColor="#aaa"
+                      value={newReviewText}
+                      onChangeText={setNewReviewText}
+                    />
+                    <Text style={styles.ratingLabel}>Rating:</Text>
+                    <View style={styles.ratingInput}>
+                      {Array.from({ length: 5 }).map((_, index) => (
+                        <Text
+                          key={index}
+                          style={[
+                            styles.ratingStar,
+                            { color: index < newReviewRating ? '#FFD700' : '#aaa' },
+                          ]}
+                          onPress={() => setNewReviewRating(index + 1)}
+                        >
+                          ★
+                        </Text>
+                      ))}
+                    </View>
+                    <View style={styles.modalButtons}>
+                      <Button title="Cancel" onPress={() => setAddReviewModal(false)} />
+                      <Button title="Submit" onPress={handleAddReview} />
+                    </View>
+                  </View>
+                </View>
+              </Modal>
+            </View>
+          );
       case 'Recommended':
         return (
           <View style={styles.content}>
@@ -321,74 +368,17 @@ function InfoPage() {
             />
           </View>
         );
-      default:
-        console.warn(`active tab is set incorrectly | ${activeTab}`);
-        return (
-          <View style={styles.content}>
-
-            <View style={{flexDirection: "row", justifyContent: "flex-start", alignItems: "center"}}>
-              <Text style={styles.sectionTitle}>{`${content.showType.charAt(0).toUpperCase() + content.showType.slice(1).toLowerCase()}:`}</Text>
-              <Text style={[styles.text, {fontSize: 18, paddingLeft: 15, paddingTop: 10, textAlign: 'center', textAlignVertical: "center"}]}>
-                  {
-                    content.showType === 'movie' ? (
-                      toHoursAndMinutes(content.runtime)
-                    ) : (
-                      `Seasons: ${content.seasonCount}  |  Episodes: ${content.episodeCount}`
-                    )
-                  }
-              </Text>
-            </View>
-
-            <Text style={styles.sectionTitle}>Overview</Text>
-            <Text style={styles.text}>{content.overview}</Text>
-
-            <Text style={styles.sectionTitle}>Where to Watch</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start', columnGap: 10, padding: 10 }}>
-              {streamingServices().map((service, index) => (
-                <Pressable
-                  key={index}
-                  style={{
-                    maxWidth: screenWidth / 5,
-                    maxHeight: 50,
-                    margin: 5,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                  onPress={() => {
-                    if (service.link) {
-                      Linking.openURL(service.link).catch(err => console.error("Failed to open URL:", err));
-                    } else {
-                      console.log("No link available");
-                    }
-                  }}
-                >
-                  <SvgUri
-                    uri={service.darkThemeImage}
-                    width={screenWidth / 5}
-                    height={screenWidth / 5}
-                  />
-                </Pressable>
-              ))}
-            </View>
-
-            <Text style={styles.sectionTitle}>Genre</Text>
-            <Text style={styles.text}>{
-                content.genres.map((genre) => (
-                    genre.name
-                  )).join(' | ')}
-            </Text>
-
-            <Text style={styles.sectionTitle}>Cast</Text>
-            <Text style={styles.text}>
-              {content.cast.join(' | ')}
-            </Text>
-          </View>
-        );
+        default:
+          break;
+      }
+    };
+  
+    if (isLoading) {
+      return null; // Prevent rendering until loaded
     }
-  };
 
-  // Render function for reviews
-  const renderReview = ({ item }: {item: Review}) => {
+   // Render function for reviews
+   const renderReview = ({ item }: {item: Review}) => {
 
     return (
       <View style={appStyles.reviewCard}>
@@ -694,6 +684,39 @@ const styles = StyleSheet.create({
       paddingVertical: 10,
       textAlign: "center",
       width: "100%",
+    },
+    textInput: {
+      backgroundColor: '#333',
+      color: '#fff',
+      padding: 10,
+      borderRadius: 5,
+      marginBottom: 20,
+    },
+    ratingLabel: {
+      color: '#fff',
+      fontSize: 16,
+      marginBottom: 10,
+    },
+    ratingInput: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      marginBottom: 20,
+    },
+    ratingStar: {
+      fontSize: 30,
+      marginHorizontal: 5,
+    },
+    modalButtons: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      width: '100%',
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: '#fff', // Adjust this to match your color scheme
+      marginBottom: 15,
+      textAlign: 'center',
     },
 });
 

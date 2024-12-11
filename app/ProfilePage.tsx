@@ -127,8 +127,10 @@ export default function ProfilePage() {
                         mode="date"
                         display="default"
                         style={styles.datePicker}
-                        themeVariant={birthdayText && birthdayText.length > 0 ? "dark" : "light"}
-                        textColor={birthdayText && birthdayText.length > 0 ? "dark" : "light"}
+                        accentColor="transparent"
+                        // themeVariant={birthdayText && birthdayText.length > 0 ? "dark" : "light"}
+                        themeVariant="dark"
+                        textColor="white"
                         onChange={(event, date) => {
                         if (date) {
                             handleConfirmDate(date);
@@ -186,10 +188,16 @@ export default function ProfilePage() {
 
             {/* Button container */}
             <View style={styles.buttonContainer} >
-                {/* logout Button */}
-                <Pressable style={styles.button} onPress={() => {LogoutUser(); router.push('/');}}>
+                {/* Button */}
+                { Global.justSignedUp ? (
+                    <Pressable style={styles.button} onPress={() => saveProfile(nameText, birthdayText, locationText, bioText, selectedGenres)}>
+                        <Text style={{ color: "white", fontWeight: "bold", fontSize: 30 }}>Save</Text>
+                    </Pressable>
+                ) : (
+                    <Pressable style={styles.button} onPress={() => {LogoutUser(); router.push('/');}}>
                         <Text style={{ color: "white", fontWeight: "bold", fontSize: 30 }}>Logout</Text>
-                </Pressable>
+                    </Pressable>
+                )}
             </View>
 
             {/* <View style={{ padding: "8%" }}></View> */}
