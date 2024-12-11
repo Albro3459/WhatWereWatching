@@ -22,7 +22,7 @@ import { appStyles } from '@/styles/appStyles';
 import { STORAGE_KEY } from '@/Global';
 import { Colors } from '@/constants/Colors';
 import { WatchList } from './types/listsType';
-import { isItemInList } from './helpers/listHelper';
+import { isItemInList, turnTabsIntoPosterTabs } from './helpers/listHelper';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const scale = .75;
@@ -66,30 +66,7 @@ const LibraryPage = () => {
             setTabs(parsedTabs);
 
             const newPosterLists = await turnTabsIntoPosterTabs(parsedTabs);
-            setPosterTabs(newPosterLists);
-            
-            // turnign the Contents into posterContents
-            // const updatedTabs = await Promise.all(
-            //   Object.keys(tabs).map(async (tabKey) => {
-            //     const posterContents = await Promise.all(
-            //       tabs[tabKey as keyof WatchList].map(async (content) => {
-            //         const posters = await getPostersFromContent(content);
-            //         return { ...content, ...posters }; // Ensure this matches PosterContent
-            //       })
-            //     );
-            
-            //     return { [tabKey]: posterContents } as { [key: string]: PosterContent[] }; // Explicit typing
-            //   })
-            // );
-            
-            // // Merge the results into a single object
-            // const newPosterTabs = updatedTabs.reduce((acc, tab) => {
-            //   return { ...acc, ...tab };
-            // }, {} as { [key: string]: PosterContent[] }); // Explicitly define the final structure
-            
-            // // Update the state
-            // setPosterTabs(newPosterTabs);
-            
+            setPosterTabs(newPosterLists);            
 
             // Initialize heartColors based on the Favorite tab
             const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc, content: Content) => {
@@ -110,35 +87,7 @@ const LibraryPage = () => {
     };
 
     loadContent();
-  }, []);
-
-  const turnTabsIntoPosterTabs = async (tabs: WatchList) => {
-    const updatedPosterLists = await Promise.all(
-      Object.keys(tabs).map(async (tabKey) => {
-        if (!tabs[tabKey] || tabs[tabKey].length === 0) {
-          console.warn(`No data for tab: ${tabKey}`);
-          return { [tabKey]: [] };
-        }
-  
-        const posterContents = await Promise.all(
-          tabs[tabKey].map(async (content) => {
-            try {
-              const posters = await getPostersFromContent(content);
-              return { ...content, posters };
-            } catch (error) {
-              console.error(`Error fetching posters for content ID: ${content.id}`, error);
-              return { ...content, posters: null };
-            }
-          })
-        );
-  
-        return { [tabKey]: posterContents };
-      })
-    );
-  
-    return updatedPosterLists.reduce((acc, tab) => ({ ...acc, ...tab }), {});
-  };
-  
+  }, []);  
 
   const saveTabsToStorage = async (updatedTabs) => {
     try {

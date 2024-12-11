@@ -14,7 +14,7 @@ import { Entypo } from '@expo/vector-icons';
 import { WatchList } from './types/listsType';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEY } from '@/Global';
-import { isItemInList } from './helpers/listHelper';
+import { isItemInList, turnTabsIntoPosterTabs } from './helpers/listHelper';
 import { parse } from '@babel/core';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
@@ -45,33 +45,6 @@ const SpinnerPage = () => {
     const [dropDownOpen, setDropDownOpen] = useState(false);
 
     const [addToListModal, setAddToListModal] = useState(false);
-
-    const turnTabsIntoPosterTabs = async (tabs: WatchList) => {
-      const updatedPosterLists = await Promise.all(
-        Object.keys(tabs).map(async (tabKey) => {
-          if (!tabs[tabKey] || tabs[tabKey].length === 0) {
-            console.warn(`No data for tab: ${tabKey}`);
-            return { [tabKey]: [] };
-          }
-    
-          const posterContents = await Promise.all(
-            tabs[tabKey].map(async (content) => {
-              try {
-                const posters = await getPostersFromContent(content);
-                return { ...content, posters };
-              } catch (error) {
-                console.error(`Error fetching posters for content ID: ${content.id}`, error);
-                return { ...content, posters: null };
-              }
-            })
-          );
-    
-          return { [tabKey]: posterContents };
-        })
-      );
-    
-      return updatedPosterLists.reduce((acc, tab) => ({ ...acc, ...tab }), {});
-    };
 
     const moveItemToFavoriteList = async (id: string) => {
         try {

@@ -9,7 +9,7 @@ import { appStyles } from '@/styles/appStyles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEY } from '@/Global';
 import { WatchList } from './types/listsType';
-import { isItemInList } from './helpers/listHelper';
+import { isItemInList, turnTabsIntoPosterTabs } from './helpers/listHelper';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import FilterModal from './components/filterModalComponent';
@@ -57,33 +57,6 @@ const SearchPage = () => {
     content: PosterContent | null;
   };
   const [movies, setMovies] = useState<Movie[]>([]);
-
-  const turnTabsIntoPosterTabs = async (tabs: WatchList) => {
-    const updatedPosterLists = await Promise.all(
-      Object.keys(tabs).map(async (tabKey) => {
-        if (!tabs[tabKey] || tabs[tabKey].length === 0) {
-          console.warn(`No data for tab: ${tabKey}`);
-          return { [tabKey]: [] };
-        }
-  
-        const posterContents = await Promise.all(
-          tabs[tabKey].map(async (content) => {
-            try {
-              const posters = await getPostersFromContent(content);
-              return { ...content, posters };
-            } catch (error) {
-              console.error(`Error fetching posters for content ID: ${content.id}`, error);
-              return { ...content, posters: null };
-            }
-          })
-        );
-  
-        return { [tabKey]: posterContents };
-      })
-    );
-  
-    return updatedPosterLists.reduce((acc, tab) => ({ ...acc, ...tab }), {});
-  };
 
   const moveItemToFavoriteList = async (id: string) => {
     try {
