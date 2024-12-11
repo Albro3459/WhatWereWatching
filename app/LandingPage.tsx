@@ -87,10 +87,11 @@ function LandingPage () {
       const fetchProfile = () => {
           if (pathname === "/LandingPage") {
               setName(Global.name);
+              Global.backPressLoadSearch = false;
           }
       };  
       fetchProfile();
-  }, [pathname, Global.name]);
+  }, [Global.name]);
 
     useEffect(() => {
       setListModalVisible(false);
@@ -126,7 +127,7 @@ function LandingPage () {
       };
   
       loadContent();
-    }, [pathname]);
+    }, []);
 
     // Function to handle the Next button
     const handleNextMovie = () => {
@@ -190,7 +191,7 @@ function LandingPage () {
         }
       }
       fetchRecommendedContent();
-    }, [pathname]);     
+    }, []);     
 
     // Render function for reviews
     const renderReview = ({ item }: {item: Review}) => {

@@ -159,7 +159,7 @@ function InfoPage() {
     };
 
     getContentObject();
-  }, [pathname, contentID]);
+  }, [contentID]);
 
   const handleAddReview = async () => {
     if (!newReviewText || newReviewRating <= 0) {

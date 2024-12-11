@@ -13,18 +13,21 @@ export const Global = {
     genres: new Set<string>(),
 
     justSignedUp: false,
+
+    backPressLoadSearch: false,
+    searchMovies: [],
+    searchFilter: null,
+
+    backPressLoadLibrary: false,
+
+    backPressLoadSpinner: false,
 };
 
 export const LogoutUser = async () => {
     Global.username = "";
     Global.password = "";
-    Global.name = "";
-    Global.birthday = "";
-    Global.location = "";
-    Global.bio = "";
-    Global.genres = new Set<string>();
-
-    Global.justSignedUp = false;
+    
+    SignInReset();
 
     // Clear AsyncStorage
     try {
@@ -34,6 +37,28 @@ export const LogoutUser = async () => {
         console.error("Failed to clear AsyncStorage:", error);
     }
 }
+
+export const SignInReset = () => {
+    Global.name = "";
+    Global.birthday = "";
+    Global.location = "";
+    Global.bio = "";
+    Global.genres = new Set<string>();
+
+    Global.justSignedUp = false;
+
+    ClearLoadState();
+};
+
+export const ClearLoadState = () => {
+    Global.backPressLoadSearch = false;
+    Global.searchMovies = [];
+    Global.searchFilter = null;
+
+    Global.backPressLoadLibrary = false;
+
+    Global.backPressLoadSpinner = false;
+};
 
 export const FetchUserProfile = () => {
     return Global;

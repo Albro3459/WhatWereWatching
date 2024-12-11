@@ -69,7 +69,7 @@ export default function ProfilePage() {
             }
         };  
         fetchProfile();
-    }, [pathname, Global]);
+    }, [Global]);
 
 
     // Adding a working save button to the top nav bar

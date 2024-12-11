@@ -7,7 +7,7 @@ import { getContentById, getPostersFromContent, searchByKeywords } from './helpe
 import { router, usePathname } from 'expo-router';
 import { appStyles } from '@/styles/appStyles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STORAGE_KEY } from '@/Global';
+import { Global, STORAGE_KEY } from '@/Global';
 import { PosterList, WatchList } from './types/listsType';
 import { DEFAULT_TABS, FAVORITE_TAB, isItemInList, moveItemToTab, sortTabs, turnTabsIntoPosterTabs } from './helpers/listHelper';
 import DropDownPicker from 'react-native-dropdown-picker';
@@ -51,12 +51,17 @@ const SearchPage = () => {
     setSelectedPaidOptions(filter.selectedPaidOptions);
     // const filters = [...values.selectedGenres, ...values.selectedTypes, ...values.selectedServices, ...values.selectedPaidOptions].join(',');
     search(searchText || "", filter);
+
+    Global.searchMovies = []
+    Global.searchFilter = filter;
   };
 
   const search = async (searchText: string, filter: Filter) => {
     if (searchText.length <= 0 && filter.selectedGenres.length === 0 && 
         filter.selectedTypes.length === 0 && filter.selectedServices.length === 0 && filter.selectedPaidOptions.length === 0) {
         setMovies([]);
+        Global.searchMovies = [];
+        Global.searchFilter = filter;
         return;
     }
     setSearchText(searchText);
@@ -71,6 +76,8 @@ const SearchPage = () => {
         content: content,
       }));
       setMovies(mappedMovies);
+      Global.searchMovies = mappedMovies;
+      Global.searchFilter = filter;
 
       try {
         // Load saved tabs from AsyncStorage
@@ -94,6 +101,54 @@ const SearchPage = () => {
       }
     }
   };
+
+  useEffect(() => {
+    const reFetch = async () => {
+      if (pathname === "/SearchPage") {
+        if (Global.backPressLoadSearch) {
+          // console.log("SEARCH back press load begin");
+          // Re-initialize search state
+          if (Global.searchMovies && Global.searchMovies.length > 0) {
+            setMovies([...Global.searchMovies]);
+          }
+          if (Global.searchFilter) {
+            setSelectedGenres(Global.searchFilter.selectedGenres);
+            setSelectedTypes(Global.searchFilter.selectedTypes);
+            setSelectedServices(Global.searchFilter.selectedServices);
+            setSelectedPaidOptions(Global.searchFilter.selectedPaidOptions);
+          }
+
+          try {
+            // console.log("starting to pull lists");
+            // Load saved tabs from AsyncStorage
+            const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+            if (savedTabs) {
+              const parsedTabs: WatchList = savedTabs
+                          ? sortTabs({ ...DEFAULT_TABS, ...JSON.parse(savedTabs) }) // Ensure tabs are sorted
+                          : DEFAULT_TABS;
+              setLists(parsedTabs);
+
+              // Initialize heartColors based on the Favorite tab
+              const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc, content: Content) => {
+                acc[content.id] = parsedTabs.Favorite.some((fav) => fav.id === content.id)
+                  ? Colors.selectedHeartColor
+                  : Colors.unselectedHeartColor;
+                return acc;
+              }, {});
+              setHeartColors(savedHeartColors);
+              // console.log("SAVED lists");
+            }
+          } catch (error) {
+            console.error('Error loading library content:', error);
+          }
+        }
+
+        Global.backPressLoadSearch = false;
+      }
+    }
+
+    reFetch();
+  }, [pathname]); // need this for this one
 
   return (
     <View style={[styles.container]}>
@@ -135,10 +190,13 @@ const SearchPage = () => {
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
               <Pressable
-                    onPress={() => router.push({
+                    onPress={() => {
+                      Global.backPressLoadSearch = true;
+                      router.push({
                           pathname: '/InfoPage',
                           params: { id: item.id },
-                      })}
+                      });
+                    }}
                     onLongPress={() => {setSelectedResult(item.content); setSearchAddToListModal(true);}}
                 >
                 <View style={appStyles.cardContainer}>

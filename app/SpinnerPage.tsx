@@ -13,7 +13,7 @@ import Heart from './components/heartComponent';
 import { Entypo, Feather } from '@expo/vector-icons';
 import { PosterList, WatchList } from './types/listsType';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STORAGE_KEY } from '@/Global';
+import { ClearLoadState, Global, STORAGE_KEY } from '@/Global';
 import { DEFAULT_TABS, FAVORITE_TAB, isItemInList, moveItemToTab, sortTabs, turnTabsIntoPosterTabs } from './helpers/listHelper';
 import { parse } from '@babel/core';
 
@@ -160,7 +160,7 @@ const SpinnerPage = () => {
 
     useEffect(() => {
       const fetchListData = async () => {
-        if (selectedLists.length > 0) {
+        if (pathname === "/SpinnerPage" && selectedLists.length > 0) {
           try {
             // Load saved tabs from AsyncStorage
             const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
@@ -212,6 +212,7 @@ const SpinnerPage = () => {
       setDropDownOpen(false);
       const loadContent = async () => {
         if (pathname === "/SpinnerPage") {
+          Global.backPressLoadLibrary = true;
           try {
             // Load saved tabs from AsyncStorage
             const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
@@ -230,6 +231,7 @@ const SpinnerPage = () => {
               }, {});
               setHeartColors(savedHeartColors);
             }
+            Global.backPressLoadSpinner = false;
           } catch (error) {
             console.error('Error loading library content:', error);
           } finally {
@@ -240,7 +242,7 @@ const SpinnerPage = () => {
       };
   
       loadContent();
-    }, []);   
+    }, [pathname]); // need this to reload coming back from info page
 
     if (isLoading) {
       return null; // Show splashcreen until loaded
@@ -313,10 +315,13 @@ const SpinnerPage = () => {
                               onPress={() => setShowOverlay(false)} />
                       </View>
                       <Pressable
-                          onPress={() => router.push({
-                                  pathname: '/InfoPage',
-                                  params: { id: winner.id },
-                              })}
+                          onPress={() => {
+                              Global.backPressLoadSpinner = true;
+                              router.push({
+                                    pathname: '/InfoPage',
+                                    params: { id: winner.id },
+                                })  
+                            }}
                           onLongPress={() => {setAddToListModal(true);}}
                       >
                           <View style={[appStyles.cardContainer, {width: screenWidth*0.7, alignSelf: "center"}]}>

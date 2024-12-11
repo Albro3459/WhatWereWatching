@@ -4,7 +4,7 @@ import { Link, Href, usePathname, router } from "expo-router"
 import { Colors } from "@/constants/Colors";
 import { KuraleFont, RalewayFont } from "@/styles/appStyles";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Global, LogoutUser } from "@/Global";
+import { Global, LogoutUser, SignInReset } from "@/Global";
 
 export default function Index() {
     // const pathname = usePathname();
@@ -25,6 +25,9 @@ export default function Index() {
           Alert.alert("Error", "Please enter a username and password.");
           return;
         }
+
+        SignInReset();
+        
         Global.username = inputUsername.trim();
         Global.password = inputPassword;
 
@@ -58,7 +61,7 @@ export default function Index() {
         //   Alert.alert("Error", "Passwords Must Be At Least 6 Characters.");
         //   return;
         // }
-    
+        SignInReset();
         Global.username = inputUsername;
         Global.password = inputPassword;
 

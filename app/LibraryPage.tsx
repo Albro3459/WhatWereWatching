@@ -19,7 +19,7 @@ import { router, usePathname } from 'expo-router';
 import Heart from './components/heartComponent';
 import { Content, PosterContent } from './types/contentType';
 import { appStyles } from '@/styles/appStyles';
-import { STORAGE_KEY } from '@/Global';
+import { Global, STORAGE_KEY } from '@/Global';
 import { Colors } from '@/constants/Colors';
 import { PosterList, WatchList } from './types/listsType';
 import { createNewList, DEFAULT_TABS, FAVORITE_TAB, isItemInList, moveItemToTab, sortTabs, turnTabsIntoPosterTabs } from './helpers/listHelper';
@@ -89,6 +89,47 @@ const LibraryPage = () => {
     loadContent();
   }, []);  
 
+  useEffect(() => {
+    const reFetch = async () => {
+      if (pathname === "/LibraryPage") {
+        if (Global.backPressLoadLibrary) {
+          // console.log("LIBRARY back press load begin");
+          // Re-initialize tabs
+
+          try {
+            // console.log("starting to pull lists");
+            // Load saved tabs from AsyncStorage
+            const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+            if (savedTabs) {
+              const parsedTabs: WatchList = savedTabs
+                          ? sortTabs({ ...DEFAULT_TABS, ...JSON.parse(savedTabs) }) // Ensure tabs are sorted
+                          : DEFAULT_TABS;
+              setTabs(parsedTabs);
+              const newPosterLists = await turnTabsIntoPosterTabs(parsedTabs);
+              setPosterTabs(newPosterLists);   
+
+              // Initialize heartColors based on the Favorite tab
+              const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc, content: Content) => {
+                acc[content.id] = parsedTabs.Favorite.some((fav) => fav.id === content.id)
+                  ? Colors.selectedHeartColor
+                  : Colors.unselectedHeartColor;
+                return acc;
+              }, {});
+              setHeartColors(savedHeartColors);
+              // console.log("SAVED lists");
+            }
+          } catch (error) {
+            console.error('Error loading library content:', error);
+          }
+        }
+
+        Global.backPressLoadLibrary = false;
+      }
+    }
+
+    reFetch();
+  }, [pathname]); // need this for this one
+
 
   const handelCreateNewTab = async (newTabName: string) => {
     if (newTabName.trim()) {
@@ -137,6 +178,7 @@ const LibraryPage = () => {
           <TouchableOpacity
             style={styles.movieCard}
             onPress={() => {
+                Global.backPressLoadLibrary = true;
                 router.push({
                 pathname: '/InfoPage',
                 params: { id: item.id },
