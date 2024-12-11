@@ -489,44 +489,40 @@ const filterContents = (contents: Content[], filter: Filter): Content[] => {
   });
 };
 
-const sortResults = (keyword: string, allResults: Content[]) : Content[] => {
-  const sortedResults: Content[] = allResults.sort((a, b) => {
-    const keywordLower = keyword.toLowerCase();
-    const irrelevantWordsRegex = /^(the |a |an )/i;
+const sortResults = (keyword: string, allResults: Content[]): Content[] => {
+  const irrelevantWordsRegex = /\b(the|a|an|of)\b/gi;
+  const punctuationRegex = /[',\.\/#!?$%\^&\*;:{}=\-_`~()\[\]]/g;
 
-    const stripIrrelevantWords = (text: string) =>
-        text.toLowerCase().replace(irrelevantWordsRegex, '');
+  const normalizeText = (text: string) =>
+    text
+      .toLowerCase()
+      .replace(punctuationRegex, '')     // Remove punctuation
+      .replace(irrelevantWordsRegex, '') // Remove irrelevant words
+      .trim();
 
-    const adjustedKeywordLower = irrelevantWordsRegex.test(keywordLower)
-        ? keywordLower // Keep the keyword as is if it contains irrelevant words
-        : stripIrrelevantWords(keywordLower);
+  const adjustedKeyword = normalizeText(keyword);
 
-    const aStripped = stripIrrelevantWords(a.title);
-    const bStripped = stripIrrelevantWords(b.title);
+  return allResults.sort((a, b) => {
+    const aNorm = normalizeText(a.title);
+    const bNorm = normalizeText(b.title);
 
-    const aExactMatch = aStripped === adjustedKeywordLower;
-    const bExactMatch = bStripped === adjustedKeywordLower;
+    const aExact = aNorm === adjustedKeyword;
+    const bExact = bNorm === adjustedKeyword;
 
-    if (aExactMatch && !bExactMatch) {
-        return -1; // Exact match should come first
-    } else if (!aExactMatch && bExactMatch) {
-        return 1; // Exact match should come first
-    }
+    // Exact matches first
+    if (aExact && !bExact) return -1;
+    if (!aExact && bExact) return 1;
 
-    const aMatches = aStripped.includes(adjustedKeywordLower);
-    const bMatches = bStripped.includes(adjustedKeywordLower);
+    const aMatches = aNorm.includes(adjustedKeyword);
+    const bMatches = bNorm.includes(adjustedKeyword);
 
-    if (aMatches && !bMatches) {
-        return -1; // a should come before b
-    } else if (!aMatches && bMatches) {
-        return 1; // b should come before a
-    }
+    // Partial matches next
+    if (aMatches && !bMatches) return -1;
+    if (!aMatches && bMatches) return 1;
 
-    // Remove leading irrelevant words for alphabetical sorting
-    return aStripped.localeCompare(bStripped);
+    // Finally, sort alphabetically
+    return aNorm.localeCompare(bNorm);
   });
-
-  return sortedResults;
 };
 
 const getUniqueResults = (contents: Content[]): Content[] => {

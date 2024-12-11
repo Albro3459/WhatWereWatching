@@ -14,7 +14,7 @@ import { Entypo } from '@expo/vector-icons';
 import { WatchList } from './types/listsType';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEY } from '@/Global';
-import { isItemInList, turnTabsIntoPosterTabs } from './helpers/listHelper';
+import { isItemInList, moveItemToTab, turnTabsIntoPosterTabs } from './helpers/listHelper';
 import { parse } from '@babel/core';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
@@ -46,105 +46,105 @@ const SpinnerPage = () => {
 
     const [addToListModal, setAddToListModal] = useState(false);
 
-    const moveItemToFavoriteList = async (id: string) => {
-        try {
-          // Update heartColors locally
-          setHeartColors((prevColors = {}) => ({
-            ...prevColors,
-            [id]: prevColors[id] === selectedHeartColor ? unselectedHeartColor : selectedHeartColor,
-          }));
+    // const moveItemToFavoriteList = async (id: string) => {
+    //     try {
+    //       // Update heartColors locally
+    //       setHeartColors((prevColors = {}) => ({
+    //         ...prevColors,
+    //         [id]: prevColors[id] === selectedHeartColor ? unselectedHeartColor : selectedHeartColor,
+    //       }));
       
-          // Fetch tabs from AsyncStorage
-          const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
-          const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
+    //       // Fetch tabs from AsyncStorage
+    //       const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+    //       const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
       
-          // Find the item in all tabs
-          let item = Object.values<Content>(tabs)
-            .flat()
-            .find((content: Content) => content.id === id);
+    //       // Find the item in all tabs
+    //       let item = Object.values<Content>(tabs)
+    //         .flat()
+    //         .find((content: Content) => content.id === id);
       
-          if (!item) {
-            item = await getContentById(id);
-            if (!item) {
-              console.log(`LandingPage: item with id: ${id} doesn't exist`);
-              return;
-            }
-          }
+    //       if (!item) {
+    //         item = await getContentById(id);
+    //         if (!item) {
+    //           console.log(`LandingPage: item with id: ${id} doesn't exist`);
+    //           return;
+    //         }
+    //       }
       
-          // Check if the item is already in the Favorite tab
-          const isFavorite = tabs.Favorite.some((fav) => fav.id === id);
+    //       // Check if the item is already in the Favorite tab
+    //       const isFavorite = tabs.Favorite.some((fav) => fav.id === id);
       
-          // Update the Favorite tab
-          const updatedFavorites = isFavorite
-            ? tabs.Favorite.filter((content) => content.id !== id) // Remove if already in Favorites
-            : [...tabs.Favorite, item]; // Add if not in Favorites
+    //       // Update the Favorite tab
+    //       const updatedFavorites = isFavorite
+    //         ? tabs.Favorite.filter((content) => content.id !== id) // Remove if already in Favorites
+    //         : [...tabs.Favorite, item]; // Add if not in Favorites
       
-          const updatedTabs = {
-            ...tabs,
-            Favorite: updatedFavorites,
-          };
+    //       const updatedTabs = {
+    //         ...tabs,
+    //         Favorite: updatedFavorites,
+    //       };
           
-          setLists(updatedTabs);
-          // Save updated tabs to AsyncStorage
-          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
+    //       setLists(updatedTabs);
+    //       // Save updated tabs to AsyncStorage
+    //       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
 
-          // turnign the Contents into posterContents
-          const newPosterLists = await turnTabsIntoPosterTabs(updatedTabs);
-          setPosterLists(newPosterLists);
+    //       // turnign the Contents into posterContents
+    //       const newPosterLists = await turnTabsIntoPosterTabs(updatedTabs);
+    //       setPosterLists(newPosterLists);
 
           
-          // Show success alert
-          // Alert.alert(
-          //   "Success",
-          //   isFavorite
-          //     ? `Removed "${item.title}" from Favorites`
-          //     : `Added "${item.title}" to Favorites`
-          // );
+    //       // Show success alert
+    //       // Alert.alert(
+    //       //   "Success",
+    //       //   isFavorite
+    //       //     ? `Removed "${item.title}" from Favorites`
+    //       //     : `Added "${item.title}" to Favorites`
+    //       // );
       
-        } catch (error) {
-          console.error("Error updating Favorites:", error);
-          // Alert.alert("Error", "Unable to update Favorites. Please try again.");
-        }
-    };
+    //     } catch (error) {
+    //       console.error("Error updating Favorites:", error);
+    //       // Alert.alert("Error", "Unable to update Favorites. Please try again.");
+    //     }
+    // };
     
-    const moveItemToList = async (item: Content, targetTab: string) => {
-        try {
-          // Load tabs from AsyncStorage
-          const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
-          const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
+    // const moveItemToList = async (item: Content, targetTab: string) => {
+    //     try {
+    //       // Load tabs from AsyncStorage
+    //       const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+    //       const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
       
-          // Check if the item is already in the target tab
-          const isItemInTargetTab = tabs[targetTab].some((content) => content.id === item.id);
+    //       // Check if the item is already in the target tab
+    //       const isItemInTargetTab = tabs[targetTab].some((content) => content.id === item.id);
       
-          // Update the target tab
-          const updatedTabs = {
-            ...tabs,
-            [targetTab]: isItemInTargetTab
-              ? tabs[targetTab].filter((content) => content.id !== item.id) // Remove if already exists
-              : [...tabs[targetTab], item], // Add if it doesn't exist
-          };
+    //       // Update the target tab
+    //       const updatedTabs = {
+    //         ...tabs,
+    //         [targetTab]: isItemInTargetTab
+    //           ? tabs[targetTab].filter((content) => content.id !== item.id) // Remove if already exists
+    //           : [...tabs[targetTab], item], // Add if it doesn't exist
+    //       };
     
-          setLists(updatedTabs);
+    //       setLists(updatedTabs);
 
-          const newPosterLists = await turnTabsIntoPosterTabs(updatedTabs);
-          setPosterLists(newPosterLists);
+    //       const newPosterLists = await turnTabsIntoPosterTabs(updatedTabs);
+    //       setPosterLists(newPosterLists);
       
-          // Save updated tabs back to AsyncStorage
-          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
+    //       // Save updated tabs back to AsyncStorage
+    //       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
           
-          setAddToListModal(false);
-          // Show success alert
-          // Alert.alert(
-          //   "Success",
-          //   isItemInTargetTab
-          //     ? `Removed "${item.title}" from "${targetTab}"`
-          //     : `Moved "${item.title}" to "${targetTab}"`
-          // );
+    //       setAddToListModal(false);
+    //       // Show success alert
+    //       // Alert.alert(
+    //       //   "Success",
+    //       //   isItemInTargetTab
+    //       //     ? `Removed "${item.title}" from "${targetTab}"`
+    //       //     : `Moved "${item.title}" to "${targetTab}"`
+    //       // );
       
-        } catch (error) {
-          console.error("Error updating tabs:", error);
-        }
-    };
+    //     } catch (error) {
+    //       console.error("Error updating tabs:", error);
+    //     }
+    // };
 
     const getContentObject = async (content: Content) => {
         try {
@@ -285,7 +285,8 @@ const SpinnerPage = () => {
                               <Heart 
                                   heartColor={(heartColors && heartColors[winner.id]) || unselectedHeartColor}
                                   size={35}
-                                  onPress={() => moveItemToFavoriteList(winner.id)}
+                                  // onPress={() => moveItemToFavoriteList(winner.id)}
+                                  onPress={async () => await moveItemToTab(winner, "Favorite", setLists, setPosterLists, [setAddToListModal], setHeartColors)}
                               />
                           </View>
                       </Pressable>
@@ -315,14 +316,16 @@ const SpinnerPage = () => {
                           <Heart 
                               heartColor={heartColors[winner?.id] || unselectedHeartColor}
                               size={35}
-                              onPress={() => moveItemToFavoriteList(winner?.id)}
+                              // onPress={() => moveItemToFavoriteList(winner?.id)}
+                              onPress={async () => await moveItemToTab(winner, tab, setLists, setPosterLists, [setAddToListModal], setHeartColors)}
                           />
                           </View>
                       ) : (
                           <TouchableOpacity
                               key={`LandingPage-${winner.id}-${tab}-${index}`}
                               style={[appStyles.modalButton, isItemInList(winner, tab, lists) && appStyles.selectedModalButton]}
-                              onPress={() => moveItemToList(winner, tab)}
+                              // onPress={() => moveItemToList(winner, tab)}
+                              onPress={async () => await moveItemToTab(winner, tab, setLists, setPosterLists, [setAddToListModal], null)}
                           >
                               <Text style={appStyles.modalButtonText}>
                               {tab} {isItemInList(winner, tab, lists) ? "✓" : ""}

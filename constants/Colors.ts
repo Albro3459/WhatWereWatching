@@ -24,6 +24,9 @@ const italicTextColor = "#bbb";
 
 const goldColor = "#FFD700";
 
+const selectedHeartColor = "#FF2452";
+const unselectedHeartColor = "#ECE6F0";
+
 export const Colors = {
   backgroundColor: backgroundColor,
   cardBackgroundColor: cardBackgroundColor,
@@ -42,4 +45,7 @@ export const Colors = {
   italicTextColor: italicTextColor,
 
   goldColor: goldColor,
+
+  selectedHeartColor: selectedHeartColor,
+  unselectedHeartColor: unselectedHeartColor,
 };

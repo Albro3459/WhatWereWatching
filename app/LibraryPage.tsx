@@ -14,7 +14,6 @@ import {
 import PagerView from 'react-native-pager-view';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from "expo-splash-screen";
-import { getContentById, getPostersFromContent } from './helpers/fetchHelper';
 import { router, usePathname } from 'expo-router';
 import Heart from './components/heartComponent';
 import { Content, PosterContent } from './types/contentType';
@@ -22,7 +21,7 @@ import { appStyles } from '@/styles/appStyles';
 import { STORAGE_KEY } from '@/Global';
 import { Colors } from '@/constants/Colors';
 import { WatchList } from './types/listsType';
-import { isItemInList, turnTabsIntoPosterTabs } from './helpers/listHelper';
+import { isItemInList, moveItemToTab, turnTabsIntoPosterTabs } from './helpers/listHelper';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const scale = .75;
@@ -89,18 +88,10 @@ const LibraryPage = () => {
     loadContent();
   }, []);  
 
-  const saveTabsToStorage = async (updatedTabs) => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
-    } catch (error) {
-      console.error('Error saving tabs to storage:', error);
-    }
-  };
 
   const handleTabPress = async (index) => {
     setActiveTab(index);
     pagerViewRef.current?.setPage(index);
-
 
     const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
     if (savedTabs) {
@@ -110,152 +101,6 @@ const LibraryPage = () => {
       setPosterTabs(newPosterLists);
     }
   };
-
-  // const moveItemToFavoriteTab = (id: string) => {
-  //   setHeartColors((prevColors = {}) => {
-  //     const newColor = prevColors[id] === selectedHeartColor ? unselectedHeartColor : selectedHeartColor;
-  
-  //     setTabs((prevTabs) => {
-  //       const item = Object.values(prevTabs)
-  //         .flat()
-  //         .find((content) => content.id === id);
-  
-  //       if (!item) return prevTabs;
-  
-  //       const isFavorite = newColor === selectedHeartColor;
-  
-  //       const updatedFavorites = isFavorite
-  //         ? [...prevTabs.Favorite, item]
-  //         : prevTabs.Favorite.filter((content) => content.id !== id);
-  
-  //       const updatedTabs = {
-  //         ...prevTabs,
-  //         Favorite: updatedFavorites,
-  //       };
-  
-  //       saveTabsToStorage(updatedTabs); // Save updated state to AsyncStorage
-  //       Alert.alert('Success', `${isFavorite ? "Added" : "Removed"} "${item.title}" ${isFavorite ? "to" : "from"} Favorite tab`);
-
-  //       setDidFavoriteTabUpdate(true);
-  //       return updatedTabs;
-  //     });
-      
-  //     setMoveModalVisible(false);
-  //     return { ...prevColors, [id]: newColor };
-  //   });
-  // };
-
-  // useEffect(() => {
-  //   const updatedPosterTabs = async () => {
-  //     if (didFavoriteTabUpdate && tabs) {
-  //       const newPosterLists = await turnTabsIntoPosterTabs(tabs);
-  //       setPosterTabs(newPosterLists);
-  //       setDidFavoriteTabUpdate(false);
-  //     }
-  //   }
-  //   updatedPosterTabs();
-  // }, [didFavoriteTabUpdate, tabs]);
-
-  const moveItemToFavoriteTab = async (id: string) => {
-    try {
-      // Update heartColors locally
-      setHeartColors((prevColors = {}) => ({
-        ...prevColors,
-        [id]: prevColors[id] === selectedHeartColor ? unselectedHeartColor : selectedHeartColor,
-      }));
-  
-      // Fetch tabs from AsyncStorage
-      const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
-      const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
-  
-      // Find the item in all tabs
-      let item = Object.values<Content>(tabs)
-        .flat()
-        .find((content: Content) => content.id === id);
-  
-      if (!item) {
-        item = await getContentById(id);
-        if (!item) {
-          console.log(`LibraryPage: item with id: ${id} doesn't exist`);
-          return;
-        }
-      }
-  
-      // Check if the item is already in the Favorite tab
-      const isFavorite = tabs.Favorite.some((fav) => fav.id === id);
-  
-      // Update the Favorite tab
-      const updatedFavorites = isFavorite
-        ? tabs.Favorite.filter((content) => content.id !== id) // Remove if already in Favorites
-        : [...tabs.Favorite, item]; // Add if not in Favorites
-  
-      const updatedTabs = {
-        ...tabs,
-        Favorite: updatedFavorites,
-      };
-      
-      setTabs(updatedTabs);
-      const newPosterLists = await turnTabsIntoPosterTabs(updatedTabs);
-      setPosterTabs(newPosterLists);
-
-      // Save updated tabs to AsyncStorage
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
-
-      setMoveModalVisible(false);
-  
-      // Show success alert
-      // Alert.alert(
-      //   "Success",
-      //   isFavorite
-      //     ? `Removed "${item.title}" from Favorites`
-      //     : `Added "${item.title}" to Favorites`
-      // );
-  
-    } catch (error) {
-      console.error("Error updating Favorites:", error);
-      // Alert.alert("Error", "Unable to update Favorites. Please try again.");
-    }
-  };
-  
-
-  const moveItemToTab = async (item: Content, targetTab) => {
-    const sourceTab = Object.keys(tabs).find((tab) =>
-      tabs[tab].some((content) => content.id === item.id)
-    );
-
-    if (sourceTab) {
-      let updatedTabs;
-      let deleted = false;
-      if (sourceTab === targetTab) {
-        updatedTabs = {
-          ...tabs,
-          [sourceTab]: tabs[sourceTab].filter((content) => content.id !== item.id),
-        };
-        deleted = true;
-      }
-      else {
-        updatedTabs = {
-          ...tabs,
-          [sourceTab]: tabs[sourceTab].filter((content) => content.id !== item.id),
-          [targetTab]: [...tabs[targetTab], item],
-        };
-      }
-
-      setTabs(updatedTabs);
-      const newPosterLists = await turnTabsIntoPosterTabs(updatedTabs);
-      setPosterTabs(newPosterLists);
-
-      saveTabsToStorage(updatedTabs); // Save updated state to AsyncStorage
-
-      // Alert.alert('Success', `${deleted ? "Removed" : "Moved"} "${item.title}" ${deleted ? "from" : "to"} "${targetTab}"`);
-    }
-    setMoveModalVisible(false);
-  };
-
-  // useEffect(() => {
-  //   console.log('PosterTabs updated:', posterTabs);
-  // }, [posterTabs]);
-
 
   const renderTabContent = (tabData: PosterContent[], tab) => {
     if (!tabData || tabData.length === 0) {
@@ -370,14 +215,15 @@ const LibraryPage = () => {
                     <Heart 
                       heartColor={heartColors[selectedItem?.id] || unselectedHeartColor}
                       size={35}
-                      onPress={async () => await moveItemToFavoriteTab(selectedItem?.id)}
+                      // onPress={async () => await moveItemToFavoriteTab(selectedItem?.id)}
+                      onPress={async () => await moveItemToTab(selectedItem, tab, setTabs, setPosterTabs, [setMoveModalVisible], setHeartColors)}
                     />
                   </View>
                 ) : (
                   <TouchableOpacity
                     key={`LandingPage-${selectedItem.id}-${tab}-${index}`}
                     style={[appStyles.modalButton, isItemInList(selectedItem, tab, tabs) && appStyles.selectedModalButton]}
-                    onPress={async () => await moveItemToTab(selectedItem, tab)}
+                    onPress={async () => await moveItemToTab(selectedItem, tab, setTabs, setPosterTabs, [setMoveModalVisible], null)}
                   >
                   <Text style={appStyles.modalButtonText}>
                     {tab} {isItemInList(selectedItem, tab, tabs) ? "✓" : ""}

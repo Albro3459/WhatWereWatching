@@ -13,7 +13,7 @@ import { router } from 'expo-router';
 import { SvgUri } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEY } from '@/Global';
-import { isItemInList, turnTabsIntoPosterTabs } from './helpers/listHelper';
+import { isItemInList, moveItemToTab, turnTabsIntoPosterTabs } from './helpers/listHelper';
 import { WatchList } from './types/listsType';
 
 const screenWidth = Dimensions.get("window").width;
@@ -129,108 +129,6 @@ function InfoPage() {
   const [recommendedContent, setRecommendedContent] = useState<PosterContent[]>([]); 
   const [selectedRecommendation, setSelectedRecommendation] = useState<PosterContent | null>(null);
   const [infoModalVisible, setInfoModalVisible] = useState(false);   
-
-  const moveItemToFavoriteList = async (id: string) => {
-    try {
-      // Update heartColors locally
-      setHeartColors((prevColors = {}) => ({
-        ...prevColors,
-        [id]: prevColors[id] === selectedHeartColor ? unselectedHeartColor : selectedHeartColor,
-      }));
-  
-      // Fetch tabs from AsyncStorage
-      const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
-      const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
-  
-      // Find the item in all tabs
-      let item = Object.values<Content>(tabs)
-        .flat()
-        .find((content: Content) => content.id === id);
-  
-      if (!item) {
-        item = await getContentById(id);
-        if (!item) {
-          console.log(`LandingPage: item with id: ${id} doesn't exist`);
-          return;
-        }
-      }
-  
-      // Check if the item is already in the Favorite tab
-      const isFavorite = tabs.Favorite.some((fav) => fav.id === id);
-  
-      // Update the Favorite tab
-      const updatedFavorites = isFavorite
-        ? tabs.Favorite.filter((content) => content.id !== id) // Remove if already in Favorites
-        : [...tabs.Favorite, item]; // Add if not in Favorites
-  
-      const updatedTabs = {
-        ...tabs,
-        Favorite: updatedFavorites,
-      };
-      
-      setLists(updatedTabs);
-
-      const newPosterLists = await turnTabsIntoPosterTabs(updatedTabs);
-      setPosterLists(newPosterLists);
-
-      // Save updated tabs to AsyncStorage
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
-
-      setInfoModalVisible(false);
-  
-      // Show success alert
-      // Alert.alert(
-      //   "Success",
-      //   isFavorite
-      //     ? `Removed "${item.title}" from Favorites`
-      //     : `Added "${item.title}" to Favorites`
-      // );
-  
-    } catch (error) {
-      console.error("Error updating Favorites:", error);
-      // Alert.alert("Error", "Unable to update Favorites. Please try again.");
-    }
-  };
-
-  const moveItemToList = async (item: Content, targetTab: string) => {
-    try {
-      // Load tabs from AsyncStorage
-      const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
-      const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
-  
-      // Check if the item is already in the target tab
-      const isItemInTargetTab = tabs[targetTab].some((content) => content.id === item.id);
-  
-      // Update the target tab
-      const updatedTabs = {
-        ...tabs,
-        [targetTab]: isItemInTargetTab
-          ? tabs[targetTab].filter((content) => content.id !== item.id) // Remove if already exists
-          : [...tabs[targetTab], item], // Add if it doesn't exist
-      };
-
-      setLists(updatedTabs);
-      
-      const newPosterLists = await turnTabsIntoPosterTabs(updatedTabs);
-      setPosterLists(newPosterLists);
-  
-      // Save updated tabs back to AsyncStorage
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
-      
-      setAddToListModal(false);
-      setInfoModalVisible(false);
-      // Show success alert
-      // Alert.alert(
-      //   "Success",
-      //   isItemInTargetTab
-      //     ? `Removed "${item.title}" from "${targetTab}"`
-      //     : `Moved "${item.title}" to "${targetTab}"`
-      // );
-  
-    } catch (error) {
-      console.error("Error updating tabs:", error);
-    }
-  };
 
   const toHoursAndMinutes = (runtime) => {
     if (!runtime) { return "N/A" }
@@ -560,7 +458,8 @@ function InfoPage() {
                       <Pressable 
                         key={index}
                         style={[styles.optionPressable, isItemInList(content, list, lists) && styles.selectedOptionPressable]} 
-                        onPress={() => moveItemToList(content, list)}
+                        // onPress={() => moveItemToList(content, list)}
+                        onPress={async () => await moveItemToTab(content, list, setLists, setPosterLists, [setAddToListModal], null)}
                       >
                         <Text style={styles.optionText}>
                           {list} {isItemInList(content, list, lists) ? "✓" : ""}
@@ -573,7 +472,8 @@ function InfoPage() {
               <Heart 
                   heartColor={(heartColors && heartColors[content.id]) || unselectedHeartColor}
                   size={45}
-                  onPress={() => moveItemToFavoriteList(content.id)}
+                  // onPress={() => moveItemToFavoriteList(content.id)}
+                  onPress={async () => await moveItemToTab(content, 'Favorite', setLists, setPosterLists, [setAddToListModal], setHeartColors)}
               />
             </View>
           </View>
@@ -621,14 +521,16 @@ function InfoPage() {
                       <Heart 
                         heartColor={heartColors[selectedRecommendation?.id] || unselectedHeartColor}
                         size={35}
-                        onPress={() => moveItemToFavoriteList(selectedRecommendation?.id)}
+                        // onPress={() => moveItemToFavoriteList(selectedRecommendation?.id)}
+                        onPress={async () => await moveItemToTab(selectedRecommendation, 'Favorite', setLists, setPosterLists, [setAddToListModal], setHeartColors)}
                       />
                     </View>
                   ) : (
                      <TouchableOpacity
                         key={`LandingPage-${selectedRecommendation.id}-${tab}-${index}`}
                         style={[appStyles.modalButton, isItemInList(selectedRecommendation, tab, lists) && appStyles.selectedModalButton]}
-                        onPress={() => moveItemToList(selectedRecommendation, tab)}
+                        // onPress={() => moveItemToList(selectedRecommendation, tab)}
+                        onPress={async () => await moveItemToTab(selectedRecommendation, tab, setLists, setPosterLists, [setAddToListModal], null)}
                       >
                         <Text style={appStyles.modalButtonText}>
                           {tab} {isItemInList(selectedRecommendation, tab, lists) ? "✓" : ""}
