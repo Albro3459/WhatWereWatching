@@ -211,49 +211,50 @@ export const getContentById = async (ID: string): Promise<Content | null> => {
 };
 
 // Function to fetch a random selection of movies and TV shows
-export const getRandomContent = async (count: number): Promise<Content[] | null> => {
-    try {
-      const data: Content[] = await loadDbFile();
-      if (!data) {
-        console.warn('Failed to load db.json.');
-        return null;
-      }
-  
-      if (!Array.isArray(data)) {
-        console.warn('Invalid data format in db.json. Expected an array.');
-        return null;
-      }
-  
-      // Filter to include only movies and TV shows
-      const allContent = data.filter(
-        (item) => item.showType === 'movie' || item.showType === 'series'
-      );
-  
-      if (count > allContent.length) {
-        console.warn('Requested count exceeds the total number of available content.');
-        return null;
-      }
-  
-      const selectedContent: Content[] = [];
-      const usedIndexes = new Set<number>();
-  
-      while (selectedContent.length < count) {
-        // Generate a random index and use modulo to loop around if needed
-        const randomIndex = Math.floor(Math.random() * allContent.length);
-  
-        // Ensure no duplicates
-        if (!usedIndexes.has(randomIndex) && allContent[randomIndex]) {
-          selectedContent.push(allContent[randomIndex]);
-          usedIndexes.add(randomIndex);
+export const getRandomContent = async (count: number): Promise<PosterContent[] | null> => {
+  try {
+    const data: Content[] = await loadDbFile();
+    if (!data) return null;
+    if (!Array.isArray(data)) return null;
+
+    // No filters applied, so filterContents should return everything.
+    const filter: Filter = { selectedGenres: [], selectedTypes: [], selectedServices: [], selectedPaidOptions: [] };
+    const allContent = filterContents(data, filter);
+
+    // Pre-filter by year and posters
+    const eligibleContent: PosterContent[] = [];
+    for (const item of allContent) {
+      if (item.releaseYear >= 2000 && item.rating >= 75) {
+        const posters = await getPostersFromContent(item);
+        if (posters.horizontal.length > 0 && posters.vertical.length > 0) {
+          eligibleContent.push({ ...item, posters });
         }
       }
-  
-      return selectedContent;
-    } catch (error) {
-      console.warn('Error fetching random content:', error.message);
+    }
+
+    if (count > eligibleContent.length) {
+      console.warn('Requested count exceeds available filtered content.');
       return null;
     }
+
+    const selectedContent: PosterContent[] = [];
+    const usedIndexes = new Set<number>();
+
+    while (selectedContent.length < count) {
+      const randomIndex = Math.floor(Math.random() * eligibleContent.length);
+      if (!usedIndexes.has(randomIndex)) {
+        selectedContent.push(eligibleContent[randomIndex]);
+        usedIndexes.add(randomIndex);
+      }
+    }
+
+    return selectedContent;
+  } catch (error) {
+    console.warn('Error fetching random content:', error.message);
+    return null;
+  }
 };
+
 
 // helpers
 

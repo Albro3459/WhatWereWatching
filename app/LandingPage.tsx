@@ -145,32 +145,34 @@ function LandingPage () {
         if (pathname === "/LandingPage") {
           if (!moviesAndShows || moviesAndShows.length == 0) {
 
-            const randomContent = await getRandomContent(10);
+            const randomContent: PosterContent[] = await getRandomContent(10);
             if (randomContent) {
+              const middle = Math.floor(randomContent.length / 2);
+              setMoviesAndShows(randomContent.slice(0, middle));
+              setCarouselContent(randomContent.slice(middle));
 
-              // Add posters to the random content
-              const updatedContent: PosterContent[] = (
-                await Promise.all(
-                  randomContent.map(async (content: Content): Promise<PosterContent | null> => {
-                    const posters = await getPostersFromContent(content);
+              // // Add posters to the random content
+              // const updatedContent: PosterContent[] = (
+              //   await Promise.all(
+              //     randomContent.map(async (content: Content): Promise<PosterContent | null> => {
+              //       const posters = await getPostersFromContent(content);
               
-                    // Check if horizontal or vertical poster strings are not empty
-                    if (
-                      posters?.horizontal?.trim() !== "" ||
-                      posters?.vertical?.trim() !== ""
-                    ) {
-                      return { ...content, posters };
-                    }
+              //       // // Check if horizontal or vertical poster strings are not empty
+              //       // if (
+              //       //   (posters?.horizontal && posters?.horizontal?.trim() !== "") ||
+              //       //   (posters?.vertical && posters?.vertical?.trim() !== "")
+              //       // ) {
+              //         return { ...content, posters };
+              //       // }
               
-                    // Return null if both horizontal and vertical are empty
-                    return null;
-                  })
-                )
-              ).filter((item): item is PosterContent => item !== null); // Type guard for filtering null values
-
-              const middle = Math.floor(updatedContent.length / 2);
-              setMoviesAndShows(updatedContent.slice(0, middle));
-              setCarouselContent(updatedContent.slice(middle));
+              //       // // Return null if both horizontal and vertical are empty
+              //       // return null;
+              //     })
+              //   )
+              // ).filter((item): item is PosterContent => item !== null); // Type guard for filtering null values
+              // const middle = Math.floor(updatedContent.length / 2);
+              // setMoviesAndShows(updatedContent.slice(0, middle));
+              // setCarouselContent(updatedContent.slice(middle));
             }
             
             const updatedReviews = await Promise.all(

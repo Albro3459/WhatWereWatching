@@ -12,7 +12,7 @@ import { appStyles, RalewayFont } from '@/styles/appStyles';
 import { router } from 'expo-router';
 import { SvgUri } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STORAGE_KEY } from '@/Global';
+import { Global, STORAGE_KEY } from '@/Global';
 import { DEFAULT_TABS, FAVORITE_TAB, isItemInList, moveItemToTab, sortTabs, turnTabsIntoPosterTabs } from './helpers/listHelper';
 import { PosterList, WatchList } from './types/listsType';
 
@@ -129,13 +129,14 @@ function InfoPage() {
 
             const randomContent = await getRandomContent(4);
             if (randomContent) {
-              const updatedRandomContent: PosterContent[] = await Promise.all(
-                randomContent.map(async (content: Content): Promise<PosterContent> => {
-                  const posters = await getPostersFromContent(content);
-                  return { ...content, posters };
-                })
-              );
-              setRecommendedContent(updatedRandomContent);
+              setRecommendedContent(randomContent);
+              // const updatedRandomContent: PosterContent[] = await Promise.all(
+              //   randomContent.map(async (content: Content): Promise<PosterContent> => {
+              //     const posters = await getPostersFromContent(content);
+              //     return { ...content, posters };
+              //   })
+              // );
+              // setRecommendedContent(updatedRandomContent);
             }
 
             // Load and filter reviews for the current content
@@ -168,7 +169,7 @@ function InfoPage() {
 
     const newReview = {
       id: `${Date.now()}`,
-      user: '@currentuser',
+      user: `@${Global.username || "currentuser"}`,
       text: newReviewText,
       rating: newReviewRating,
       avatar: 'https://via.placeholder.com/50',

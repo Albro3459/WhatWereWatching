@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: 'white',
     borderRadius: 8,
     padding: 20,
     width: '80%',
@@ -383,11 +383,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 10,
+    color: Colors.backgroundColor,
   },
   textInput: {
     width: '100%',
     borderWidth: 1,
-    borderColor: '#ccc',
+    backgroundColor: `${Colors.unselectedColor}CC`, // Add 'CC' for 80% opacity in HEX
+    borderColor: Colors.backgroundColor,
     borderRadius: 5,
     padding: 10,
     marginBottom: 20,
@@ -399,24 +401,24 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     padding: 10,
-    backgroundColor: '#ccc',
+    backgroundColor: Colors.grayCell,
     borderRadius: 5,
     flex: 1,
     marginRight: 10,
     alignItems: 'center',
   },
   cancelButtonText: {
-    color: '#fff',
+    color: Colors.backgroundColor,
   },
   addButton: {
     padding: 10,
-    backgroundColor: '#28a745',
+    backgroundColor: Colors.buttonColor,
     borderRadius: 5,
     flex: 1,
     alignItems: 'center',
   },
   addButtonText: {
-    color: '#fff',
+    color: 'white',
   },
 });
 

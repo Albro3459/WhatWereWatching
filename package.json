@@ -1,5 +1,5 @@
 {
-  "name": "the_catch",
+  "name": "what_were_watching",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
@@ -66,6 +66,6 @@
   },
   "private": true,
   "resolutions": {
-    "react-native-svg": "15.9.0"
+    "react-native-svg": "15.8.0"
   }
 }

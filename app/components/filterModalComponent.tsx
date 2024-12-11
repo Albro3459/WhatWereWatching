@@ -119,11 +119,12 @@ const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, on
           />
 
           <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.button} onPress={handleApply}>
-              <Text style={styles.buttonText}>Apply</Text>
-            </TouchableOpacity>
             <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={() => { handleOpen("none"); onClose(null); }}>
               <Text style={[styles.buttonText, {color: Colors.backgroundColor}]}>Cancel</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.button} onPress={handleApply}>
+              <Text style={styles.buttonText}>Apply</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -140,26 +141,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContainer: {
-    backgroundColor: "#8b74bd",
+    backgroundColor: "white",
     opacity: 50,
     borderRadius: 10,
     padding: 20,
     width: '90%',
   },
   title: {
-    color: "white",
+    color: Colors.backgroundColor,
     fontSize: 24,
     fontFamily: RalewayFont,
     textAlign: "center",
   },
   label: {
-    color: "white",
+    color: "black",
     marginBottom: 5,
     fontSize: 16,
   },
   dropdown: {
     marginBottom: 10,
-    backgroundColor: Colors.unselectedColor,
+    backgroundColor: `${Colors.unselectedColor}CC`,
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -169,13 +170,14 @@ const styles = StyleSheet.create({
   button: {
     padding: 10,
     borderRadius: 10,
-    backgroundColor: Colors.selectedColor, 
+    backgroundColor: Colors.buttonColor, 
     alignItems: 'center',
     flex: 1,
     marginHorizontal: 5,
   },
   cancelButton: {
     backgroundColor: Colors.grayCell,
+    borderRadius: 5,
   },
   buttonText: {
     color: 'white',
