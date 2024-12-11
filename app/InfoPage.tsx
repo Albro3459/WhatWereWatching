@@ -273,7 +273,10 @@ function InfoPage() {
                 <Text style={styles.text}>No reviews yet. Be the first to add one!</Text>
               ) : (
                 <FlatList
+                  showsVerticalScrollIndicator={false}
+                  scrollEnabled={false}
                   data={reviews}
+                  keyExtractor={(item) => item.id}
                   renderItem={({ item }) => (
                     <View style={appStyles.reviewCard}>
                       <Image source={{ uri: item.avatar }} style={appStyles.avatar} />
@@ -293,7 +296,6 @@ function InfoPage() {
                       </View>
                     </View>
                   )}
-                  keyExtractor={(item) => item.id}
                 />
               )}
               <Button title="Add Review" onPress={() => setAddReviewModal(true)} />
