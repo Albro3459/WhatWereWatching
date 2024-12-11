@@ -170,7 +170,7 @@ function InfoPage() {
     const newReview = {
       id: `${Date.now()}`,
       user: `@${Global.username || "currentuser"}`,
-      text: newReviewText,
+      text: newReviewText.trim(),
       rating: newReviewRating,
       avatar: 'https://via.placeholder.com/50',
       contentID,
@@ -303,6 +303,7 @@ function InfoPage() {
                   <View style={styles.modalContent}>
                     <Text style={styles.modalTitle}>Add a Review</Text>
                     <TextInput
+                      multiline={true}
                       style={styles.textInput}
                       placeholder="Write your review..."
                       placeholderTextColor="#aaa"
@@ -488,13 +489,13 @@ function InfoPage() {
       {selectedRecommendation && (
         <Modal
           transparent={true}
-          visible={addToListModal}
+          visible={infoModalVisible}
           animationType="fade"
-          onRequestClose={() => setAddToListModal(false)}
+          onRequestClose={() => setInfoModalVisible(false)}
         >
           <Pressable
             style={appStyles.modalOverlay}
-            onPress={() => setAddToListModal(false)}
+            onPress={() => setInfoModalVisible(false)}
           >
             <View style={appStyles.modalContent}>
               <Text style={appStyles.modalTitle}>
@@ -512,7 +513,7 @@ function InfoPage() {
                           appStyles.modalButton,
                           isItemInList(selectedRecommendation, tab, lists) && appStyles.selectedModalButton,
                         ]}
-                        onPress={async () => await moveItemToTab(selectedRecommendation, tab, setLists, setPosterLists, [setAddToListModal], null)}
+                        onPress={async () => await moveItemToTab(selectedRecommendation, tab, setLists, setPosterLists, [setInfoModalVisible], null)}
                       >
                         <Text style={appStyles.modalButtonText}>
                           {tab} {isItemInList(selectedRecommendation, tab, lists) ? "✓" : ""}
@@ -531,7 +532,7 @@ function InfoPage() {
                           heartColors[selectedRecommendation?.id] || Colors.unselectedHeartColor
                         }
                         size={35}
-                        onPress={async () => await moveItemToTab(selectedRecommendation, FAVORITE_TAB, setLists, setPosterLists, [setAddToListModal], setHeartColors)}
+                        onPress={async () => await moveItemToTab(selectedRecommendation, FAVORITE_TAB, setLists, setPosterLists, [setInfoModalVisible], setHeartColors)}
                       />
                     </View>
                   )}
@@ -670,7 +671,7 @@ const styles = StyleSheet.create({
       backgroundColor: Colors.cardBackgroundColor,
       borderRadius: 10,
       padding: 20,
-      width: 250,
+      width: screenWidth*0.8,
       alignItems: "center",
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
@@ -698,8 +699,10 @@ const styles = StyleSheet.create({
       backgroundColor: '#333',
       color: '#fff',
       padding: 10,
-      borderRadius: 5,
+      borderRadius: 8,
       marginBottom: 20,
+      width: "100%",
+      minHeight: 50,
     },
     ratingLabel: {
       color: '#fff',

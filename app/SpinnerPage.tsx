@@ -30,6 +30,7 @@ const SpinnerPage = () => {
 
     const [inputText, setInputText] = useState<string>("");
     const [isSearchModalVisible, setSearchModalVisible] = useState(false);
+    const [isEditModalVisible, setEditModalVisible] = useState(false);
 
 
     // const [heartColor, setHeartColor] = useState(unselectedHeartColor);
@@ -87,8 +88,13 @@ const SpinnerPage = () => {
       updateLists();
     }; 
 
-    const handleModalClose = () => {
-      // inputRef.current?.blur(); // Blur the main input to prevent reopening the modal
+    const handleEditModalClose = () => {
+      // console.log("handle modal close");
+    
+      setEditModalVisible(false);
+    };
+
+    const handleSearchModalClose = () => {
       // console.log("handle modal close");
       setInputText(""); // Clear the input text
       Keyboard.dismiss(); 
@@ -108,14 +114,12 @@ const SpinnerPage = () => {
     // Function to add a movie to the wheel
     const addSegment = async (inputText) => {
       if (!inputText || inputText.trim() === "") {
-        handleModalClose();
+        handleSearchModalClose();
         Alert.alert("Input Error", "Please enter a movie name.");
         return;
       }
       
-      handleModalClose();
-      // setInputText("");
-      // setSearchModalVisible(false);
+      handleSearchModalClose();
       
       try {
         const results = await searchByKeywords(inputText, {
@@ -239,6 +243,14 @@ const SpinnerPage = () => {
                 >
                 <Text style={styles.addButtonText}>Add</Text>
               </TouchableOpacity> */}
+              {moviesAndShows && moviesAndShows.length > 0 && (
+              <TouchableOpacity style={styles.addButton} 
+                onPress={() => setEditModalVisible(true)}
+                // onPress={async () => await addSegment(inputText)}
+                >
+                <Text style={styles.addButtonText}>Edit</Text>
+              </TouchableOpacity>
+              )}
             </Pressable>
           </View>
 
@@ -353,28 +365,82 @@ const SpinnerPage = () => {
               visible={isSearchModalVisible}
               transparent
               animationType="fade"
-              onRequestClose={handleModalClose}
+              onRequestClose={handleSearchModalClose}
             >
-              <Pressable onPress={() => { Keyboard.dismiss(); handleModalClose(); }}>
+              <Pressable onPress={() => { Keyboard.dismiss(); handleSearchModalClose(); }}>
                 <View style={styles.modalOverlay}>
-                  <View style={styles.modalInput}>
-                    <TextInput
-                      style={[styles.input, {width: screenWidth * 0.7}]}
-                      placeholder="Search..."
-                      placeholderTextColor="#aaa"
-                      value={inputText}
-                      onChangeText={setInputText}
-                      onSubmitEditing={async () => { await handleAddSegment(inputText); }}
-                      returnKeyType="search"
-                      autoFocus
-                    />
-                    <TouchableOpacity style={styles.addButton} onPress={async () => { await handleAddSegment(inputText); }}>
-                      <Text style={styles.addButtonText}>Add</Text>
-                    </TouchableOpacity>
+                  <View style={{ marginBottom: screenHeight*1.2, flexDirection: "column"}}>
+                    <View style={[styles.modalInput, {zIndex: 10}]}>
+                      <TextInput
+                        style={[styles.input, {width: screenWidth * 0.7},]}
+                        placeholder="Search..."
+                        placeholderTextColor="#aaa"
+                        value={inputText}
+                        onChangeText={setInputText}
+                        onSubmitEditing={async () => { await handleAddSegment(inputText); }}
+                        returnKeyType="search"
+                        autoFocus
+                      />
+                      <TouchableOpacity style={styles.addButton} onPress={async () => { await handleAddSegment(inputText); }}>
+                        <Text style={styles.addButtonText}>Add</Text>
+                      </TouchableOpacity>
+                    </View>                               
                   </View>
                 </View>
               </Pressable>
             </Modal>
+
+
+            {moviesAndShows && moviesAndShows.length > 0 && (
+              <Modal
+                visible={isEditModalVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={handleEditModalClose}
+              >
+                  <View style={styles.modalOverlay}>
+                    <View style={[styles.modalLayout]}>                      
+                        <View style={[styles.modalContainer, { height: 50*(moviesAndShows.length) }]}>
+
+                        <View style={{marginTop: -8, zIndex: 1000}}>
+                          <Entypo name='circle-with-cross' size={30} color={Colors.buttonColor}
+                                  style={{
+                                      position: "absolute",
+                                      padding: 0,
+                                      margin: 0,
+                                      left: screenWidth*0.74
+                                  }} 
+                                  onPress={handleEditModalClose} />
+                        </View>
+
+                        <Text style={{fontFamily: RalewayFont, textAlign: "center", fontSize: 22, paddingTop: 30}}>Delete any wheel items:</Text>
+                        
+                        <View style={{paddingTop: 25, maxHeight: screenHeight*0.5}}>
+                          <FlatList
+                            data={moviesAndShows}
+                            keyExtractor={(item, index) => index.toString()}
+                            renderItem={({ item }) => (
+                              <View style={styles.segmentItem}>
+                                <Text style={[styles.segmentText]}>{item.title}</Text>
+                                <TouchableOpacity onPress={() => removeSegment(item)}>
+                                  <Text style={styles.removeButton}>Remove</Text>
+                                </TouchableOpacity>
+                              </View>
+                            )}
+                            style={[styles.list]}
+                            ListEmptyComponent={
+                              <Text style={styles.emptyText}>No movies added to the wheel yet.</Text>
+                            }
+                          />
+                          <View style={{marginBottom: -screenHeight}}></View>
+
+                          </View>
+
+                        </View>                                
+                    </View>
+                  </View>    
+              </Modal>
+            )}  
             
 
 
@@ -442,20 +508,26 @@ const styles = StyleSheet.create({
       list: {
         flex: 1,
         width: "100%",
+        maxHeight: screenHeight*0.44,
         marginBottom: 20,
       },
       segmentItem: {
         flexDirection: "row",
+        width: "95%",
+        alignSelf: "center",
         justifyContent: "space-between",
         alignItems: "center",
-        backgroundColor: "#4f4f77",
-        padding: 10,
-        borderRadius: 5,
+        backgroundColor: Colors.unselectedColor,
+        padding: 15,
+        borderRadius: 10,
         marginBottom: 10,
       },
       segmentText: {
         color: "#fff",
         fontSize: 16,
+        flexWrap: "wrap",
+        maxWidth: "85%", 
+        paddingRight: 10
       },
       removeButton: {
         color: "#ff4d4d",
@@ -469,15 +541,24 @@ const styles = StyleSheet.create({
 
       modalOverlay: {
         flex: 1,
-        // flexDirection: "row",
         paddingTop: screenHeight,
         justifyContent: "center",
         alignItems: "center",
         backgroundColor: "rgba(0, 0, 0, 0.5)",
       },
+      modalLayout: {width: screenWidth, marginBottom: screenHeight*1.6, flexDirection: "column", alignItems: "center"},
+      modalContainer: {
+        backgroundColor: "white",
+        opacity: 50,
+        borderRadius: 10,
+        padding: 20,
+        width: '90%',
+        minHeight: 50, 
+        maxHeight: screenHeight*0.6, 
+        marginBottom: 0, 
+      },
       modalInput: {
         flexDirection: "row",
-        paddingBottom: screenHeight,
       },
       modalContent: {
         width: "80%",
@@ -489,6 +570,8 @@ const styles = StyleSheet.create({
         shadowRadius: 10,
         elevation: 5,
       },
+
+      
 });
 
 export default SpinnerPage;
