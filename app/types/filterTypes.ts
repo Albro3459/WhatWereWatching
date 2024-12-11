@@ -40,13 +40,15 @@ export const Types = [
 export const Services = [
     { label: 'Netflix', value: 'netflix' },
     { label: 'Hulu', value: 'hulu' },
-    { label: 'HBO Max', value: 'hbomaxus' },
+    { label: 'HBO Max', value: 'hbo' },
     { label: 'Amazon Prime', value: 'Prime Video' },
     { label: 'Apple TV', value: 'apple' },
     { label: 'Disney+', value: 'disney' },
     { label: 'Peacock', value: 'peacock' },
     { label: 'Paramount+', value: 'cbsaacf' },
-    { label: 'Tubi', value: 'tvs.sbd.13160' },
+    { label: 'Discover', value: 'discover' },
+    { label: 'Starz', value: 'starz' },
+    { label: 'Tubi', value: 'tubi' },
 ];
 
 export const PaidOptions = [
@@ -54,7 +56,6 @@ export const PaidOptions = [
     { label: 'Subscription', value: 'subscription' },
     { label: 'Rent', value: 'rent' },
     { label: 'Buy', value: 'buy' },
-    { label: 'Add On', value: 'addon' },
 ];
 
 export default {};

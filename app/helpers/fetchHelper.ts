@@ -400,7 +400,7 @@ const fetchWithFilters = async (filter: Filter): Promise<Content[]> => {
       country: 'us',
       series_granularity: 'show',
       ...filter.selectedGenres.length > 0 && { genres: filter.selectedGenres.join(',') },
-      order_direction: 'asc',
+      order_direction: 'desc',
       order_by: 'popularity_1year',
       ...filter.selectedGenres.length > 0 && { genres_relation: 'or' }, // include content from any selected genre
       output_language: 'en',
@@ -411,18 +411,18 @@ const fetchWithFilters = async (filter: Filter): Promise<Content[]> => {
   };
 
   try {
-    console.log(`Fetching data filters`);
-    console.log("Request Parameters:", {
-      country: 'us',
-      series_granularity: 'show',
-      ...filter.selectedGenres.length > 0 && { genres: filter.selectedGenres.join(',') },
-      order_direction: 'asc',
-      order_by: 'popularity_1year',
-      ...filter.selectedGenres.length > 0 && { genres_relation: 'or' },
-      output_language: 'en',
-      ...filter.selectedServices.length > 0 && { catalogs: filter.selectedServices.join(',') },
-      ...filter.selectedTypes.length === 1 && { show_type: filter.selectedTypes[0] }
-    });
+    // console.log(`Fetching data filters`);
+    // console.log("Request Parameters:", {
+    //   country: 'us',
+    //   series_granularity: 'show',
+    //   ...filter.selectedGenres.length > 0 && { genres: filter.selectedGenres.join(',') },
+    //   order_direction: 'asc',
+    //   order_by: 'popularity_1year',
+    //   ...filter.selectedGenres.length > 0 && { genres_relation: 'or' },
+    //   output_language: 'en',
+    //   ...filter.selectedServices.length > 0 && { catalogs: filter.selectedServices.join(',') },
+    //   ...filter.selectedTypes.length === 1 && { show_type: filter.selectedTypes[0] }
+    // });
 
     const response = await axios.request(options);
     const data = response.data;
@@ -455,7 +455,7 @@ const fetchWithKeywordOnly = async (keyword: string): Promise<Content | null> =>
   };
 
   try {
-    console.log(`Fetching data with keyword only: ${keyword}`);
+    // console.log(`Fetching data with keyword only: ${keyword}`);
     const response = await axios.request(options);
 
     const data: Content = response.data[0];
@@ -558,7 +558,7 @@ export const searchByKeywords = async (keyword: string, filter: Filter): Promise
     else { keyword = keyword.toLowerCase().trim() || ""; }
 
     let apiResults: Content[] = [];
-    const filteredLocalData: Content[] = isFilterEmpty(filter) ? await filterLocalDB(keyword, filter) || [] : []; // dont use local data with filters
+    const filteredLocalData: Content[] = isFilterEmpty(filter) ? await filterLocalDB(keyword, filter) || [] : []; // dont use local data with filters (it gives bad results because we dont know how to rank results. thats why google is so good)
     if (!filteredLocalData || filteredLocalData.length === 0 || !isFilterEmpty(filter)) {
       if (!filteredLocalData || filteredLocalData.length === 0) {
         console.log(`No search results found in local db.json for ${keyword} and filters. ... Searching the API`);
@@ -595,19 +595,20 @@ export const searchByKeywords = async (keyword: string, filter: Filter): Promise
           apiResults.push(keywordResult);
         }
         else if (filterResults.length >= 0 && keywordResult) {
-            apiResults = filterResults;
+            // apiResults = filterResults; // THIS NEEDS TO BE COMMENTED OUT BECAUSE HERE IF THERE ARE FILTERS AND A KEYWORD, THEN ALL WE DO IS RETURN THE RESULT OF THE KEYWORD SEARCH IF IT MATCHES THE FILTER
+
            // Now, check if the keyword result satisfies the applied filters
 
-           console.log("keywordResult details:", {
-            title: keywordResult.title,
-            originalTitle: keywordResult.originalTitle,
-            overview: keywordResult.overview,
-            showType: keywordResult.showType,
-            cast: keywordResult.cast,
-            directors: keywordResult.directors,
-            genres: keywordResult.genres?.map(g => g.id),
-            streamingOptions: keywordResult.streamingOptions?.us
-          });
+          //  console.log("keywordResult details:", {
+          //   title: keywordResult.title,
+          //   originalTitle: keywordResult.originalTitle,
+          //   overview: keywordResult.overview,
+          //   showType: keywordResult.showType,
+          //   cast: keywordResult.cast,
+          //   directors: keywordResult.directors,
+          //   genres: keywordResult.genres?.map(g => g.id),
+          //   streamingOptions: keywordResult.streamingOptions?.us
+          // });
 
            const keywordContentFields = [
             keywordResult.title?.toLowerCase(),
@@ -623,25 +624,25 @@ export const searchByKeywords = async (keyword: string, filter: Filter): Promise
             ])),
           ].filter(Boolean);
 
-          console.log("keywordContentFields:", keywordContentFields);
+          // console.log("keywordContentFields:", keywordContentFields);
         
           const filterParams = mapFiltersToApiParams(filter);
-          console.log("filterParams:", filterParams);
+          // console.log("filterParams:", filterParams);
 
           const matchesAllFilters = isFilterEmpty(filter)
                 ? true
                 : Object.entries(filterParams).every(([key, value]) => {
                   const filterValues = value ? value.split(',').map(v => v.trim().toLowerCase()) : [];
-                  console.log(`Checking filter: ${key} with values: ${filterValues}`);
+                  // console.log(`Checking filter: ${key} with values: ${filterValues}`);
                   if (key === "show_type") {
                     return filterValues.some((filterValue) => {
                       if (filterValue === "series") {
                         const result = keywordContentFields.some((field) => field === "series");
-                        console.log("show_type series match:", result);
+                        // console.log("show_type series match:", result);
                         return result;
                       } else if (filterValue === "movie") {
                         const result = keywordContentFields.some((field) => field === "movie");
-                        console.log("show_type movie match:", result);
+                        // console.log("show_type movie match:", result);
                         return result;
                       }
                       return false;
@@ -651,18 +652,18 @@ export const searchByKeywords = async (keyword: string, filter: Filter): Promise
                     const result = filterValues.some((filterValue) =>
                       keywordContentFields.some((field) => field.includes(filterValue))
                     );
-                    console.log(`${key} OR match:`, result);
+                    // console.log(`${key} OR match:`, result);
                     return result;
                   } else {
                     if (filter.selectedGenres && filter.selectedGenres.length <= 0) { 
-                      console.log("No selected genres, defaulting to true");
+                      // console.log("No selected genres, defaulting to true");
                       return true; 
                     }
                     // Default: AND logic for other filters
                     const result = filterValues.every((filterValue) =>
                       keywordContentFields.some((field) => field.includes(filterValue))
                     );
-                    console.log(`${key} AND match:`, result);
+                    // console.log(`${key} AND match:`, result);
                     return result;
                   }
                 });
@@ -674,6 +675,9 @@ export const searchByKeywords = async (keyword: string, filter: Filter): Promise
           else {
             console.log(`The search ${keyword} DOES NOT match with the filters!`);
           }
+        } else if (filterResults.length >= 0 && (!keyword || keyword.length <= 0)) {
+          // if there are filter results and no keyword search, then return the filter results
+          apiResults = filterResults; 
         }
       }      
 
