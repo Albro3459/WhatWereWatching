@@ -10,14 +10,11 @@ import { appStyles, RalewayFont } from "@/styles/appStyles";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Heart from "./components/heartComponent";
 import { Global, STORAGE_KEY } from "@/Global";
-import { isItemInList, moveItemToTab } from "./helpers/listHelper";
+import { DEFAULT_TABS, FAVORITE_TAB, isItemInList, moveItemToTab } from "./helpers/listHelper";
 import { WatchList } from "./types/listsType";
 
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
-const scale = .75;
-const selectedHeartColor = "#FF2452";
-const unselectedHeartColor = "#ECE6F0";
 
 const LIBRARY_OVERLAY_HEIGHT = screenHeight*.095
 
@@ -26,7 +23,6 @@ function LandingPage () {
 
     const [name, setName] = useState<string>(Global.name);
 
-    // const tabList = ["Planned", "Watching", "Completed", "Favorite"];
     const [tabs, setTabs] = useState<WatchList>({
       Planned: [],
       Watching: [],
@@ -111,12 +107,14 @@ function LandingPage () {
             // console.log('LandingPage: Loading async storage ');
             const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
             if (savedTabs) {
-              const parsedTabs = JSON.parse(savedTabs);
+              const parsedTabs: WatchList = savedTabs 
+                            ? { ...DEFAULT_TABS, ...JSON.parse(savedTabs) } // Merge defaults with saved data
+                            : DEFAULT_TABS;
               setTabs(parsedTabs);
 
               // Extract only favorites initially
               const savedHeartColors = (parsedTabs.Favorite || []).reduce((acc, content) => {
-                acc[content.id] = selectedHeartColor;
+                acc[content.id] = Colors.selectedHeartColor;
                 // console.log(
                 //   `Setting Heart Color: ID=${content.id}, Title="${content.title}", HeartColor=${selectedHeartColor}`
                 // );
@@ -134,102 +132,6 @@ function LandingPage () {
   
       loadContent();
     }, [pathname]);
-  
-    // const moveItemToFavoriteTab = async (id: string) => {
-    //   try {
-    //     // Update heartColors locally
-    //     setHeartColors((prevColors = {}) => ({
-    //       ...prevColors,
-    //       [id]: prevColors[id] === selectedHeartColor ? unselectedHeartColor : selectedHeartColor,
-    //     }));
-    
-    //     // Fetch tabs from AsyncStorage
-    //     const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
-    //     const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
-    
-    //     // Find the item in all tabs
-    //     let item = Object.values<Content>(tabs)
-    //       .flat()
-    //       .find((content: Content) => content.id === id);
-    
-    //     if (!item) {
-    //       item = await getContentById(id);
-    //       if (!item) {
-    //         console.log(`LandingPage: item with id: ${id} doesn't exist`);
-    //         return;
-    //       }
-    //     }
-    
-    //     // Check if the item is already in the Favorite tab
-    //     const isFavorite = tabs.Favorite.some((fav) => fav.id === id);
-    
-    //     // Update the Favorite tab
-    //     const updatedFavorites = isFavorite
-    //       ? tabs.Favorite.filter((content) => content.id !== id) // Remove if already in Favorites
-    //       : [...tabs.Favorite, item]; // Add if not in Favorites
-    
-    //     const updatedTabs = {
-    //       ...tabs,
-    //       Favorite: updatedFavorites,
-    //     };
-
-    //     setTabs(updatedTabs);
-    
-    //     // Save updated tabs to AsyncStorage
-    //     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
-    
-    //     // Show success alert
-    //     // Alert.alert(
-    //     //   "Success",
-    //     //   isFavorite
-    //     //     ? `Removed "${item.title}" from Favorites`
-    //     //     : `Added "${item.title}" to Favorites`
-    //     // );
-    
-    //     setListModalVisible(false); // Close the modal
-    //   } catch (error) {
-    //     console.error("Error updating Favorites:", error);
-    //     Alert.alert("Error", "Unable to update Favorites. Please try again.");
-    //   }
-    // };
-  
-    // const moveItemToTab = async (item: Content, targetTab: string) => {
-    //   try {
-    //     // Load tabs from AsyncStorage
-    //     const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
-    //     const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
-    
-    //     // Check if the item is already in the target tab
-    //     const isItemInTargetTab = tabs[targetTab].some((content) => content.id === item.id);
-    
-    //     // Update the target tab
-    //     const updatedTabs = {
-    //       ...tabs,
-    //       [targetTab]: isItemInTargetTab
-    //         ? tabs[targetTab].filter((content) => content.id !== item.id) // Remove if already exists
-    //         : [...tabs[targetTab], item], // Add if it doesn't exist
-    //     };
-
-    //     setTabs(updatedTabs);
-    
-    //     // Save updated tabs back to AsyncStorage
-    //     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
-    
-    //     // Show success alert
-    //     // Alert.alert(
-    //     //   "Success",
-    //     //   isItemInTargetTab
-    //     //     ? `Removed "${item.title}" from "${targetTab}"`
-    //     //     : `Moved "${item.title}" to "${targetTab}"`
-    //     // );
-    
-    //     // Close the modal
-    //     setListModalVisible(false);
-    //   } catch (error) {
-    //     console.error("Error updating tabs:", error);
-    //   }
-    // };
-    
 
     // Function to handle the Next button
     const handleNextMovie = () => {
@@ -402,10 +304,10 @@ function LandingPage () {
                   Move "{selectedContent?.title}" to:
                 </Text>
                 {selectedContent && Object.keys(tabs).map((tab, index) => (
-                  tab === "Favorite" ? (
+                  tab === FAVORITE_TAB ? (
                     <View key={`LandingPage-${selectedContent.id}-heart-${index}`} style={{paddingTop: 10}}>
                       <Heart 
-                        heartColor={heartColors[selectedContent?.id] || unselectedHeartColor}
+                        heartColor={heartColors[selectedContent?.id] || Colors.unselectedHeartColor}
                         size={35}
                         // onPress={() => moveItemToFavoriteTab(selectedContent?.id)}
                         onPress={async () => await moveItemToTab(selectedContent, tab, setTabs, null, [setListModalVisible], setHeartColors)}

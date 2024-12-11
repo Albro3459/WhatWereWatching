@@ -9,16 +9,13 @@ import { appStyles } from '@/styles/appStyles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEY } from '@/Global';
 import { WatchList } from './types/listsType';
-import { isItemInList, moveItemToTab, turnTabsIntoPosterTabs } from './helpers/listHelper';
+import { DEFAULT_TABS, FAVORITE_TAB, isItemInList, moveItemToTab, turnTabsIntoPosterTabs } from './helpers/listHelper';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import FilterModal from './components/filterModalComponent';
 import { Filter } from './types/filterTypes';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
-const scale = .75;
-const selectedHeartColor = "#FF2452";
-const unselectedHeartColor = "#ECE6F0";
 
 const SearchPage = () => {
   const pathname = usePathname();
@@ -86,13 +83,15 @@ const SearchPage = () => {
         // Load saved tabs from AsyncStorage
         const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
         if (savedTabs) {
-          const parsedTabs = JSON.parse(savedTabs);
+          const parsedTabs: WatchList = savedTabs 
+                            ? { ...DEFAULT_TABS, ...JSON.parse(savedTabs) } // Merge defaults with saved data
+                            : DEFAULT_TABS;
           setLists(parsedTabs);
           // Initialize heartColors based on the Favorite tab
           const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc, content: Content) => {
             acc[content.id] = parsedTabs.Favorite.some((fav) => fav.id === content.id)
-              ? selectedHeartColor
-              : unselectedHeartColor;
+              ? Colors.selectedHeartColor
+              : Colors.unselectedHeartColor;
             return acc;
           }, {});
           setHeartColors(savedHeartColors);
@@ -112,7 +111,7 @@ const SearchPage = () => {
           </Pressable>
           <TextInput
             style={[styles.searchBar, {flex: 1}]}
-            placeholder="Search for a movie..."
+            placeholder="Search for a movie or TV show..."
             placeholderTextColor={Colors.reviewTextColor}
             value={searchText}
             // onChangeText={async (text) => await search(text, { selectedGenres, selectedTypes, selectedServices, selectedPaidOptions} as Filter )}
@@ -157,10 +156,10 @@ const SearchPage = () => {
                     <Text style={appStyles.cardRating}>⭐ {item.rating}</Text>
                   </View>
                   <Heart 
-                    heartColor={(heartColors && heartColors[item.id]) || unselectedHeartColor}
+                    heartColor={(heartColors && heartColors[item.id]) || Colors.unselectedHeartColor}
                     size={40}
                     // onPress={() => moveItemToFavoriteList(item.id)}
-                    onPress={async () => await moveItemToTab(item.content, 'Favorite', setLists, setPosterLists, [setSearchAddToListModal], setHeartColors)}
+                    onPress={async () => await moveItemToTab(item.content, FAVORITE_TAB, setLists, setPosterLists, [setSearchAddToListModal], setHeartColors)}
                   />
                 </View>
               </Pressable>
@@ -185,10 +184,10 @@ const SearchPage = () => {
                   Move "{selectedResult?.title}" to:
                 </Text>
                 {selectedResult && Object.keys(lists).map((tab, index) => (
-                  tab === "Favorite" ? (
+                  tab === FAVORITE_TAB ? (
                     <View key={`LandingPage-${selectedResult.id}-heart-${index}`} style={{paddingTop: 10}}>
                       <Heart 
-                        heartColor={heartColors[selectedResult?.id] || unselectedHeartColor}
+                        heartColor={heartColors[selectedResult?.id] || Colors.unselectedHeartColor}
                         size={35}
                         // onPress={() => moveItemToFavoriteList(selectedResult?.id)}
                         onPress={async () => await moveItemToTab(selectedResult, tab, setLists, setPosterLists, [setSearchAddToListModal], setHeartColors)}

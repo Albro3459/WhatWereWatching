@@ -1,3 +1,5 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 export const STORAGE_KEY = 'libraryTabs';
 
 export const Global = {
@@ -13,7 +15,7 @@ export const Global = {
     justSignedUp: false,
 };
 
-export const LogoutUser = () => {
+export const LogoutUser = async () => {
     Global.username = "";
     Global.password = "";
     Global.name = "";
@@ -23,6 +25,14 @@ export const LogoutUser = () => {
     Global.genres = new Set<string>();
 
     Global.justSignedUp = false;
+
+    // Clear AsyncStorage
+    try {
+        await AsyncStorage.clear();
+        console.log("AsyncStorage cleared successfully.");
+    } catch (error) {
+        console.error("Failed to clear AsyncStorage:", error);
+    }
 }
 
 export const FetchUserProfile = () => {

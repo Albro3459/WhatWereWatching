@@ -32,13 +32,7 @@ export default function Index() {
     };
     
       // Toggle function to expand or collapse the white rectangle
-      const handleSignInPress = async () => {
-        Global.username = inputUsername.trim();
-        Global.password = inputPassword;
-        router.push('/LandingPage');
-        return;
-
-        
+      const handleSignInPress = async () => {        
         setIsSigningIn(true);
         setIsSigningUp(false);
         // Animate the height change
@@ -50,7 +44,7 @@ export default function Index() {
       };
     
       const handleSignUp = async () => {
-        LogoutUser();
+        await LogoutUser();
         if (!inputUsername || !inputPassword || !inputConfirmPassword) {
           Alert.alert("Error", "Please fill out all fields.");
           return;
@@ -75,7 +69,7 @@ export default function Index() {
     
       // Toggle function to expand or collapse the white rectangle
       const handleSignUpPress = async () => {
-        LogoutUser();
+        await LogoutUser();
         setIsSigningUp(true);
         setIsSigningIn(false);
         // Animate the height change

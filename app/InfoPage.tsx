@@ -13,13 +13,10 @@ import { router } from 'expo-router';
 import { SvgUri } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEY } from '@/Global';
-import { isItemInList, moveItemToTab, turnTabsIntoPosterTabs } from './helpers/listHelper';
+import { DEFAULT_TABS, FAVORITE_TAB, isItemInList, moveItemToTab, turnTabsIntoPosterTabs } from './helpers/listHelper';
 import { WatchList } from './types/listsType';
 
 const screenWidth = Dimensions.get("window").width;
-const scale = 1;
-const selectedHeartColor = "#FF2452";
-const unselectedHeartColor = "#ECE6F0";
 
 const REVIEW_STORAGE_KEY = 'movie_reviews';
 
@@ -121,12 +118,14 @@ function InfoPage() {
             try {
               const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
               if (savedTabs) {
-                const parsedTabs = JSON.parse(savedTabs);
+                const parsedTabs: WatchList = savedTabs 
+                            ? { ...DEFAULT_TABS, ...JSON.parse(savedTabs) } // Merge defaults with saved data
+                            : DEFAULT_TABS;
                 setLists(parsedTabs);
                 const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc) => {
                   acc[getContent.id] = parsedTabs.Favorite.some((fav) => fav.id === getContent.id)
-                    ? selectedHeartColor
-                    : unselectedHeartColor;
+                    ? Colors.selectedHeartColor
+                    : Colors.unselectedHeartColor;
                   return acc;
                 }, {});
                 setHeartColors(savedHeartColors);
@@ -462,10 +461,10 @@ function InfoPage() {
                 </Pressable>
               </Modal>
               <Heart 
-                  heartColor={(heartColors && heartColors[content.id]) || unselectedHeartColor}
+                  heartColor={(heartColors && heartColors[content.id]) ||Colors.unselectedHeartColor}
                   size={45}
                   // onPress={() => moveItemToFavoriteList(content.id)}
-                  onPress={async () => await moveItemToTab(content, 'Favorite', setLists, setPosterLists, [setAddToListModal], setHeartColors)}
+                  onPress={async () => await moveItemToTab(content, FAVORITE_TAB, setLists, setPosterLists, [setAddToListModal], setHeartColors)}
               />
             </View>
           </View>
@@ -508,13 +507,13 @@ function InfoPage() {
                   Move "{selectedRecommendation?.title}" to:
                 </Text>
                 {selectedRecommendation && Object.keys(lists).map((tab, index) => (
-                  tab === "Favorite" ? (
+                  tab === FAVORITE_TAB ? (
                     <View key={`LandingPage-${selectedRecommendation.id}-heart-${index}`} style={{paddingTop: 10}}>
                       <Heart 
-                        heartColor={heartColors[selectedRecommendation?.id] || unselectedHeartColor}
+                        heartColor={heartColors[selectedRecommendation?.id] || Colors.unselectedHeartColor}
                         size={35}
                         // onPress={() => moveItemToFavoriteList(selectedRecommendation?.id)}
-                        onPress={async () => await moveItemToTab(selectedRecommendation, 'Favorite', setLists, setPosterLists, [setAddToListModal], setHeartColors)}
+                        onPress={async () => await moveItemToTab(selectedRecommendation, FAVORITE_TAB, setLists, setPosterLists, [setAddToListModal], setHeartColors)}
                       />
                     </View>
                   ) : (

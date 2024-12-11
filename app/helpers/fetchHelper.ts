@@ -47,7 +47,7 @@ export const loadDbFile = async (): Promise<Content[] | null> => {
     }
     else {
       // the db is null so we need to reset it, so reset the tabs too since they are stale now
-      console.log('Fetch Helper; clearing tabs and database');
+      console.log('Fetch Helper: clearing tabs and database');
       fileDb = null;
       await AsyncStorage.removeItem(STORAGE_KEY);
       await FileSystem.writeAsStringAsync(filePath, "");
@@ -299,7 +299,7 @@ async function getGoodPoster(url: string, imdbID: string, vertical = true) : Pro
   const isBadPoster = url.startsWith("https://www."); // good posters are cdn. or image.
   if (!isBadPoster) return null;
 
-  console.log(`bad poster found for ${url}`);
+  // console.log(`bad poster found for ${url}`);
 
   const posters: Posters = await getPosterURI(imdbID);
   
@@ -371,16 +371,6 @@ export const getPostersFromContent = async (content: Content): Promise<Posters> 
     console.log('Error fetching the poster in getPosterByContent:', error.message);
     return { vertical: '', horizontal: '' };
   }
-};
-
-
-const mapFiltersToApiParams = (filter: Filter) => {
-  return {
-    genres: filter.selectedGenres && filter.selectedGenres.length > 0 ? filter.selectedGenres.join(',') : undefined,
-    show_type: filter.selectedTypes && filter.selectedTypes.length > 0 ? filter.selectedTypes.join(',') : undefined,
-    paid_options: filter.selectedPaidOptions && filter.selectedPaidOptions.length > 0 ? filter.selectedPaidOptions.join(',') : undefined,
-    services: filter.selectedServices && filter.selectedServices.length > 0 ? filter.selectedServices.join(',') : undefined,
-  };
 };
 
 const isFilterEmpty = (filter: Filter) => {

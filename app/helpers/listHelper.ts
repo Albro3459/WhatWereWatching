@@ -1,63 +1,21 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Content, PosterContent } from "../types/contentType";
-import { WatchList } from "../types/listsType";
+import { PosterList, WatchList } from "../types/listsType";
 import { getPostersFromContent } from "./fetchHelper";
 import { STORAGE_KEY } from "@/Global";
 import { Colors } from "@/constants/Colors";
 
-export const isItemInList = (content: Content, list: string, lists) : boolean => {
-    if (!content) { 
-      console.log('Content is null');
-      return false; 
-    }
-    if (!lists) { 
-      console.log('Tabs is null');
-      return false; 
-    }
-    if (!lists[list]) { 
-      console.log('TAB INDEX is null');
-      return false; 
-    }
-    return lists[list].some((item) => item.id === content.id);
-};
+// The words list and tabs are interchangebale unfortunately.
+// I know its confusing but in the library they're the tabs at the top, but they're like Watchlists like on youtube
 
-export const turnTabsIntoPosterTabs = async (tabs: WatchList) => {
-    const updatedPosterLists = await Promise.all(
-      Object.keys(tabs).map(async (tabKey) => {
-        if (!tabs[tabKey] || tabs[tabKey].length === 0) {
-          // console.warn(`No data for tab: ${tabKey}`);
-          return { [tabKey]: [] };
-        }
-  
-        const posterContents = await Promise.all(
-          tabs[tabKey].map(async (content) => {
-            try {
-              const posters = await getPostersFromContent(content);
-              return { ...content, posters };
-            } catch (error) {
-              console.error(`Error fetching posters for content ID: ${content.id}`, error);
-              return { ...content, posters: null };
-            }
-          })
-        );
-  
-        return { [tabKey]: posterContents };
-      })
-    );
-  
-    return updatedPosterLists.reduce((acc, tab) => ({ ...acc, ...tab }), {});
-};
 
+// can only be in one of these at a time
+export const INDEPENDENT_TABS = ["Planned", "Watching", "Completed"];
+export const FAVORITE_TAB = "Favorite";
+
+export const DEFAULT_TABS: WatchList | PosterList = { Planned: [], Watching: [], Completed: [], Favorite: [] };
 
 // MOVING BETWEEN LISTS HELPERS:
-
-// togles the heart color
-// export const toggleHeartColors = (id: string, setHeartColors:  (value: React.SetStateAction<{[key: string]: string;}>) => void) => {
-//   setHeartColors((prevColors = {}) => ({
-//     ...prevColors,
-//     [id]: prevColors[id] === Colors.selectedHeartColor ? Colors.unselectedHeartColor : Colors.selectedHeartColor,
-//   }));
-// };
 
 export const handleFavoriteTab = async (item: Content, targetTab: string, tabs: any,
                                         setTabs: React.Dispatch<React.SetStateAction<WatchList>>, 
@@ -65,7 +23,7 @@ export const handleFavoriteTab = async (item: Content, targetTab: string, tabs: 
                                         setHeartColors:  (value: React.SetStateAction<{[key: string]: string;}>) => void | null
                                       ) => {
   try {
-    if (targetTab !== "Favorite") {
+    if (targetTab !== FAVORITE_TAB) {
       return;
     }
 
@@ -97,12 +55,54 @@ export const handleFavoriteTab = async (item: Content, targetTab: string, tabs: 
     // Save updated tabs to AsyncStorage
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
 
-    return;
-
   } catch (error) {
     console.error("Error updating Favorites:", error);
     // Alert.alert("Error", "Unable to update Favorites. Please try again.");
   }
+};
+
+export const handleUserCreatedTab = async (item: Content, targetTab: string, tabs: any,
+                                          setTabs: React.Dispatch<React.SetStateAction<WatchList>>, 
+                                          setPosterTabs: React.Dispatch<React.SetStateAction<{[key: string]: PosterContent[];}>> | null
+                                        ) => {
+    try {
+      if (INDEPENDENT_TABS.includes(targetTab) || targetTab === FAVORITE_TAB) {
+        return;
+      }
+
+      console.log(`Working on moving content to: ${targetTab}`);
+
+      if (!tabs[targetTab]) {
+        tabs[targetTab] = [];
+      }
+      
+      // Check if the item is already in the tab
+      const isAlreadyInList = tabs[targetTab].some((content) => content.id === item.id);
+
+      // Update the Favorite tab
+      const updatedTab = isAlreadyInList
+        ? tabs[targetTab].filter((content) => content.id !== item.id) // Remove if already in tab
+        : [...tabs[targetTab], item]; // Add if not in tab
+
+      const updatedTabs = {
+        ...tabs,
+        [targetTab]: updatedTab, // need the brackets to use the variable :)
+      };
+      
+      setTabs(updatedTabs);
+      if (setPosterTabs) {
+        const newPosterLists = await turnTabsIntoPosterTabs(updatedTabs);
+        setPosterTabs(newPosterLists);
+      }
+
+      // Save updated tabs to AsyncStorage
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
+
+      console.log(`Finished moving content to: ${targetTab}`);
+
+    } catch (error) {
+      console.error(`Error updating tab: ${targetTab}:`, error);
+    }
 };
 
 
@@ -120,9 +120,16 @@ export const moveItemToTab = async (item: Content, targetTab: string,
     if (!item) { return null; }
 
     const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
-    const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
+    const tabs: WatchList = savedTabs 
+                            ? { ...DEFAULT_TABS, ...JSON.parse(savedTabs) } // Merge defaults with saved data
+                            : DEFAULT_TABS;
 
-    if (setHeartColors) {
+    if (!INDEPENDENT_TABS.includes(targetTab) && targetTab != FAVORITE_TAB) {
+      console.log(`Requested to move content to: ${targetTab}`);
+      await handleUserCreatedTab(item, targetTab, tabs, setTabs, setPosterTabs);
+    }
+    
+    if (setHeartColors || targetTab === FAVORITE_TAB) {
       handleFavoriteTab(item, targetTab, tabs, setTabs, setPosterTabs, setHeartColors);
       setModalsFalse.forEach((setFunc) => setFunc(false));
       return;
@@ -130,7 +137,7 @@ export const moveItemToTab = async (item: Content, targetTab: string,
 
     // Identify all source tabs (excluding Favorite) containing the item
     const sourceTabs = Object.keys(tabs).filter(
-      (tab) => tab !== "Favorite" && tabs[tab].some((content) => content.id === item.id)
+      (tab) => tab !== FAVORITE_TAB && tabs[tab].some((content) => content.id === item.id)
     );
 
     let updatedTabs = { ...tabs };
@@ -143,7 +150,6 @@ export const moveItemToTab = async (item: Content, targetTab: string,
     // If target is one of the source tabs, we’ve effectively just removed it from there, so stop
     if (sourceTabs.includes(targetTab)) {
       setTabs(updatedTabs);
-      const newPosterLists = await turnTabsIntoPosterTabs(updatedTabs);
       if (setPosterTabs) {
         const newPosterLists = await turnTabsIntoPosterTabs(updatedTabs);
         setPosterTabs(newPosterLists);
@@ -154,7 +160,7 @@ export const moveItemToTab = async (item: Content, targetTab: string,
     }
 
     // Add the item to the target tab (if not Favorite, just add)
-    if (targetTab !== "Favorite") {
+    if (targetTab !== FAVORITE_TAB) {
       updatedTabs[targetTab] = [...updatedTabs[targetTab], item];
     }
 
@@ -171,6 +177,118 @@ export const moveItemToTab = async (item: Content, targetTab: string,
     console.error("Error updating tabs:", error);
   }
 };
+
+
+// Creating a new list
+export const createNewList = async (tabName: string, 
+                                    setTabs: React.Dispatch<React.SetStateAction<WatchList>>,
+                                    setPosterTabs: React.Dispatch<React.SetStateAction<WatchList>> | null
+                                  ) => {
+    if (!tabName || tabName.length <= 0 || INDEPENDENT_TABS.includes(tabName) || tabName === FAVORITE_TAB) {
+      console.warn(`${tabName} is an illegal tab name`);
+      return;
+    }
+
+    tabName = tabName.trim();
+
+    console.log(`Requested to create new tab: ${tabName}`);
+    
+    try {
+      // Get current tabs
+      const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+      let tabs = savedTabs 
+                ? { ...DEFAULT_TABS, ...JSON.parse(savedTabs) } // Merge defaults with saved data
+                : DEFAULT_TABS;
+                
+      // Check if tab with tabname already exists
+      if (tabs[tabName]) {
+        console.warn(`A tab with the name "${tabName}" already exists`);
+        return;
+      }
+
+      // if not, create the tab by saving to async storage
+      tabs = {
+        ...tabs, // Preserve existing tabs
+        [tabName]: [], // Add the new tab
+      };
+      tabs = sortTabs(tabs);
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(tabs));
+
+      setTabs(tabs);
+      if (setPosterTabs) {
+        setPosterTabs(tabs);
+      }
+      console.log(`Requested to create new tab: ${tabName}`);
+    } catch(error) {
+      console.error(`Failed to create a new tab with the name "${tabName}"`);
+      return;
+    }
+};
+
+// Helping functions:
+
+// Makes sure that the Favorite tab is last
+export const sortTabs = (tabs: WatchList | PosterList): WatchList | PosterList => {
+  const sortedKeys = Object.keys(tabs).filter((tab) => tab !== FAVORITE_TAB);
+  if (tabs[FAVORITE_TAB]) {
+    sortedKeys.push(FAVORITE_TAB); // Add FAVORITE_TAB at the end if it exists
+  }
+
+  const sortedTabs: WatchList | PosterList = {};
+  sortedKeys.forEach((key) => {
+    sortedTabs[key] = tabs[key];
+  });
+
+  return sortedTabs as WatchList | PosterList;
+};
+
+
+
+// Check if item is in a list
+export const isItemInList = (content: Content, list: string, lists) : boolean => {
+  if (!content) { 
+    console.log('Content is null');
+    return false; 
+  }
+  if (!lists) { 
+    console.log('Tabs is null');
+    return false; 
+  }
+  if (!lists[list]) { 
+    console.log('TAB INDEX is null');
+    return false; 
+  }
+  return lists[list].some((item) => item.id === content.id);
+};
+
+// Add on the posters to the content
+export const turnTabsIntoPosterTabs = async (tabs: WatchList) => {
+  const updatedPosterLists = await Promise.all(
+    Object.keys(tabs).map(async (tabKey) => {
+      if (!tabs[tabKey] || tabs[tabKey].length === 0) {
+        // console.warn(`No data for tab: ${tabKey}`);
+        return { [tabKey]: [] };
+      }
+
+      const posterContents = await Promise.all(
+        tabs[tabKey].map(async (content) => {
+          try {
+            const posters = await getPostersFromContent(content);
+            return { ...content, posters };
+          } catch (error) {
+            console.error(`Error fetching posters for content ID: ${content.id}`, error);
+            return { ...content, posters: null };
+          }
+        })
+      );
+
+      return { [tabKey]: posterContents };
+    })
+  );
+
+  return updatedPosterLists.reduce((acc, tab) => ({ ...acc, ...tab }), {});
+};
+
 
 
 export default {};
