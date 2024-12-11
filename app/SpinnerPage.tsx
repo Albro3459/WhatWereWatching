@@ -5,7 +5,7 @@ import DropDownPicker from 'react-native-dropdown-picker';
 import { Spinner } from './components/spinnerComponent';
 import { Content, PosterContent, Posters } from './types/contentType';
 import { getContentById, getPostersFromContent, searchByKeywords } from './helpers/fetchHelper';
-import { router, usePathname } from 'expo-router';
+import { router, SplashScreen, usePathname } from 'expo-router';
 import moviesAndTvShows from './data/moviesAndTvShows';
 import { Colors } from '@/constants/Colors';
 import { appStyles, RalewayFont } from '@/styles/appStyles';
@@ -19,8 +19,13 @@ import { parse } from '@babel/core';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
+// Prevent splash screen from hiding until everything is loaded
+SplashScreen.preventAutoHideAsync();
+
 const SpinnerPage = () => {
     const pathname = usePathname();
+
+    const [isLoading, setIsLoading] = useState(true);
 
     const [moviesAndShows, setMoviesAndShows] = useState<PosterContent[]>([]);   
     const [searchedContent, setSearchedContent] = useState<PosterContent[]>([]);
@@ -201,6 +206,45 @@ const SpinnerPage = () => {
       fetchListData();
     }, [selectedLists]);
 
+    useEffect(() => {
+      setAddToListModal(false);
+      setEditModalVisible(false);
+      setDropDownOpen(false);
+      const loadContent = async () => {
+        if (pathname === "/SpinnerPage") {
+          try {
+            // Load saved tabs from AsyncStorage
+            const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+            if (savedTabs) {
+              const parsedTabs: WatchList = savedTabs
+                          ? sortTabs({ ...DEFAULT_TABS, ...JSON.parse(savedTabs) }) // Ensure tabs are sorted
+                          : DEFAULT_TABS;
+              setLists(parsedTabs);   
+  
+              // Initialize heartColors based on the Favorite tab
+              const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc, content: Content) => {
+                acc[content.id] = parsedTabs.Favorite.some((fav) => fav.id === content.id)
+                  ? Colors.selectedHeartColor
+                  : Colors.unselectedHeartColor;
+                return acc;
+              }, {});
+              setHeartColors(savedHeartColors);
+            }
+          } catch (error) {
+            console.error('Error loading library content:', error);
+          } finally {
+            setIsLoading(false);
+            await SplashScreen.hideAsync();
+          }
+        }
+      };
+  
+      loadContent();
+    }, []);   
+
+    if (isLoading) {
+      return null; // Show splashcreen until loaded
+    }
 
     return (
         <GestureHandlerRootView>
@@ -228,7 +272,7 @@ const SpinnerPage = () => {
 
           {/* Input Section */}
           <View>
-            <Pressable style={styles.inputContainer} onPress={() => setSearchModalVisible(true)}>
+            <Pressable style={styles.inputContainer} onPress={() => {setDropDownOpen(false); setSearchModalVisible(true);}}>
               <View style={{paddingTop: 10, paddingRight: 15}}>
                 <Feather name="search" size={28} color="white" />
               </View>
@@ -245,7 +289,7 @@ const SpinnerPage = () => {
               </TouchableOpacity> */}
               {moviesAndShows && moviesAndShows.length > 0 && (
               <TouchableOpacity style={styles.addButton} 
-                onPress={() => setEditModalVisible(true)}
+                onPress={() => {setDropDownOpen(false); setEditModalVisible(true);}}
                 // onPress={async () => await addSegment(inputText)}
                 >
                 <Text style={styles.addButtonText}>Edit</Text>
@@ -253,29 +297,6 @@ const SpinnerPage = () => {
               )}
             </Pressable>
           </View>
-
-          {/* List of Movies */}
-          {/* {searchedContent && searchedContent.length > 0 && (
-            <View>
-              <FlatList
-                data={searchedContent}
-                keyExtractor={(item, index) => index.toString()}
-                renderItem={({ item }) => (
-                  <View style={styles.segmentItem}>
-                    <Text style={styles.segmentText}>{item.title}</Text>
-                    <TouchableOpacity onPress={() => removeSegment(item)}>
-                      <Text style={styles.removeButton}>Remove</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-                style={styles.list}
-                ListEmptyComponent={
-                  <Text style={styles.emptyText}>No movies added to the wheel yet.</Text>
-                }
-              />
-            </View>
-          )} */}
-
 
           {winner && showOverlay && (
               <View style={styles.overlay}>
@@ -400,7 +421,7 @@ const SpinnerPage = () => {
               >
                   <View style={styles.modalOverlay}>
                     <View style={[styles.modalLayout]}>                      
-                        <View style={[styles.modalContainer, { height: 50*(moviesAndShows.length) }]}>
+                        <View style={[styles.modalContainer, { height: 65*(moviesAndShows.length) + 100 }]}>
 
                         <View style={{marginTop: -8, zIndex: 1000}}>
                           <Entypo name='circle-with-cross' size={30} color={Colors.buttonColor}
@@ -553,7 +574,7 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         padding: 20,
         width: '90%',
-        minHeight: 50, 
+        minHeight: 100, 
         maxHeight: screenHeight*0.6, 
         marginBottom: 0, 
       },
