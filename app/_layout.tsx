@@ -100,7 +100,9 @@ export default function RootLayout() {
                 name="SpinnerPage"
                 options={({ navigation }) => ({
                     title: "Spin to Pick",
-                    headerBackButtonDisplayMode: "minimal",
+                    gestureEnabled: false,
+                    headerBackVisible: false,
+                    // headerBackButtonDisplayMode: "minimal",
                     headerTintColor: "white",
                     headerTitleStyle: {
                         fontSize: 24,

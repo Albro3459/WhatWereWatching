@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import {Dimensions, SafeAreaView, StyleSheet, Text, View, Image, TouchableOpacity, Pressable, Alert, Modal, FlatList, TextInput} from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {Dimensions, SafeAreaView, StyleSheet, Text, View, Image, TouchableOpacity, Pressable, Alert, Modal, FlatList, TextInput, Keyboard, KeyboardAvoidingView} from 'react-native';
 import { GestureHandlerRootView, TouchableWithoutFeedback} from 'react-native-gesture-handler';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { Spinner } from './components/spinnerComponent';
 import { Content, PosterContent, Posters } from './types/contentType';
-import { getContentById, getPostersFromContent } from './helpers/fetchHelper';
+import { getContentById, getPostersFromContent, searchByKeywords } from './helpers/fetchHelper';
 import { router, usePathname } from 'expo-router';
 import moviesAndTvShows from './data/moviesAndTvShows';
 import { Colors } from '@/constants/Colors';
@@ -23,11 +23,14 @@ const SpinnerPage = () => {
     const pathname = usePathname();
 
     const [moviesAndShows, setMoviesAndShows] = useState<PosterContent[]>([]);   
+    const [searchedContent, setSearchedContent] = useState<PosterContent[]>([]);
 
     const [winner, setWinner] = useState<PosterContent | null>(null);
     const [showOverlay, setShowOverlay] = useState(false);
 
     const [inputText, setInputText] = useState<string>("");
+    const [isSearchModalVisible, setSearchModalVisible] = useState(false);
+
 
     // const [heartColor, setHeartColor] = useState(unselectedHeartColor);
     const [heartColors, setHeartColors] = useState<{[key: string]: string}>();
@@ -84,25 +87,70 @@ const SpinnerPage = () => {
       updateLists();
     }; 
 
-    // Function to add a movie to the wheel
-    const addSegment = () => {
-      // if (inputText.trim() === "") {
-      //   Alert.alert("Error", "Please enter a movie name.");
-      //   return;
-      // }
-      // setSegments((prev) => [...prev, inputText.trim()]);
-      // setInputText("");
+    const handleModalClose = () => {
+      // inputRef.current?.blur(); // Blur the main input to prevent reopening the modal
+      setSearchModalVisible(false);
     };
 
+    const handleAddSegment = async () => {
+      try {
+        await addSegment(inputText); // Perform your logic
+        setInputText(""); // Clear the input text
+        handleModalClose();
+        // setSearchModalVisible(false); // Hide the modal
+      } catch (error) {
+        console.error("Error adding segment:", error);
+        Alert.alert("Error", "Failed to add the segment. Please try again.");
+      }
+    };
+
+    // Function to add a movie to the wheel
+    const addSegment = async (inputText) => {
+      if (!inputText || inputText.trim() === "") {
+        setInputText("");
+        // setSearchModalVisible(false);
+        // Alert.alert("Input Error", "Please enter a movie name.");
+        return;
+      }
+      
+      // setInputText("");
+      // setSearchModalVisible(false);
+      
+      try {
+        const results = await searchByKeywords(inputText, {
+          selectedGenres: [],
+          selectedTypes: [],
+          selectedServices: [],
+          selectedPaidOptions: []
+        });
+        
+        if (results && results.length > 0) {
+          setSearchedContent((prev) => 
+            prev.some((movie) => movie.id === results[0].id) ? prev : [...prev, results[0]]
+          );
+          setMoviesAndShows((prev) => 
+            prev.some((movie) => movie.id === results[0].id) ? prev : [...prev, results[0]]
+          );
+        } else {
+          Alert.alert("No Results", "No matching results were found.");
+        }
+      } catch (error) {
+        console.error("Error fetching search results:", error);
+        Alert.alert("Search Error", "Something went wrong. Please try again.");
+      }
+    };
+    
+
     // Function to remove a movie from the wheel
-    // const removeSegment = (movie: string) => {
-    //   setSegments((prev) => prev.filter((item) => item !== movie));
-    // };
+    const removeSegment = (content: PosterContent) => {
+      setSearchedContent((prev) => prev.filter((item) => item.id !== content.id));
+      setMoviesAndShows((prev) => prev.filter((item) => item.id !== content.id));
+      setSearchModalVisible(false);
+    };
 
     useEffect(() => {
       const fetchListData = async () => {
         if (selectedLists.length > 0) {
-          let combinedContent: Content[] = [];
           try {
             // Load saved tabs from AsyncStorage
             const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
@@ -118,12 +166,13 @@ const SpinnerPage = () => {
               const newPosterLists = await turnTabsIntoPosterTabs(parsedTabs);
               setPosterLists(newPosterLists);
 
-              combinedContent = selectedLists.flatMap((listKey) => {
-                return parsedTabs[listKey];
-              });
+              const allContent = selectedLists.flatMap((listKey) => parsedTabs[listKey]);
+
+              const uniqueContentMap = new Map(allContent.map((c) => [c.id, c]));
+              const uniqueContent = Array.from(uniqueContentMap.values());
 
               const combinedPosterContent = await Promise.all(
-                combinedContent.map(async (content: Content) => {
+                uniqueContent.map(async (content: Content) => {
                   const posters = await getPostersFromContent(content);
                   return { ...content, posters }; 
                 })
@@ -143,7 +192,8 @@ const SpinnerPage = () => {
 
       fetchListData();
     }, [selectedLists]);
-  
+
+
     return (
         <GestureHandlerRootView>
           <View style={{paddingHorizontal: 20, paddingTop: 30, marginBottom: -80, backgroundColor: Colors.backgroundColor}}>
@@ -169,36 +219,42 @@ const SpinnerPage = () => {
           />
 
           {/* Input Section */}
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Add a show or movie to the wheel"
-              placeholderTextColor="#aaa"
-              value={inputText}
-              onChangeText={setInputText}
-            />
-            <TouchableOpacity style={styles.addButton} onPress={addSegment}>
-              <Text style={styles.addButtonText}>Add</Text>
-            </TouchableOpacity>
+          <View>
+            <Pressable style={styles.inputContainer} onPress={() => setSearchModalVisible(true)}>
+              <Text
+                style={[styles.input, {flex: 1, paddingTop: 15}]}
+              >
+              {inputText && inputText.length > 0 ? inputText : "Add a show or movie to the wheel"}
+              </Text>  
+              <TouchableOpacity style={styles.addButton} 
+                onPress={() => setSearchModalVisible(true)}
+                // onPress={async () => await addSegment(inputText)}
+                >
+                <Text style={styles.addButtonText}>Add</Text>
+              </TouchableOpacity>
+            </Pressable>
           </View>
 
           {/* List of Movies */}
-          {/* <FlatList
-            data={segments}
-            keyExtractor={(item, index) => index.toString()}
-            renderItem={({ item }) => (
-              <View style={styles.segmentItem}>
-                <Text style={styles.segmentText}>{item}</Text>
-                <TouchableOpacity onPress={() => removeSegment(item)}>
-                  <Text style={styles.removeButton}>Remove</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            style={styles.list}
-            ListEmptyComponent={
-              <Text style={styles.emptyText}>No movies added to the wheel yet.</Text>
-            }
-          /> */}
+          {/* {searchedContent && searchedContent.length > 0 && (
+            <FlatList
+              data={searchedContent}
+              keyExtractor={(item, index) => index.toString()}
+              renderItem={({ item }) => (
+                <View style={styles.segmentItem}>
+                  <Text style={styles.segmentText}>{item.title}</Text>
+                  <TouchableOpacity onPress={() => removeSegment(item)}>
+                    <Text style={styles.removeButton}>Remove</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              style={styles.list}
+              ListEmptyComponent={
+                <Text style={styles.emptyText}>No movies added to the wheel yet.</Text>
+              }
+            />
+          )} */}
+
 
           {winner && showOverlay && (
               <View style={styles.overlay}>
@@ -282,6 +338,37 @@ const SpinnerPage = () => {
                   </Pressable>
               </Modal>
           )}
+
+          {/* Modal for Search */}
+          <Modal
+              visible={isSearchModalVisible}
+              transparent
+              animationType="fade"
+              onRequestClose={handleModalClose}
+            >
+              <TouchableWithoutFeedback onPress={() => { Keyboard.dismiss(); handleModalClose(); }}>
+                <View style={styles.modalOverlay}>
+                  <View style={styles.modalInput}>
+                    <TextInput
+                      style={[styles.input, {width: screenWidth * 0.7}]}
+                      placeholder="Add a show or movie to the wheel"
+                      placeholderTextColor="#aaa"
+                      value={inputText}
+                      onChangeText={setInputText}
+                      onSubmitEditing={async () => {Keyboard.dismiss(); await handleAddSegment(); }}
+                      returnKeyType="search"
+                      autoFocus
+                    />
+                    <TouchableOpacity style={styles.addButton} onPress={async () => {Keyboard.dismiss(); await handleAddSegment(); }}>
+                      <Text style={styles.addButtonText}>Add</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </Modal>
+            
+
+
         </GestureHandlerRootView>
     );
 };
@@ -323,9 +410,8 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.backgroundColor
       },
       input: {
-        flex: 1,
         backgroundColor: "#4f4f77",
-        color: "#fff",
+        color: Colors.reviewTextColor,
         padding: 10,
         borderRadius: 5,
         marginRight: 10,
@@ -335,6 +421,7 @@ const styles = StyleSheet.create({
         backgroundColor: "#6c6c91",
         padding: 10,
         borderRadius: 5,
+        height: 50,
         alignContent: "center",
         justifyContent: "center"
       },
@@ -369,6 +456,29 @@ const styles = StyleSheet.create({
         color: "#aaa",
         textAlign: "center",
         marginTop: 20,
+      },
+
+      modalOverlay: {
+        flex: 1,
+        // flexDirection: "row",
+        paddingTop: screenHeight,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+      },
+      modalInput: {
+        flexDirection: "row",
+        paddingBottom: screenHeight,
+      },
+      modalContent: {
+        width: "80%",
+        backgroundColor: "#fff",
+        padding: 20,
+        borderRadius: 10,
+        shadowColor: "#000",
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
+        elevation: 5,
       },
 });
 
