@@ -552,7 +552,7 @@ const styles = StyleSheet.create({
         color: "#fff",
         fontSize: 16,
         flexWrap: "wrap",
-        maxWidth: "85%", 
+        maxWidth: "80%", 
         paddingRight: 10
       },
       removeButton: {
