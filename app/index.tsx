@@ -69,7 +69,6 @@ export default function Index() {
     
       // Toggle function to expand or collapse the white rectangle
       const handleSignUpPress = async () => {
-        await LogoutUser();
         setIsSigningUp(true);
         setIsSigningIn(false);
         // Animate the height change

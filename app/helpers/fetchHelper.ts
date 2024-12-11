@@ -18,7 +18,7 @@ const API_HEADERS = {
 };
 
 const filePath = `${FileSystem.documentDirectory}db.json`;
-const CURRENT_DB_VERSION = 1.3;
+const CURRENT_DB_VERSION = 2.0;
 
 // these interact with the actual file
 

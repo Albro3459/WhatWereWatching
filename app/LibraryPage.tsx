@@ -171,7 +171,7 @@ const LibraryPage = () => {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.backgroundColor }}>
       {/* Tab Bar */}
-      <View style={[styles.tabBar, {flexDirection: 'row'}]}>
+      <View style={[styles.tabBar, {flexDirection: 'row'}, (Object.keys(tabs).length <= 4) && {paddingLeft: 24}]}>
         {/* {Object.keys(tabs).map((tab, index) => (
           <TouchableOpacity
             key={index}
@@ -194,7 +194,7 @@ const LibraryPage = () => {
           keyExtractor={(tab, index) => index.toString()}
           renderItem={({ item, index }) => (
             <TouchableOpacity
-              style={[styles.tabItem, activeTab === index && styles.activeTabItem, {paddingHorizontal:8}]}
+              style={[styles.tabItem, activeTab === index && styles.activeTabItem, {paddingHorizontal:8}, (Object.keys(tabs).length <= 4) && {paddingHorizontal: 12}]}
               onPress={async () => await handleTabPress(index)}
             >
               { item === FAVORITE_TAB ? (
@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: "center",
     paddingVertical: 20,
-    padding: 15,
+    paddingHorizontal: 15,
   },
   tabItem: {
     paddingVertical: 8,
