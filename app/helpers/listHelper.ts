@@ -13,7 +13,7 @@ import { Colors } from "@/constants/Colors";
 export const INDEPENDENT_TABS = ["Planned", "Watching", "Completed"];
 export const FAVORITE_TAB = "Favorite";
 
-export const DEFAULT_TABS: WatchList | PosterList = { Planned: [], Watching: [], Completed: [], Favorite: [] };
+export const DEFAULT_TABS: WatchList | PosterList = { Favorite: [], Planned: [], Watching: [], Completed: [] };
 
 // MOVING BETWEEN LISTS HELPERS:
 
@@ -127,6 +127,8 @@ export const moveItemToTab = async (item: Content, targetTab: string,
     if (!INDEPENDENT_TABS.includes(targetTab) && targetTab != FAVORITE_TAB) {
       console.log(`Requested to move content to: ${targetTab}`);
       await handleUserCreatedTab(item, targetTab, tabs, setTabs, setPosterTabs);
+      setModalsFalse.forEach((setFunc) => setFunc(false));
+      return;
     }
     
     if (setHeartColors || targetTab === FAVORITE_TAB) {
@@ -135,9 +137,9 @@ export const moveItemToTab = async (item: Content, targetTab: string,
       return;
     }
 
-    // Identify all source tabs (excluding Favorite) containing the item
+    // Check if any of the independent or source tabs contain it
     const sourceTabs = Object.keys(tabs).filter(
-      (tab) => tab !== FAVORITE_TAB && tabs[tab].some((content) => content.id === item.id)
+      (tab) => INDEPENDENT_TABS.includes(tab) && tabs[tab].some((content) => content.id === item.id)
     );
 
     let updatedTabs = { ...tabs };
@@ -196,10 +198,10 @@ export const createNewList = async (tabName: string,
     try {
       // Get current tabs
       const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
-      let tabs = savedTabs 
+      const tabs = savedTabs 
                 ? { ...DEFAULT_TABS, ...JSON.parse(savedTabs) } // Merge defaults with saved data
                 : DEFAULT_TABS;
-                
+
       // Check if tab with tabname already exists
       if (tabs[tabName]) {
         console.warn(`A tab with the name "${tabName}" already exists`);
@@ -207,18 +209,18 @@ export const createNewList = async (tabName: string,
       }
 
       // if not, create the tab by saving to async storage
-      tabs = {
+      let sortedTabs = {
         ...tabs, // Preserve existing tabs
         [tabName]: [], // Add the new tab
       };
-      tabs = sortTabs(tabs);
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(tabs));
+      sortedTabs = sortTabs(sortedTabs); // sort the tabs! favorite stays last
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(sortedTabs));
 
-      setTabs(tabs);
+      setTabs(sortedTabs);
       if (setPosterTabs) {
-        setPosterTabs(tabs);
+        setPosterTabs(sortedTabs);
       }
-      console.log(`Requested to create new tab: ${tabName}`);
+      console.log(`New tab created: ${tabName}`);
     } catch(error) {
       console.error(`Failed to create a new tab with the name "${tabName}"`);
       return;
@@ -231,7 +233,8 @@ export const createNewList = async (tabName: string,
 export const sortTabs = (tabs: WatchList | PosterList): WatchList | PosterList => {
   const sortedKeys = Object.keys(tabs).filter((tab) => tab !== FAVORITE_TAB);
   if (tabs[FAVORITE_TAB]) {
-    sortedKeys.push(FAVORITE_TAB); // Add FAVORITE_TAB at the end if it exists
+    // sortedKeys.push(FAVORITE_TAB); // Add FAVORITE_TAB at the end if it exists
+    sortedKeys.unshift(FAVORITE_TAB); // Prepend FAVORITE_TAB to the array
   }
 
   const sortedTabs: WatchList | PosterList = {};

@@ -13,8 +13,8 @@ import { router } from 'expo-router';
 import { SvgUri } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEY } from '@/Global';
-import { DEFAULT_TABS, FAVORITE_TAB, isItemInList, moveItemToTab, turnTabsIntoPosterTabs } from './helpers/listHelper';
-import { WatchList } from './types/listsType';
+import { DEFAULT_TABS, FAVORITE_TAB, isItemInList, moveItemToTab, sortTabs, turnTabsIntoPosterTabs } from './helpers/listHelper';
+import { PosterList, WatchList } from './types/listsType';
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -60,15 +60,8 @@ function InfoPage() {
   
   const [rating, setRating] = useState(2.5); // this is the default rating
 
-  const [lists, setLists] = useState<WatchList>({
-    Planned: [],
-    Watching: [],
-    Completed: [],
-    Favorite: [],
-  });
-  const [posterLists, setPosterLists] = useState<{
-    [key: string]: PosterContent[];
-  }>({});
+  const [lists, setLists] = useState<WatchList>(DEFAULT_TABS);
+  const [posterLists, setPosterLists] = useState<PosterList>(DEFAULT_TABS as PosterList);
 
   const [addToListModal, setAddToListModal] = useState(false);
 
@@ -118,8 +111,8 @@ function InfoPage() {
             try {
               const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
               if (savedTabs) {
-                const parsedTabs: WatchList = savedTabs 
-                            ? { ...DEFAULT_TABS, ...JSON.parse(savedTabs) } // Merge defaults with saved data
+                const parsedTabs: WatchList = savedTabs
+                            ? sortTabs({ ...DEFAULT_TABS, ...JSON.parse(savedTabs) }) // Ensure tabs are sorted
                             : DEFAULT_TABS;
                 setLists(parsedTabs);
                 const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc) => {
@@ -445,7 +438,7 @@ function InfoPage() {
                   onPress={() => setAddToListModal(false)}
                 >
                   <View style={styles.modalContent}>
-                    {Object.keys(lists).slice(0,3).map((list, index) => (
+                    {Object.keys(lists).filter((list) => list !== FAVORITE_TAB).map((list, index) => (
                       <Pressable 
                         key={index}
                         style={[styles.optionPressable, isItemInList(content, list, lists) && styles.selectedOptionPressable]} 
@@ -493,44 +486,58 @@ function InfoPage() {
       {/* Move Modal */}
       {selectedRecommendation && (
         <Modal
-            transparent={true}
-            visible={infoModalVisible}
-            animationType="fade"
-            onRequestClose={() => setInfoModalVisible(false)}
+          transparent={true}
+          visible={addToListModal}
+          animationType="fade"
+          onRequestClose={() => setAddToListModal(false)}
+        >
+          <Pressable
+            style={appStyles.modalOverlay}
+            onPress={() => setAddToListModal(false)}
           >
-            <Pressable
-              style={appStyles.modalOverlay}
-              onPress={() => setInfoModalVisible(false)}
-            >
-              <View style={appStyles.modalContent}>
-                <Text style={appStyles.modalTitle}>
-                  Move "{selectedRecommendation?.title}" to:
-                </Text>
-                {selectedRecommendation && Object.keys(lists).map((tab, index) => (
-                  tab === FAVORITE_TAB ? (
-                    <View key={`LandingPage-${selectedRecommendation.id}-heart-${index}`} style={{paddingTop: 10}}>
-                      <Heart 
-                        heartColor={heartColors[selectedRecommendation?.id] || Colors.unselectedHeartColor}
-                        size={35}
-                        // onPress={() => moveItemToFavoriteList(selectedRecommendation?.id)}
-                        onPress={async () => await moveItemToTab(selectedRecommendation, FAVORITE_TAB, setLists, setPosterLists, [setAddToListModal], setHeartColors)}
-                      />
-                    </View>
-                  ) : (
-                     <TouchableOpacity
+            <View style={appStyles.modalContent}>
+              <Text style={appStyles.modalTitle}>
+                Move "{selectedRecommendation?.title}" to:
+              </Text>
+              {selectedRecommendation && (
+                <>
+                  {/* Render all tabs except FAVORITE_TAB */}
+                  {Object.keys(lists)
+                    .filter((tab) => tab !== FAVORITE_TAB)
+                    .map((tab, index) => (
+                      <TouchableOpacity
                         key={`LandingPage-${selectedRecommendation.id}-${tab}-${index}`}
-                        style={[appStyles.modalButton, isItemInList(selectedRecommendation, tab, lists) && appStyles.selectedModalButton]}
-                        // onPress={() => moveItemToList(selectedRecommendation, tab)}
+                        style={[
+                          appStyles.modalButton,
+                          isItemInList(selectedRecommendation, tab, lists) && appStyles.selectedModalButton,
+                        ]}
                         onPress={async () => await moveItemToTab(selectedRecommendation, tab, setLists, setPosterLists, [setAddToListModal], null)}
                       >
                         <Text style={appStyles.modalButtonText}>
                           {tab} {isItemInList(selectedRecommendation, tab, lists) ? "✓" : ""}
                         </Text>
                       </TouchableOpacity>
-                  )
-                ))}
-              </View>
-            </Pressable>
+                    ))}
+
+                  {/* Render FAVORITE_TAB at the bottom */}
+                  {lists[FAVORITE_TAB] && (
+                    <View
+                      key={`LandingPage-${selectedRecommendation.id}-heart`}
+                      style={{ paddingTop: 10 }}
+                    >
+                      <Heart
+                        heartColor={
+                          heartColors[selectedRecommendation?.id] || Colors.unselectedHeartColor
+                        }
+                        size={35}
+                        onPress={async () => await moveItemToTab(selectedRecommendation, FAVORITE_TAB, setLists, setPosterLists, [setAddToListModal], setHeartColors)}
+                      />
+                    </View>
+                  )}
+                </>
+              )}
+            </View>
+          </Pressable>
         </Modal>
       )}
     </View>

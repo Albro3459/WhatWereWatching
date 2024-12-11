@@ -8,8 +8,8 @@ import { router, usePathname } from 'expo-router';
 import { appStyles } from '@/styles/appStyles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEY } from '@/Global';
-import { WatchList } from './types/listsType';
-import { DEFAULT_TABS, FAVORITE_TAB, isItemInList, moveItemToTab, turnTabsIntoPosterTabs } from './helpers/listHelper';
+import { PosterList, WatchList } from './types/listsType';
+import { DEFAULT_TABS, FAVORITE_TAB, isItemInList, moveItemToTab, sortTabs, turnTabsIntoPosterTabs } from './helpers/listHelper';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import FilterModal from './components/filterModalComponent';
@@ -29,18 +29,11 @@ const SearchPage = () => {
 
   const [heartColors, setHeartColors] = useState<{ [key: string]: string }>();
 
-  const [lists, setLists] = useState<WatchList>({
-    Planned: [],
-    Watching: [],
-    Completed: [],
-    Favorite: [],
-  });
-  const [posterLists, setPosterLists] = useState<{
-    [key: string]: PosterContent[];
-  }>({});
+  const [lists, setLists] = useState<WatchList>(DEFAULT_TABS);
+  const [posterLists, setPosterLists] = useState<PosterList>(DEFAULT_TABS as PosterList);
 
   const [selectedResult, setSelectedResult] = useState<Content>(null);
-  const [addSearchToListModal, setSearchAddToListModal] = useState(false);
+  const [searchAddToListModal, setSearchAddToListModal] = useState(false);
 
   type Movie = {
     id: string;
@@ -83,9 +76,9 @@ const SearchPage = () => {
         // Load saved tabs from AsyncStorage
         const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
         if (savedTabs) {
-          const parsedTabs: WatchList = savedTabs 
-                            ? { ...DEFAULT_TABS, ...JSON.parse(savedTabs) } // Merge defaults with saved data
-                            : DEFAULT_TABS;
+          const parsedTabs: WatchList = savedTabs
+                                  ? sortTabs({ ...DEFAULT_TABS, ...JSON.parse(savedTabs) }) // Ensure tabs are sorted
+                                  : DEFAULT_TABS;
           setLists(parsedTabs);
           // Initialize heartColors based on the Favorite tab
           const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc, content: Content) => {
@@ -170,44 +163,58 @@ const SearchPage = () => {
       {/* Move Modal */}
       {selectedResult && (
         <Modal
-            transparent={true}
-            visible={addSearchToListModal}
-            animationType="fade"
-            onRequestClose={() => setSearchAddToListModal(false)}
+          transparent={true}
+          visible={searchAddToListModal}
+          animationType="fade"
+          onRequestClose={() => setSearchAddToListModal(false)}
+        >
+          <Pressable
+            style={appStyles.modalOverlay}
+            onPress={() => setSearchAddToListModal(false)}
           >
-            <Pressable
-              style={appStyles.modalOverlay}
-              onPress={() => setSearchAddToListModal(false)}
-            >
-              <View style={appStyles.modalContent}>
-                <Text style={appStyles.modalTitle}>
-                  Move "{selectedResult?.title}" to:
-                </Text>
-                {selectedResult && Object.keys(lists).map((tab, index) => (
-                  tab === FAVORITE_TAB ? (
-                    <View key={`LandingPage-${selectedResult.id}-heart-${index}`} style={{paddingTop: 10}}>
-                      <Heart 
-                        heartColor={heartColors[selectedResult?.id] || Colors.unselectedHeartColor}
-                        size={35}
-                        // onPress={() => moveItemToFavoriteList(selectedResult?.id)}
-                        onPress={async () => await moveItemToTab(selectedResult, tab, setLists, setPosterLists, [setSearchAddToListModal], setHeartColors)}
-                      />
-                    </View>
-                  ) : (
-                     <TouchableOpacity
+            <View style={appStyles.modalContent}>
+              <Text style={appStyles.modalTitle}>
+                Move "{selectedResult?.title}" to:
+              </Text>
+              {selectedResult && (
+                <>
+                  {/* Render all tabs except FAVORITE_TAB */}
+                  {Object.keys(lists)
+                    .filter((tab) => tab !== FAVORITE_TAB)
+                    .map((tab, index) => (
+                      <TouchableOpacity
                         key={`LandingPage-${selectedResult.id}-${tab}-${index}`}
-                        style={[appStyles.modalButton, isItemInList(selectedResult, tab, lists) && appStyles.selectedModalButton]}
-                        // onPress={() => moveItemToList(selectedResult, tab)}
+                        style={[
+                          appStyles.modalButton,
+                          isItemInList(selectedResult, tab, lists) && appStyles.selectedModalButton,
+                        ]}
                         onPress={async () => await moveItemToTab(selectedResult, tab, setLists, setPosterLists, [setSearchAddToListModal], null)}
                       >
                         <Text style={appStyles.modalButtonText}>
                           {tab} {isItemInList(selectedResult, tab, lists) ? "✓" : ""}
                         </Text>
                       </TouchableOpacity>
-                  )
-                ))}
-              </View>
-            </Pressable>
+                    ))}
+
+                  {/* Render FAVORITE_TAB at the bottom */}
+                  {lists[FAVORITE_TAB] && (
+                    <View
+                      key={`LandingPage-${selectedResult.id}-heart`}
+                      style={{ paddingTop: 10 }}
+                    >
+                      <Heart
+                        heartColor={
+                          heartColors[selectedResult?.id] || Colors.unselectedHeartColor
+                        }
+                        size={35}
+                        onPress={async () => await moveItemToTab(selectedResult, FAVORITE_TAB, setLists, setPosterLists, [setSearchAddToListModal], setHeartColors)}
+                      />
+                    </View>
+                  )}
+                </>
+              )}
+            </View>
+          </Pressable>
         </Modal>
       )}
 

@@ -11,10 +11,10 @@ import { Colors } from '@/constants/Colors';
 import { appStyles, RalewayFont } from '@/styles/appStyles';
 import Heart from './components/heartComponent';
 import { Entypo } from '@expo/vector-icons';
-import { WatchList } from './types/listsType';
+import { PosterList, WatchList } from './types/listsType';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEY } from '@/Global';
-import { DEFAULT_TABS, FAVORITE_TAB, isItemInList, moveItemToTab, turnTabsIntoPosterTabs } from './helpers/listHelper';
+import { DEFAULT_TABS, FAVORITE_TAB, isItemInList, moveItemToTab, sortTabs, turnTabsIntoPosterTabs } from './helpers/listHelper';
 import { parse } from '@babel/core';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
@@ -33,15 +33,8 @@ const SpinnerPage = () => {
     const [heartColors, setHeartColors] = useState<{[key: string]: string}>();
 
     const [selectedLists, setSelectedLists] = useState<string[]>([]);
-    const [lists, setLists] = useState<WatchList>({
-        Planned: [],
-        Watching: [],
-        Completed: [],
-        Favorite: [],
-      });
-    const [posterLists, setPosterLists] = useState<{
-        [key: string]: PosterContent[];
-      }>({});
+    const [lists, setLists] = useState<WatchList>(DEFAULT_TABS);
+    const [posterLists, setPosterLists] = useState<PosterList>(DEFAULT_TABS as PosterList);
     const [dropDownOpen, setDropDownOpen] = useState(false);
 
     const [addToListModal, setAddToListModal] = useState(false);
@@ -52,9 +45,9 @@ const SpinnerPage = () => {
             const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
         
             if (savedTabs && content) {
-                const parsedTabs: WatchList = savedTabs 
-                                  ? { ...DEFAULT_TABS, ...JSON.parse(savedTabs) } // Merge defaults with saved data
-                                  : DEFAULT_TABS;
+                const parsedTabs: WatchList = savedTabs
+                                ? sortTabs({ ...DEFAULT_TABS, ...JSON.parse(savedTabs) }) // Ensure tabs are sorted
+                                : DEFAULT_TABS;
                 setLists(parsedTabs);
                 const newPosterLists = await turnTabsIntoPosterTabs(parsedTabs);
                 setPosterLists(newPosterLists);
@@ -116,9 +109,9 @@ const SpinnerPage = () => {
       
             if (savedTabs) {
               // console.log("getting content from storage for info");
-              const parsedTabs: WatchList = savedTabs 
-                            ? { ...DEFAULT_TABS, ...JSON.parse(savedTabs) } // Merge defaults with saved data
-                            : DEFAULT_TABS;
+              const parsedTabs: WatchList = savedTabs
+                                  ? sortTabs({ ...DEFAULT_TABS, ...JSON.parse(savedTabs) }) // Ensure tabs are sorted
+                                  : DEFAULT_TABS;
               // console.log(`does the planned list exist: ${parsedTabs["Planned"]}`);
               setLists(parsedTabs);
 
@@ -262,7 +255,7 @@ const SpinnerPage = () => {
                       <Text style={appStyles.modalTitle}>
                       Move "{winner?.title}" to:
                       </Text>
-                      {winner && Object.keys(lists).slice(0,3).map((tab, index) => (
+                      {winner && Object.keys(lists).filter((list) => list !== FAVORITE_TAB).map((tab, index) => (
                       tab === FAVORITE_TAB ? (
                           <View key={`LandingPage-${winner.id}-heart-${index}`} style={{paddingTop: 10}}>
                           <Heart 

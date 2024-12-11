@@ -10,7 +10,7 @@ import { appStyles, RalewayFont } from "@/styles/appStyles";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Heart from "./components/heartComponent";
 import { Global, STORAGE_KEY } from "@/Global";
-import { DEFAULT_TABS, FAVORITE_TAB, isItemInList, moveItemToTab } from "./helpers/listHelper";
+import { DEFAULT_TABS, FAVORITE_TAB, isItemInList, moveItemToTab, sortTabs } from "./helpers/listHelper";
 import { WatchList } from "./types/listsType";
 
 
@@ -23,12 +23,7 @@ function LandingPage () {
 
     const [name, setName] = useState<string>(Global.name);
 
-    const [tabs, setTabs] = useState<WatchList>({
-      Planned: [],
-      Watching: [],
-      Completed: [],
-      Favorite: [],
-    });
+    const [tabs, setTabs] = useState<WatchList>(DEFAULT_TABS);
     const [heartColors, setHeartColors] = useState<{ [key: string]: string }>({});  
     const [isLoading, setIsLoading] = useState(true);
     const [selectedContent, setSelectedContent] = useState<PosterContent>(null);
@@ -107,9 +102,9 @@ function LandingPage () {
             // console.log('LandingPage: Loading async storage ');
             const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
             if (savedTabs) {
-              const parsedTabs: WatchList = savedTabs 
-                            ? { ...DEFAULT_TABS, ...JSON.parse(savedTabs) } // Merge defaults with saved data
-                            : DEFAULT_TABS;
+              const parsedTabs: WatchList = savedTabs
+                      ? sortTabs({ ...DEFAULT_TABS, ...JSON.parse(savedTabs) }) // Ensure tabs are sorted
+                      : DEFAULT_TABS;
               setTabs(parsedTabs);
 
               // Extract only favorites initially
@@ -154,14 +149,28 @@ function LandingPage () {
             if (randomContent) {
 
               // Add posters to the random content
-              const updatedContent: PosterContent[] = await Promise.all(
-                randomContent.map(async (content: Content): Promise<PosterContent> => {
-                  const posters = await getPostersFromContent(content);
-                  return { ...content, posters };
-                })
-              );
-              setMoviesAndShows(updatedContent.slice(0, 5));
-              setCarouselContent(updatedContent.slice(5, 9));
+              const updatedContent: PosterContent[] = (
+                await Promise.all(
+                  randomContent.map(async (content: Content): Promise<PosterContent | null> => {
+                    const posters = await getPostersFromContent(content);
+              
+                    // Check if horizontal or vertical poster strings are not empty
+                    if (
+                      posters?.horizontal?.trim() !== "" ||
+                      posters?.vertical?.trim() !== ""
+                    ) {
+                      return { ...content, posters };
+                    }
+              
+                    // Return null if both horizontal and vertical are empty
+                    return null;
+                  })
+                )
+              ).filter((item): item is PosterContent => item !== null); // Type guard for filtering null values
+
+              const middle = Math.floor(updatedContent.length / 2);
+              setMoviesAndShows(updatedContent.slice(0, middle));
+              setCarouselContent(updatedContent.slice(middle));
             }
             
             const updatedReviews = await Promise.all(
@@ -290,44 +299,58 @@ function LandingPage () {
       {/* Move Modal */}
       {selectedContent && (
         <Modal
-            transparent={true}
-            visible={listModalVisible}
-            animationType="fade"
-            onRequestClose={() => setListModalVisible(false)}
+          transparent={true}
+          visible={listModalVisible}
+          animationType="fade"
+          onRequestClose={() => setListModalVisible(false)}
+        >
+          <Pressable
+            style={appStyles.modalOverlay}
+            onPress={() => setListModalVisible(false)}
           >
-            <Pressable
-              style={appStyles.modalOverlay}
-              onPress={() => setListModalVisible(false)}
-            >
-              <View style={appStyles.modalContent}>
-                <Text style={appStyles.modalTitle}>
-                  Move "{selectedContent?.title}" to:
-                </Text>
-                {selectedContent && Object.keys(tabs).map((tab, index) => (
-                  tab === FAVORITE_TAB ? (
-                    <View key={`LandingPage-${selectedContent.id}-heart-${index}`} style={{paddingTop: 10}}>
-                      <Heart 
-                        heartColor={heartColors[selectedContent?.id] || Colors.unselectedHeartColor}
-                        size={35}
-                        // onPress={() => moveItemToFavoriteTab(selectedContent?.id)}
-                        onPress={async () => await moveItemToTab(selectedContent, tab, setTabs, null, [setListModalVisible], setHeartColors)}
-                      />
-                    </View>
-                  ) : (
-                     <TouchableOpacity
+            <View style={appStyles.modalContent}>
+              <Text style={appStyles.modalTitle}>
+                Move "{selectedContent?.title}" to:
+              </Text>
+              {selectedContent && (
+                <>
+                  {/* Render all tabs except FAVORITE_TAB */}
+                  {Object.keys(tabs)
+                    .filter((tab) => tab !== FAVORITE_TAB)
+                    .map((tab, index) => (
+                      <TouchableOpacity
                         key={`LandingPage-${selectedContent.id}-${tab}-${index}`}
-                        style={[appStyles.modalButton, isItemInList(selectedContent, tab, tabs) && appStyles.selectedModalButton]}
-                        // onPress={() => moveItemToTab(selectedContent, tab)}
+                        style={[
+                          appStyles.modalButton,
+                          isItemInList(selectedContent, tab, tabs) && appStyles.selectedModalButton,
+                        ]}
                         onPress={async () => await moveItemToTab(selectedContent, tab, setTabs, null, [setListModalVisible], null)}
                       >
                         <Text style={appStyles.modalButtonText}>
                           {tab} {isItemInList(selectedContent, tab, tabs) ? "✓" : ""}
                         </Text>
                       </TouchableOpacity>
-                  )
-                ))}
-              </View>
-            </Pressable>
+                    ))}
+
+                  {/* Render FAVORITE_TAB at the bottom */}
+                  {tabs[FAVORITE_TAB] && (
+                    <View
+                      key={`LandingPage-${selectedContent.id}-heart`}
+                      style={{ paddingTop: 10 }}
+                    >
+                      <Heart
+                        heartColor={
+                          heartColors[selectedContent?.id] || Colors.unselectedHeartColor
+                        }
+                        size={35}
+                        onPress={async () => await moveItemToTab(selectedContent, FAVORITE_TAB, setTabs, null, [setListModalVisible], setHeartColors)}
+                      />
+                    </View>
+                  )}
+                </>
+              )}
+            </View>
+          </Pressable>
         </Modal>
       )}
 

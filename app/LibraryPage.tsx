@@ -60,9 +60,9 @@ const LibraryPage = () => {
           // Load saved tabs from AsyncStorage
           const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
           if (savedTabs) {
-            const parsedTabs: WatchList = savedTabs 
-                            ? { ...DEFAULT_TABS, ...JSON.parse(savedTabs) } // Merge defaults with saved data
-                            : DEFAULT_TABS;
+            const parsedTabs: WatchList = savedTabs
+                        ? sortTabs({ ...DEFAULT_TABS, ...JSON.parse(savedTabs) }) // Ensure tabs are sorted
+                        : DEFAULT_TABS;
             setTabs(parsedTabs);
 
             const newPosterLists = await turnTabsIntoPosterTabs(parsedTabs);
@@ -108,9 +108,9 @@ const LibraryPage = () => {
 
     const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
     if (savedTabs) {
-      const parsedTabs: WatchList = savedTabs 
-                            ? { ...DEFAULT_TABS, ...JSON.parse(savedTabs) } // Merge defaults with saved data
-                            : DEFAULT_TABS;
+      const parsedTabs: WatchList = savedTabs
+                        ? sortTabs({ ...DEFAULT_TABS, ...JSON.parse(savedTabs) }) // Ensure tabs are sorted
+                        : DEFAULT_TABS;
       setTabs(parsedTabs);
       const newPosterLists = await turnTabsIntoPosterTabs(parsedTabs);
       setPosterTabs(newPosterLists);
@@ -171,7 +171,7 @@ const LibraryPage = () => {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.backgroundColor }}>
       {/* Tab Bar */}
-      <View style={[styles.tabBar, {flexDirection: 'row', columnGap: 10}]}>
+      <View style={[styles.tabBar, {flexDirection: 'row'}]}>
         {/* {Object.keys(tabs).map((tab, index) => (
           <TouchableOpacity
             key={index}
@@ -187,26 +187,33 @@ const LibraryPage = () => {
         ))} */}
 
         <FlatList
-          data={Object.keys(sortTabs(tabs))}
+          data={Object.keys(tabs)}
           horizontal
           showsHorizontalScrollIndicator={false}
           nestedScrollEnabled
           keyExtractor={(tab, index) => index.toString()}
           renderItem={({ item, index }) => (
             <TouchableOpacity
-              style={[styles.tabItem, activeTab === index && styles.activeTabItem, {paddingHorizontal: 10}]}
+              style={[styles.tabItem, activeTab === index && styles.activeTabItem, {paddingHorizontal:8}]}
               onPress={async () => await handleTabPress(index)}
             >
-              <Text
-                style={[styles.tabText, activeTab === index && styles.activeTabText]}
-              >
-                {item}
-              </Text>
+              { item === FAVORITE_TAB ? (
+                <Heart 
+                  heartColor={ Colors.selectedHeartColor}
+                  size={25}
+                />
+              ) : (
+                <Text
+                  style={[styles.tabText, activeTab === index && styles.activeTabText]}
+                >
+                  {item}
+                </Text>
+              )}
             </TouchableOpacity>
           )}
         />
         <Pressable onPress={() => setCreateNewListModal(true)} >
-          <View style={{ }}>
+          <View style={{ paddingLeft: 10}}>
               <Ionicons name="add-circle-outline" size={35} color="white" />
           </View> 
         </Pressable>
@@ -257,7 +264,7 @@ const LibraryPage = () => {
         ref={pagerViewRef}
         onPageSelected={(e) => setActiveTab(e.nativeEvent.position)}
       >
-        {Object.keys(sortTabs(posterTabs)).map((tab) => (
+        {Object.keys(posterTabs).map((tab) => (
           <View key={tab}>{renderTabContent(posterTabs[tab], tab)}</View>
         ))}
       </PagerView>
@@ -278,28 +285,43 @@ const LibraryPage = () => {
               <Text style={appStyles.modalTitle}>
                 Move "{selectedItem?.title}" to:
               </Text>
-              {selectedItem && Object.keys(sortTabs(tabs)).map((tab, index) => (
-                tab === FAVORITE_TAB ? (
-                  <View key={`LandingPage-${selectedItem.id}-heart-${index}`} style={{paddingTop: 10}}>
-                    <Heart 
-                      heartColor={heartColors[selectedItem?.id] || Colors.unselectedHeartColor}
-                      size={35}
-                      // onPress={async () => await moveItemToFavoriteTab(selectedItem?.id)}
-                      onPress={async () => await moveItemToTab(selectedItem, tab, setTabs, setPosterTabs, [setMoveModalVisible], setHeartColors)}
-                    />
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    key={`LandingPage-${selectedItem.id}-${tab}-${index}`}
-                    style={[appStyles.modalButton, isItemInList(selectedItem, tab, tabs) && appStyles.selectedModalButton]}
-                    onPress={async () => await moveItemToTab(selectedItem, tab, setTabs, setPosterTabs, [setMoveModalVisible], null)}
-                  >
-                  <Text style={appStyles.modalButtonText}>
-                    {tab} {isItemInList(selectedItem, tab, tabs) ? "✓" : ""}
-                  </Text>
-                </TouchableOpacity>
-              )
-              ))}
+              {selectedItem && (
+                <>
+                  {/* Render all tabs except FAVORITE_TAB */}
+                  {Object.keys(tabs)
+                    .filter((tab) => tab !== FAVORITE_TAB)
+                    .map((tab, index) => (
+                      <TouchableOpacity
+                        key={`LandingPage-${selectedItem.id}-${tab}-${index}`}
+                        style={[
+                          appStyles.modalButton,
+                          isItemInList(selectedItem, tab, tabs) && appStyles.selectedModalButton,
+                        ]}
+                        onPress={async () => await moveItemToTab(selectedItem, tab, setTabs, setPosterTabs, [setMoveModalVisible], null)}
+                      >
+                        <Text style={appStyles.modalButtonText}>
+                          {tab} {isItemInList(selectedItem, tab, tabs) ? "✓" : ""}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+
+                  {/* Render FAVORITE_TAB at the bottom */}
+                  {tabs[FAVORITE_TAB] && (
+                    <View
+                      key={`LandingPage-${selectedItem.id}-heart`}
+                      style={{ paddingTop: 10 }}
+                    >
+                      <Heart
+                        heartColor={
+                          heartColors[selectedItem?.id] || Colors.unselectedHeartColor
+                        }
+                        size={35}
+                        onPress={async () => await moveItemToTab(selectedItem, FAVORITE_TAB, setTabs, setPosterTabs, [setMoveModalVisible], setHeartColors)}
+                      />
+                    </View>
+                  )}
+                </>
+              )}
             </View>
           </Pressable>
         </Modal>
@@ -324,7 +346,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.tabBarColor,
     justifyContent: 'center',
     alignItems: "center",
-    padding: 20,
+    paddingVertical: 20,
+    padding: 15,
   },
   tabItem: {
     paddingVertical: 8,
