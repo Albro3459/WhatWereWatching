@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {Dimensions, SafeAreaView, StyleSheet, Text, View, Image, TouchableOpacity, Pressable, Alert, Modal, FlatList, TextInput, Keyboard, KeyboardAvoidingView} from 'react-native';
+import {Dimensions, SafeAreaView, StyleSheet, Text, View, Image, TouchableOpacity, Pressable, Alert, Modal, FlatList, TextInput, Keyboard, KeyboardAvoidingView, ActivityIndicator} from 'react-native';
 import { GestureHandlerRootView, TouchableWithoutFeedback} from 'react-native-gesture-handler';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { Spinner } from './components/spinnerComponent';
@@ -26,6 +26,7 @@ const SpinnerPage = () => {
     const pathname = usePathname();
 
     const [isLoading, setIsLoading] = useState(true);
+    const [isSearching, setIsSearching] = useState(false);
 
     const [moviesAndShows, setMoviesAndShows] = useState<PosterContent[]>([]);   
     const [searchedContent, setSearchedContent] = useState<PosterContent[]>([]);
@@ -125,7 +126,9 @@ const SpinnerPage = () => {
       }
       
       handleSearchModalClose();
-      
+
+      console.log("isSearching");
+      setIsSearching(true);
       try {
         const results = await searchByKeywords(inputText, {
           selectedGenres: [],
@@ -133,6 +136,8 @@ const SpinnerPage = () => {
           selectedServices: [],
           selectedPaidOptions: []
         });
+
+        console.log(`${results.length} results for ${inputText}`);
         
         if (results && results.length > 0) {
           setSearchedContent((prev) => 
@@ -147,6 +152,9 @@ const SpinnerPage = () => {
       } catch (error) {
         console.error("Error fetching search results:", error);
         Alert.alert("Search Error", "Something went wrong. Please try again.");
+      } finally {
+        console.log("isNoLongerSearching");
+        setIsSearching(false);
       }
     };
     
@@ -267,6 +275,7 @@ const SpinnerPage = () => {
                 items={Object.keys(lists).map((list) => ({ label: list, value: list }))}
               />
           </View>
+
           <Spinner 
             list={moviesAndShows} 
             onFinish={handleWinner} 
@@ -403,17 +412,41 @@ const SpinnerPage = () => {
                         placeholderTextColor="#aaa"
                         value={inputText}
                         onChangeText={setInputText}
-                        onSubmitEditing={async () => { await handleAddSegment(inputText); }}
+                        onSubmitEditing={async () => {
+                          // setIsSearching(true);
+                          try {
+                            await handleAddSegment(inputText);
+                          } finally {
+                            // setIsSearching(false);
+                          }
+                        }}
                         returnKeyType="search"
                         autoFocus
                       />
-                      <TouchableOpacity style={styles.addButton} onPress={async () => { await handleAddSegment(inputText); }}>
+                      <TouchableOpacity style={styles.addButton} onPress={async () => {
+                                                                              setIsSearching(true);
+                                                                              try {
+                                                                                await handleAddSegment(inputText);
+                                                                              } finally {
+                                                                                setIsSearching(false);
+                                                                              }
+                                                                            }}>
                         <Text style={styles.addButtonText}>Add</Text>
                       </TouchableOpacity>
                     </View>                               
                   </View>
                 </View>
               </Pressable>
+
+              {/* Loading Overlay */}
+              {isSearching && (
+                <View style={styles.loadingOverlay}>
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#fff" />
+                    <Text style={styles.loadingText}>Searching...</Text>
+                  </View>
+                </View>
+              )}
             </Modal>
 
 
@@ -467,9 +500,6 @@ const SpinnerPage = () => {
                   </View>    
               </Modal>
             )}  
-            
-
-
         </GestureHandlerRootView>
     );
 };
@@ -597,7 +627,24 @@ const styles = StyleSheet.create({
         elevation: 5,
       },
 
-      
+      loadingOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+      },
+      loadingContainer: {
+        backgroundColor: '#222',
+        padding: 20,
+        borderRadius: 10,
+        alignItems: 'center',
+      },
+      loadingText: {
+        color: '#fff',
+        marginTop: 10,
+        fontSize: 16,
+      },
 });
 
 export default SpinnerPage;

@@ -100,7 +100,7 @@ export default function Index() {
                 height: animatedHeight,
                 backgroundColor: "white",
                 borderRadius: 15,
-                marginTop: screenHeight*0.18, // Added a margin to space it from the top
+                marginTop: screenHeight*0.15, // Added a margin to space it from the top
                 }}
             >
                 {/* Top Section with welcome text and image */}

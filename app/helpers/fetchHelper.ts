@@ -520,6 +520,7 @@ const sortResults = (keyword: string, allResults: Content[]): Content[] => {
       .toLowerCase()
       .replace(punctuationRegex, '')     // Remove punctuation
       .replace(irrelevantWordsRegex, '') // Remove irrelevant words
+      .replace(/\s+/g, ' ')              // Normalize spaces
       .trim() || '';
 
   const adjustedKeyword = normalizeText(keyword);
@@ -533,7 +534,13 @@ const sortResults = (keyword: string, allResults: Content[]): Content[] => {
     item.directors?.some(director => normalizeText(director).includes(adjustedKeyword))
   );
 
-  return filterIrrelevantResults.sort((a, b) => {
+  return allResults.sort((a, b) => {
+    // if (a.title === "the wolf of wallstreet") {
+    //   console.log(`a: ${normalizeText(a.title)}`);
+    // }
+    // else if (b.title === "the wolf of wallstreet") {
+    //   console.log(`b: ${normalizeText(a.title)}`);
+    // }
     const aNorm = normalizeText(a.title);
     const bNorm = normalizeText(b.title);
 
@@ -676,7 +683,7 @@ export const searchByKeywords = async (keyword: string, filter: Filter): Promise
         }
       }
 
-    // // console.log(`About to merge all filtered data: ${filteredLocalData.length} apiResults: ${apiResults.length}`);
+    // console.log(`About to merge all filtered data: ${filteredLocalData.length} apiResults: ${apiResults.length}`);
     // // Merge local data and API results (avoid duplicates by ID)
     const allResults = [...(filteredLocalData || []), ...(apiResults || [])].reduce((unique, content) => {
       if (content && !unique.some((item) => item.id === content.id)) {
@@ -685,7 +692,11 @@ export const searchByKeywords = async (keyword: string, filter: Filter): Promise
       return unique;
     }, [] as Content[]);
 
+    // console.log(`all results ${allResults.length} left FOR ${keyword}`);
+
     const sortedResults: Content[] = sortResults(keyword, allResults);
+
+    // console.log(`sorted results ${sortedResults.length} FOR ${keyword}`);
 
     const posterContentResults = await Promise.all(
       sortedResults.slice(0,20).map(async (content: Content) => {
@@ -693,6 +704,8 @@ export const searchByKeywords = async (keyword: string, filter: Filter): Promise
         return { ...content, posters };
       })
     );
+
+    // console.log(`RETURNING ${posterContentResults.length} RESULTS FOR ${keyword}`);
 
     return posterContentResults;
   } catch (error) {

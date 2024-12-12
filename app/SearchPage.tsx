@@ -305,7 +305,7 @@ const SearchPage = () => {
 
       {/* Loading Overlay */}
       <Modal visible={isSearching} transparent animationType="fade">
-        <View style={styles.overlay}>
+        <View style={styles.loadingOverlay}>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#fff" />
             <Text style={styles.loadingText}>Searching...</Text>
@@ -335,7 +335,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 
-  overlay: {
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
