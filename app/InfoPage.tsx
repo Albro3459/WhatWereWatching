@@ -214,6 +214,24 @@ function InfoPage() {
           <View style={styles.content}>
 
             <View style={{flexDirection: "row", justifyContent: "flex-start", alignItems: "center"}}>
+              <Text style={styles.sectionTitle}>Rating:  </Text>
+              {Array.from({ length: 5 }).map((_, index) => {
+                const rating = parseFloat((content.rating / 20).toFixed(2)); // Calculate the rating on a 5-star scale
+                const isFullStar = index < Math.floor(rating); // Full star if index is less than integer part of rating
+                const isHalfStar = index >= Math.floor(rating) && index < rating; // Half star if index is fractional
+
+                return (
+                  <MaterialIcons
+                    key={index}
+                    name={isFullStar ? 'star' : isHalfStar ? 'star-half' : 'star-border'}
+                    size={16}
+                    color="#FFD700"
+                  />
+                );
+              })}
+            </View>
+
+            <View style={{flexDirection: "row", justifyContent: "flex-start", alignItems: "center"}}>
               <Text style={styles.sectionTitle}>{`${content.showType.charAt(0).toUpperCase() + content.showType.slice(1).toLowerCase()}:`}</Text>
               <Text style={[styles.text, {fontSize: 18, paddingLeft: 15, paddingTop: 10, textAlign: 'center', textAlignVertical: "center"}]}>
                   {
@@ -316,14 +334,27 @@ function InfoPage() {
                         <Text style={appStyles.reviewUser}>{item.user}</Text>
                         <Text style={appStyles.reviewText}>{item.text}</Text>
                         <View style={appStyles.ratingContainer}>
-                          {Array.from({ length: 5 }).map((_, index) => (
+                          {/* {Array.from({ length: 5 }).map((_, index) => (
                             <MaterialIcons
                               key={index}
                               name={index < item.rating ? 'star' : 'star-border'}
                               size={16}
                               color="#FFD700"
                             />
-                          ))}
+                          ))} */}
+                          {Array.from({ length: 5 }).map((_, index) => {
+                            const isFullStar = index < Math.floor(item.rating); // Full star if index is less than integer part of rating
+                            const isHalfStar = index >= Math.floor(item.rating) && index < item.rating; // Half star if index is fractional
+
+                            return (
+                              <MaterialIcons
+                                key={index}
+                                name={isFullStar ? 'star' : isHalfStar ? 'star-half' : 'star-border'}
+                                size={16}
+                                color="#FFD700"
+                              />
+                            );
+                          })}
                         </View>
                       </View>
                     </View>
@@ -351,7 +382,7 @@ function InfoPage() {
                     />
                     <Text style={styles.ratingLabel}>Rating:</Text>
                     <View style={styles.ratingInput}>
-                      {Array.from({ length: 5 }).map((_, index) => (
+                      {/* {Array.from({ length: 5 }).map((_, index) => (
                         <Text
                           key={index}
                           style={[
@@ -362,7 +393,11 @@ function InfoPage() {
                         >
                           ★
                         </Text>
-                      ))}
+                      ))} */}
+                      <StarRating
+                        rating={newReviewRating}
+                        onChange={setNewReviewRating}
+                      />
                     </View>
                     <View style={styles.modalButtons}>
                       <Button title="Cancel" onPress={() => setAddReviewModal(false)} />

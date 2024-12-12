@@ -35,7 +35,7 @@ export const LogoutUser = async () => {
         await AsyncStorage.clear();
         console.log("AsyncStorage cleared successfully.");
     } catch (error) {
-        console.error("Failed to clear AsyncStorage:", error);
+        console.warn("Failed to clear AsyncStorage:", error);
     }
 }
 

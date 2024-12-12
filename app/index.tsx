@@ -1,10 +1,14 @@
-import { Text, View, Image, TouchableOpacity, Animated, ScrollView, TextInput, StyleSheet, Alert} from "react-native";
-import React, { useState } from "react";
+import { Text, View, Image, TouchableOpacity, Animated, ScrollView, TextInput, StyleSheet, Alert, KeyboardAvoidingView, Keyboard, Dimensions} from "react-native";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, Href, usePathname, router } from "expo-router"
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+
 import { Colors } from "@/constants/Colors";
 import { KuraleFont, RalewayFont } from "@/styles/appStyles";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Global, LogoutUser, SignInReset } from "@/Global";
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 export default function Index() {
     // const pathname = usePathname();
@@ -84,25 +88,19 @@ export default function Index() {
         }).start();
       };
 
-    // const clearAllStorage = async () => {
-    //     try {
-    //       await AsyncStorage.clear(); // Clears all keys and values
-    //       console.log('AsyncStorage cleared!');
-    //       Alert.alert('Success', 'All storage cleared!');
-    //     } catch (error) {
-    //       console.error('Error clearing AsyncStorage:', error);
-    //       Alert.alert('Error', 'Failed to clear storage.');
-    //     }
-    //   };
+    useEffect(() => {
+
+    }, [])
 
     return (
-        <ScrollView contentContainerStyle={{ flexGrow: 1 }} style={{ backgroundColor: Colors.backgroundColor, padding: "5%" }}>
+        // <ScrollView contentContainerStyle={{ flexGrow: 1 }} style={{ backgroundColor: Colors.backgroundColor, padding: "5%" }}>
+        <KeyboardAwareScrollView contentContainerStyle={{ flexGrow: 1 }} style={{ backgroundColor: Colors.backgroundColor, padding: "5%" }}>
             <Animated.View // white rectangle (no absolute positioning now)
                 style={{
                 height: animatedHeight,
                 backgroundColor: "white",
                 borderRadius: 15,
-                marginTop: 110, // Added a margin to space it from the top
+                marginTop: screenHeight*0.18, // Added a margin to space it from the top
                 }}
             >
                 {/* Top Section with welcome text and image */}
@@ -151,12 +149,12 @@ export default function Index() {
                         {isSigningUp && (
                         <View style={styles.inputGroup}>
                             <TextInput
-                            style={styles.textField}
-                            placeholder="Confirm Password"
-                            placeholderTextColor={Colors.italicTextColor}
-                            value={inputConfirmPassword}
-                            onChangeText={setInputConfirmPassword}
-                            secureTextEntry={true}
+                              style={styles.textField}
+                              placeholder="Confirm Password"
+                              placeholderTextColor={Colors.italicTextColor}
+                              value={inputConfirmPassword}
+                              onChangeText={setInputConfirmPassword}
+                              secureTextEntry={true}
                             />
                         </View>
                         )}
@@ -201,7 +199,7 @@ export default function Index() {
                     </View>
                 </View>
             </Animated.View>
-        </ScrollView>
+        </KeyboardAwareScrollView>
     );
 }
 
