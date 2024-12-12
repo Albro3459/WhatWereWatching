@@ -200,7 +200,7 @@ function LandingPage () {
   return (
     <View style={styles.container} >
       <ScrollView style={{ marginBottom: LIBRARY_OVERLAY_HEIGHT}} showsVerticalScrollIndicator={false}>
-        <Text style={styles.welcomeText}>WELCOME BACK {Global.name.length > 0 ? Global.name.toUpperCase() : "USER"}!</Text>
+        <Text style={styles.welcomeText}>WELCOME BACK {Global.name.length > 0 ? Global.name.toUpperCase() : Global.username.length > 0 ? Global.username.toUpperCase() : "USER"}!</Text>
         {/* Trending Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>TRENDING</Text>

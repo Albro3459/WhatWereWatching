@@ -447,32 +447,32 @@ function InfoPage() {
       return null; // Prevent rendering until loaded
     }
 
-   // Render function for reviews
-   const renderReview = ({ item }: {item: Review}) => {
+  //  // Render function for auto generated reviews
+  //  const renderReview = ({ item }: {item: Review}) => {
 
-    return (
-      <View style={appStyles.reviewCard}>
-        <Image source={{ uri: item.avatar }} style={appStyles.avatar} />
-        <View style={appStyles.reviewTextContainer}>
-          <Text style={appStyles.reviewUser}>{item.user}</Text>
-          <Text style={appStyles.reviewText}>{item.text}</Text>
-          <Text style={appStyles.reviewMovie}>
-            Movie: {item.contentTitle.length > 0 ? item.contentTitle : "Unknown"}
-          </Text>
-          <View style={appStyles.ratingContainer}>
-            {Array.from({ length: 5 }).map((_, index) => (
-              <MaterialIcons
-                key={index}
-                name={index < item.rating ? "star" : "star-border"}
-                size={16}
-                color="#FFD700"
-              />
-            ))}
-          </View>
-        </View>
-      </View>
-    );
-  };
+  //   return (
+  //     <View style={appStyles.reviewCard}>
+  //       <Image source={{ uri: item.avatar }} style={appStyles.avatar} />
+  //       <View style={appStyles.reviewTextContainer}>
+  //         <Text style={appStyles.reviewUser}>{item.user}</Text>
+  //         <Text style={appStyles.reviewText}>{item.text}</Text>
+  //         <Text style={appStyles.reviewMovie}>
+  //           Movie: {item.contentTitle.length > 0 ? item.contentTitle : "Unknown"}
+  //         </Text>
+  //         <View style={appStyles.ratingContainer}>
+  //           {Array.from({ length: 5 }).map((_, index) => (
+  //             <MaterialIcons
+  //               key={index}
+  //               name={index < item.rating ? "star" : "star-border"}
+  //               size={16}
+  //               color="#FFD700"
+  //             />
+  //           ))}
+  //         </View>
+  //       </View>
+  //     </View>
+  //   );
+  // };
   
   if (isLoading) {
     return null; // Prevent rendering until loaded

@@ -1,5 +1,5 @@
 import * as FileSystem from 'expo-file-system';
-import axios from 'axios';
+import axios, { all } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { Content, PosterContent, Posters, StreamingOption } from '../types/contentType';
@@ -520,11 +520,20 @@ const sortResults = (keyword: string, allResults: Content[]): Content[] => {
       .toLowerCase()
       .replace(punctuationRegex, '')     // Remove punctuation
       .replace(irrelevantWordsRegex, '') // Remove irrelevant words
-      .trim();
+      .trim() || '';
 
   const adjustedKeyword = normalizeText(keyword);
 
-  return allResults.sort((a, b) => {
+  // removes irrelevant results
+  const filterIrrelevantResults: Content[] = allResults.filter(item =>
+    normalizeText(item.title).includes(adjustedKeyword) ||
+    normalizeText(item.originalTitle).includes(adjustedKeyword) ||
+    normalizeText(item.overview).includes(adjustedKeyword) ||
+    item.cast?.some(member => normalizeText(member).includes(adjustedKeyword)) ||
+    item.directors?.some(director => normalizeText(director).includes(adjustedKeyword))
+  );
+
+  return filterIrrelevantResults.sort((a, b) => {
     const aNorm = normalizeText(a.title);
     const bNorm = normalizeText(b.title);
 
@@ -577,7 +586,7 @@ export const filterLocalDB = async (keyword: string, filter: Filter) : Promise<C
       return uniqueResults || [];
     
   } catch (error) {
-    console.log(`Error filtering local db for ${keyword} and filtersa:`, error.message);
+    console.log(`Error filtering local db for ${keyword} and filters:`, error.message);
     return [];
   }
 };
@@ -590,10 +599,8 @@ export const searchByKeywords = async (keyword: string, filter: Filter): Promise
     if (keyword.length === 0 && isFilterEmpty(filter)) { return null; }
 
     let apiResults: Content[] = [];
-    // const filteredLocalData: Content[] = isFilterEmpty(filter) ? await filterLocalDB(keyword, filter) || [] : []; // dont use local data with filters (it gives bad results because we dont know how to rank results. thats why google is so good)
-    // const filteredLocalData: Content[] = await filterLocalDB(keyword, filter) || [];
-    const filteredLocalData: Content[] = [];
-    
+
+    const filteredLocalData: Content[] = await filterLocalDB(keyword, filter) || [];    
 
       // Fetch data from the API based on the presence of filters
       if (isFilterEmpty(filter)) {
@@ -669,8 +676,8 @@ export const searchByKeywords = async (keyword: string, filter: Filter): Promise
         }
       }
 
-    // console.log(`About to merge all filtered data: ${filteredLocalData.length} apiResults: ${apiResults.length}`);
-    // Merge local data and API results (avoid duplicates by ID)
+    // // console.log(`About to merge all filtered data: ${filteredLocalData.length} apiResults: ${apiResults.length}`);
+    // // Merge local data and API results (avoid duplicates by ID)
     const allResults = [...(filteredLocalData || []), ...(apiResults || [])].reduce((unique, content) => {
       if (content && !unique.some((item) => item.id === content.id)) {
         unique.push(content);
@@ -678,25 +685,14 @@ export const searchByKeywords = async (keyword: string, filter: Filter): Promise
       return unique;
     }, [] as Content[]);
 
-    // console.log("merged all results");
-
-    // console.log(`about to sort all results: ${allResults.length}`);
-
     const sortedResults: Content[] = sortResults(keyword, allResults);
 
-    // console.log("sorted them");
-  
-
-    // console.log("about to get posters");
-
     const posterContentResults = await Promise.all(
-      sortedResults.map(async (content: Content) => {
+      sortedResults.slice(0,20).map(async (content: Content) => {
         const posters = await getPostersFromContent(content);
         return { ...content, posters };
       })
     );
-
-    // console.log("done getting posters and returning now");
 
     return posterContentResults;
   } catch (error) {

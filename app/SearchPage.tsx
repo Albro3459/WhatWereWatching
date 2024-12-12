@@ -23,6 +23,8 @@ const SearchPage = () => {
   const [onPageLoad, setOnPageLoad] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
 
+  const flatListRef = useRef<FlatList>(null);
+
   const [searchText, setSearchText] = useState('');
   const searchInputRef = useRef<TextInput>(null);  
   const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
@@ -76,7 +78,6 @@ const SearchPage = () => {
     await (async () => {
       setIsSearching(true);
       try {
-        console.log("im searching bitch");
         const contents: PosterContent[] = await searchByKeywords(searchText, filter);
         if (contents) {
           const mappedMovies = contents.map((content: PosterContent, index) => ({
@@ -110,6 +111,9 @@ const SearchPage = () => {
           }
         }
       } finally {
+        if (flatListRef.current && movies && movies.length > 0) {
+          flatListRef.current.scrollToOffset({ animated: true, offset: 0});
+        }
         setIsSearching(false);
       }
     })();
@@ -164,7 +168,7 @@ const SearchPage = () => {
   }, [pathname]); // need this for this one
 
   return (
-    <Pressable style={{height: screenHeight}} onPress={Keyboard.dismiss}>
+    <Pressable style={{height: screenHeight-70}} onPress={Keyboard.dismiss}>
     <View style={[styles.container]}>
         {/* Search Bar */}
         <View style={{flexDirection: "row", columnGap: 10, justifyContent: "center"}} >
@@ -177,7 +181,7 @@ const SearchPage = () => {
             placeholder="Search for a movie or TV show..."
             placeholderTextColor={Colors.reviewTextColor}
             value={searchText}
-            // onChangeText={async (text) => await search(text, { selectedGenres, selectedTypes, selectedServices, selectedPaidOptions} as Filter )}
+            // onChangeText={async (text) => await search(text, { selectedGenres, selectedTypes, selectedServices, selectedPaidOptions} as Filter )} // searching on type but we cant do tat with the api :(. its too slow
             onChangeText={(text) => setSearchText(text)}
             //{/*// Trigger search on Enter */}
             onSubmitEditing={async () => await search(searchText, { selectedGenres, selectedTypes, selectedServices, selectedPaidOptions} as Filter )}
@@ -202,12 +206,13 @@ const SearchPage = () => {
         {/* Movie Cards */}
         {(!movies || movies.length <= 0) ? (
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ fontSize: 16, color: 'gray', textAlign: 'center' }}>
+            <Text style={{ fontSize: 16, color: 'gray', textAlign: 'center', marginTop: -80 }}>
               {searchText.length <= 0 && onPageLoad ? "Try Searching for a Show or Movie!" : "No Results :("}
             </Text>
           </View>
         ) : (
           <FlatList
+            ref={flatListRef}
             data={movies}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
@@ -317,7 +322,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.backgroundColor,
     padding: 16,
-    paddingVertical: 50,
+    paddingTop: 35,
+    paddingBottom: 70
   },
   searchBar: {
     backgroundColor: Colors.cardBackgroundColor,
