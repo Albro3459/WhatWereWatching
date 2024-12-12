@@ -41,9 +41,6 @@ export const Spinner: React.FC<{list: Content[], onFinish: (winnder: Content) =>
     textAngle: number; 
   };
   const [segmentMap, setSegmentMap] = useState<Segment[]>([]);
-  const [inputText, setInputText] = useState<string>(""); // Input for adding movies
-  // const [selectedSegment, setSelectedSegment] = useState<string | null>(null); // Winner
-  // const [isSpinning, setIsSpinning] = useState(false); // Spin state
 
   const rotation = useSharedValue(0);
   const handlePickWinner = (value: number) => {
@@ -85,21 +82,6 @@ export const Spinner: React.FC<{list: Content[], onFinish: (winnder: Content) =>
       }
     );
   });
-
-  // Function to add a movie to the wheel
-  // const addSegment = () => {
-  //   if (inputText.trim() === "") {
-  //     Alert.alert("Error", "Please enter a movie name.");
-  //     return;
-  //   }
-  //   setSegments((prev) => [...prev, inputText.trim()]);
-  //   setInputText("");
-  // };
-
-  // Function to remove a movie from the wheel
-  // const removeSegment = (movie: string) => {
-  //   setSegments((prev) => prev.filter((item) => item !== movie));
-  // };
 
   const animatedStyles = useAnimatedStyle(() => {
     return {

@@ -45,7 +45,7 @@ const FilterModal = ({ visible, initialValues, setTypes, onSubmit, onCancel } : 
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide">
+    <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
         <View style={styles.modalContainer}>
           <Text style={styles.title}>Filter Options</Text>
@@ -135,6 +135,7 @@ const FilterModal = ({ visible, initialValues, setTypes, onSubmit, onCancel } : 
 
 const styles = StyleSheet.create({
   overlay: {
+    ...StyleSheet.absoluteFillObject,
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
@@ -177,7 +178,6 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     backgroundColor: Colors.grayCell,
-    borderRadius: 5,
   },
   buttonText: {
     color: 'white',
