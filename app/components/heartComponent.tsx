@@ -1,6 +1,5 @@
 import { Pressable, StyleSheet, View } from "react-native";
-
-const unselectedHeartColor = "#ECE6F0";
+import { Colors } from "react-native/Libraries/NewAppScreen";
 
 interface HeartTypes {
     heartColor?: string;
@@ -10,7 +9,7 @@ interface HeartTypes {
     onPress?: (any) => void;
 }
 
-const Heart: React.FC<HeartTypes> = ({heartColor = unselectedHeartColor, size = 40, screenWidth = 420, scale = 1, onPress = () => {}}) => {
+const Heart: React.FC<HeartTypes> = ({heartColor = Colors.unselectedHeartColor, size = 40, screenWidth = 420, scale = 1, onPress = () => {}}) => {
     scale = scale ? scale : 1;
     return (
         <Pressable 
@@ -27,7 +26,7 @@ const Heart: React.FC<HeartTypes> = ({heartColor = unselectedHeartColor, size = 
             style={[
                 heartStyles.heartLeft, 
                 { 
-                    backgroundColor: heartColor ? heartColor : unselectedHeartColor,
+                    backgroundColor: heartColor ? heartColor : Colors.unselectedHeartColor,
                     width: size*0.8,
                     height: size/2, 
                 }

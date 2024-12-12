@@ -3,19 +3,21 @@
 // import path from 'path';
 // import { movies, tvShows } from '../data/moviesAndTvShows';
 
-// // pulls data from the api into the db.json file
+// ////// pulls data from the api into the db.json file
 
-// ********** COMMENT THIS OUT TO RUN THE PROJECT. IT WONT RUN UNLESS ITS COMMENTED OUT ********
+// ///////////// ********** COMMENT THIS OUT TO RUN THE PROJECT. IT WONT RUN UNLESS ITS COMMENTED OUT ********
 
-// // RUN THIS IN THE TERMINAL TO USE:
-// // npm run populate-db
+// ///// RUN THIS IN THE TERMINAL TO USE:
+// ///// npm run populate-db
+
+// import { RAPIDAPI_KEY } from '@/keys';
 
 // const dbFilePath = path.join(__dirname, '..', 'data', 'db.json');
 
 // const API_BASE_URL = 'https://streaming-availability.p.rapidapi.com/shows/search/title';
 // // ******* DO NOT PUSH UR API KEY *******
 // const API_HEADERS = {
-//     'x-rapidapi-key': '79f61ff8c4msh0690c0b1190f62bp10c3d0jsna2c2af5a4d5d',
+//     'x-rapidapi-key': 'YOUR API KEY',
 //     'x-rapidapi-host': 'streaming-availability.p.rapidapi.com'
 // };
 

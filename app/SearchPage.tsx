@@ -1,35 +1,32 @@
 import { Colors } from '@/constants/Colors';
-import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, FlatList, Image, StyleSheet, Pressable, TouchableOpacity, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Dimensions, ScrollView, Alert, Modal } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, TextInput, FlatList, Image, StyleSheet, Pressable, TouchableOpacity, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Dimensions, ScrollView, Alert, Modal, ActivityIndicator } from 'react-native';
 import Heart from './components/heartComponent';
-import { Content } from './types/contentType';
-import { getContentById, getPosterByContent, getRandomContent, searchByKeywords } from './helpers/fetchHelper';
+import { Content, PosterContent } from './types/contentType';
+import { getContentById, getPostersFromContent, searchByKeywords } from './helpers/fetchHelper';
 import { router, usePathname } from 'expo-router';
 import { appStyles } from '@/styles/appStyles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STORAGE_KEY } from '@/Global';
-import { WatchList } from './types/listsType';
-import { isItemInList } from './helpers/listHelper';
+import { Global, STORAGE_KEY } from '@/Global';
+import { PosterList, WatchList } from './types/listsType';
+import { DEFAULT_TABS, FAVORITE_TAB, isItemInList, moveItemToTab, sortTabs, turnTabsIntoPosterTabs } from './helpers/listHelper';
 import DropDownPicker from 'react-native-dropdown-picker';
-import { Ionicons } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import FilterModal from './components/filterModalComponent';
-import { InitialValues } from './types/filterModalType';
-
-
-// TODO:
-//  - ADD FILTERING
-//    - by genre, or show/movie
-
+import { Filter } from './types/filterTypes';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
-const scale = .75;
-const selectedHeartColor = "#FF2452";
-const unselectedHeartColor = "#ECE6F0";
 
 const SearchPage = () => {
   const pathname = usePathname();
 
+  const [onPageLoad, setOnPageLoad] = useState(true);
+  const [isSearching, setIsSearching] = useState(false);
+
+  const flatListRef = useRef<FlatList>(null);
+
   const [searchText, setSearchText] = useState('');
+  const searchInputRef = useRef<TextInput>(null);  
   const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
   const [selectedGenres, setSelectedGenres] = useState([]);
   const [selectedTypes, setSelectedTypes] = useState([]);
@@ -38,170 +35,159 @@ const SearchPage = () => {
 
   const [heartColors, setHeartColors] = useState<{ [key: string]: string }>();
 
-  const [lists, setLists] = useState<WatchList>({
-    Planned: [],
-    Watching: [],
-    Completed: [],
-    Favorite: [],
-  });
+  const [lists, setLists] = useState<WatchList>(DEFAULT_TABS);
+  const [posterLists, setPosterLists] = useState<PosterList>(DEFAULT_TABS as PosterList);
+
   const [selectedResult, setSelectedResult] = useState<Content>(null);
-  const [addSearchToListModal, setSearchAddToListModal] = useState(false);
+  const [searchAddToListModal, setSearchAddToListModal] = useState(false);
 
   type Movie = {
     id: string;
     rating: number;
-    content: Content | null;
+    content: PosterContent | null;
   };
   const [movies, setMovies] = useState<Movie[]>([]);
 
-  const moveItemToFavoriteList = async (id: string) => {
-    try {
-      // Update heartColors locally
-      setHeartColors((prevColors = {}) => ({
-        ...prevColors,
-        [id]: prevColors[id] === selectedHeartColor ? unselectedHeartColor : selectedHeartColor,
-      }));
-  
-      // Fetch tabs from AsyncStorage
-      const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
-      const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
-  
-      // Find the item in all tabs
-      let item = Object.values<Content>(tabs)
-        .flat()
-        .find((content: Content) => content.id === id);
-  
-      if (!item) {
-        item = await getContentById(id);
-        if (!item) {
-          console.log(`LandingPage: item with id: ${id} doesn't exist`);
-          return;
-        }
-      }
-  
-      // Check if the item is already in the Favorite tab
-      const isFavorite = tabs.Favorite.some((fav) => fav.id === id);
-  
-      // Update the Favorite tab
-      const updatedFavorites = isFavorite
-        ? tabs.Favorite.filter((content) => content.id !== id) // Remove if already in Favorites
-        : [...tabs.Favorite, item]; // Add if not in Favorites
-  
-      const updatedTabs = {
-        ...tabs,
-        Favorite: updatedFavorites,
-      };
-      
-      setLists(updatedTabs);
-      // Save updated tabs to AsyncStorage
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
-
-      setSearchAddToListModal(false);
-  
-      // Show success alert
-      Alert.alert(
-        "Success",
-        isFavorite
-          ? `Removed "${item.title}" from Favorites`
-          : `Added "${item.title}" to Favorites`
-      );
-  
-    } catch (error) {
-      console.error("Error updating Favorites:", error);
-      // Alert.alert("Error", "Unable to update Favorites. Please try again.");
-    }
-  };
-
-  const moveItemToList = async (item: Content, targetTab: string) => {
-    try {
-      // Load tabs from AsyncStorage
-      const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
-      const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
-  
-      // Check if the item is already in the target tab
-      const isItemInTargetTab = tabs[targetTab].some((content) => content.id === item.id);
-  
-      // Update the target tab
-      const updatedTabs = {
-        ...tabs,
-        [targetTab]: isItemInTargetTab
-          ? tabs[targetTab].filter((content) => content.id !== item.id) // Remove if already exists
-          : [...tabs[targetTab], item], // Add if it doesn't exist
-      };
-
-      setLists(updatedTabs);
-  
-      // Save updated tabs back to AsyncStorage
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
-      
-      setSearchAddToListModal(false);
-      // Show success alert
-      Alert.alert(
-        "Success",
-        isItemInTargetTab
-          ? `Removed "${item.title}" from "${targetTab}"`
-          : `Moved "${item.title}" to "${targetTab}"`
-      );
-  
-    } catch (error) {
-      console.error("Error updating tabs:", error);
-    }
-  };
-
-
-  const handleFilterModalClose = (values : InitialValues | null) => {
+  const handleFilterModalCancel = () => {
     setIsFilterModalVisible(false);
-    if (!values) { return; }
-    setSelectedGenres(values.selectedGenres);
-    setSelectedTypes(values.selectedTypes);
-    setSelectedServices(values.selectedServices);
-    setSelectedPaidOptions(values.selectedPaidOptions);
-    const filters = [...values.selectedGenres, ...values.selectedTypes, ...values.selectedServices, ...values.selectedPaidOptions].join(',');
-    search(searchText || "", filters);
+    setSelectedGenres([]);
+    setSelectedTypes([]);
+    setSelectedServices([]);
+    setSelectedPaidOptions([]);
+    return;
   };
 
-  const search = async (searchText: string, filters: string) => {
-    setSearchText(searchText);
-    const contents = await searchByKeywords(searchText, filters);
-    if (contents) {
-      const mappedMovies = contents.map((content, index) => ({
-        id: content.id,
-        rating: 4 + ((index + 2) * 3) * 0.01,
-        content: content,
-      }));
-      setMovies(mappedMovies);
-
-      try {
-        // Load saved tabs from AsyncStorage
-        const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
-        if (savedTabs) {
-          const parsedTabs = JSON.parse(savedTabs);
-          setLists(parsedTabs);
-          // Initialize heartColors based on the Favorite tab
-          const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc, content: Content) => {
-            acc[content.id] = parsedTabs.Favorite.some((fav) => fav.id === content.id)
-              ? selectedHeartColor
-              : unselectedHeartColor;
-            return acc;
-          }, {});
-          setHeartColors(savedHeartColors);
-        }
-      } catch (error) {
-        console.error('Error loading library content:', error);
-      }
+  const handleFilterModalSubmit = async () => {
+    setIsFilterModalVisible(false);
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
     }
   };
+
+  const search = async (searchText: string, filter: Filter) => {
+    if (searchText.length <= 0 && filter.selectedGenres.length === 0 && 
+        filter.selectedTypes.length === 0 && filter.selectedServices.length === 0 && filter.selectedPaidOptions.length === 0) {
+        setMovies([]);
+        Global.searchMovies = [];
+        Global.searchFilter = filter;
+        return;
+    }
+    setSearchText(searchText);
+    setOnPageLoad(false);
+    // if (isSearching) { return; }
+    await (async () => {
+      setIsSearching(true);
+      try {
+        const contents: PosterContent[] = await searchByKeywords(searchText, filter);
+        if (contents) {
+          const mappedMovies = contents.map((content: PosterContent, index) => ({
+            id: content.id,
+            rating:  parseFloat((content.rating/20).toFixed(2)), // rating is on 100 pt scale so this converts to 5 star scale
+            content: content,
+          }));
+          setMovies(mappedMovies);
+          Global.searchMovies = mappedMovies;
+          Global.searchFilter = filter;
+
+          try {
+            // Load saved tabs from AsyncStorage
+            const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+            if (savedTabs) {
+              const parsedTabs: WatchList = savedTabs
+                                      ? sortTabs({ ...DEFAULT_TABS, ...JSON.parse(savedTabs) }) // Ensure tabs are sorted
+                                      : DEFAULT_TABS;
+              setLists(parsedTabs);
+              // Initialize heartColors based on the Favorite tab
+              const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc, content: Content) => {
+                acc[content.id] = parsedTabs.Favorite.some((fav) => fav.id === content.id)
+                  ? Colors.selectedHeartColor
+                  : Colors.unselectedHeartColor;
+                return acc;
+              }, {});
+              setHeartColors(savedHeartColors);
+            }
+          } catch (error) {
+            console.error('Error loading library content:', error);
+          }
+        }
+      } finally {
+        if (flatListRef.current && movies && movies.length > 0) {
+          flatListRef.current.scrollToOffset({ animated: true, offset: 0});
+        }
+        setIsSearching(false);
+      }
+    })();
+  };
+
+  useEffect(() => {
+    const reFetch = async () => {
+      if (pathname === "/SearchPage") {
+        if (Global.backPressLoadSearch) {
+          setOnPageLoad(false);
+          // console.log("SEARCH back press load begin");
+          // Re-initialize search state
+          if (Global.searchMovies && Global.searchMovies.length > 0) {
+            setMovies([...Global.searchMovies]);
+          }
+          if (Global.searchFilter) {
+            setSelectedGenres(Global.searchFilter.selectedGenres);
+            setSelectedTypes(Global.searchFilter.selectedTypes);
+            setSelectedServices(Global.searchFilter.selectedServices);
+            setSelectedPaidOptions(Global.searchFilter.selectedPaidOptions);
+          }
+
+          try {
+            // console.log("starting to pull lists");
+            // Load saved tabs from AsyncStorage
+            const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+            if (savedTabs) {
+              const parsedTabs: WatchList = savedTabs
+                          ? sortTabs({ ...DEFAULT_TABS, ...JSON.parse(savedTabs) }) // Ensure tabs are sorted
+                          : DEFAULT_TABS;
+              setLists(parsedTabs);
+
+              // Initialize heartColors based on the Favorite tab
+              const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc, content: Content) => {
+                acc[content.id] = parsedTabs.Favorite.some((fav) => fav.id === content.id)
+                  ? Colors.selectedHeartColor
+                  : Colors.unselectedHeartColor;
+                return acc;
+              }, {});
+              setHeartColors(savedHeartColors);
+              // console.log("SAVED lists");
+            }
+          } catch (error) {
+            console.error('Error loading library content:', error);
+          }
+        }
+        Global.backPressLoadSearch = false;
+      }
+    }
+
+    reFetch();
+  }, [pathname]); // need this for this one
 
   return (
+    <Pressable style={{height: screenHeight-70}} onPress={Keyboard.dismiss}>
     <View style={[styles.container]}>
         {/* Search Bar */}
         <View style={{flexDirection: "row", columnGap: 10, justifyContent: "center"}} >
+          <Pressable style={{paddingTop: 5}} onPress={async () => await search(searchText, { selectedGenres, selectedTypes, selectedServices, selectedPaidOptions} as Filter )}>
+            <Feather name="search" size={28} color="white" />
+          </Pressable>
           <TextInput
+            ref={searchInputRef}
             style={[styles.searchBar, {flex: 1}]}
-            placeholder="Search for a movie..."
+            placeholder="Search for a movie or TV show..."
             placeholderTextColor={Colors.reviewTextColor}
             value={searchText}
-            onChangeText={async (text) => await search(text, [...selectedGenres, ...selectedTypes, ...selectedServices, ...selectedPaidOptions].join(',') )}
+            // onChangeText={async (text) => await search(text, { selectedGenres, selectedTypes, selectedServices, selectedPaidOptions} as Filter )} // searching on type but we cant do tat with the api :(. its too slow
+            onChangeText={(text) => setSearchText(text)}
+            //{/*// Trigger search on Enter */}
+            onSubmitEditing={async () => await search(searchText, { selectedGenres, selectedTypes, selectedServices, selectedPaidOptions} as Filter )}
+            returnKeyType="search" // makes the return key say search
+            clearButtonMode='while-editing'
+            autoFocus
           />
           <Pressable onPress={() => setIsFilterModalVisible(true)}>
             <Ionicons name="filter-circle-outline" color={"white"} size={35} />
@@ -209,38 +195,49 @@ const SearchPage = () => {
         </View>
 
         {/* ADD FILTERING */}
-        <FilterModal visible={isFilterModalVisible} onClose={handleFilterModalClose} initialValues={ {selectedGenres, selectedTypes, selectedServices, selectedPaidOptions} } />
+        <FilterModal 
+          visible={isFilterModalVisible} 
+          initialValues={ {selectedGenres, selectedTypes, selectedServices, selectedPaidOptions} }
+          setTypes={ {setSelectedGenres, setSelectedTypes, setSelectedServices, setSelectedPaidOptions } }
+          onSubmit={async () =>  await handleFilterModalSubmit()}
+          onCancel={handleFilterModalCancel}
+        />
 
         {/* Movie Cards */}
         {(!movies || movies.length <= 0) ? (
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ fontSize: 16, color: 'gray', textAlign: 'center' }}>
-              {searchText.length <= 0 ? "Try Searching for a Show or Movie!" : "No Results :("}
+            <Text style={{ fontSize: 16, color: 'gray', textAlign: 'center', marginTop: -80 }}>
+              {searchText.length <= 0 && onPageLoad ? "Try Searching for a Show or Movie!" : "No Results :("}
             </Text>
           </View>
         ) : (
           <FlatList
+            ref={flatListRef}
             data={movies}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
               <Pressable
-                    onPress={() => router.push({
+                    onPress={() => {
+                      Global.backPressLoadSearch = true;
+                      router.push({
                           pathname: '/InfoPage',
                           params: { id: item.id },
-                      })}
+                      });
+                    }}
                     onLongPress={() => {setSelectedResult(item.content); setSearchAddToListModal(true);}}
                 >
                 <View style={appStyles.cardContainer}>
-                  <Image source={{ uri: getPosterByContent(item.content) }} style={appStyles.cardPoster} />
+                  <Image source={{ uri: item.content.posters.vertical }} style={appStyles.cardPoster} />
                   <View style={appStyles.cardContent}>
                     <Text style={appStyles.cardTitle}>{item.content.title}</Text>
-                    <Text style={[appStyles.cardDescription, {paddingLeft: 10}]}>{item.content.overview}</Text>
+                    <Text style={[appStyles.cardDescription, {paddingHorizontal: 10}]}>{item.content.overview}</Text>
                     <Text style={appStyles.cardRating}>⭐ {item.rating}</Text>
                   </View>
                   <Heart 
-                    heartColor={(heartColors && heartColors[item.id]) || unselectedHeartColor}
+                    heartColor={(heartColors && heartColors[item.id]) || Colors.unselectedHeartColor}
                     size={40}
-                    onPress={() => moveItemToFavoriteList(item.id)}
+                    // onPress={() => moveItemToFavoriteList(item.id)}
+                    onPress={async () => await moveItemToTab(item.content, FAVORITE_TAB, setLists, setPosterLists, [setSearchAddToListModal], setHeartColors)}
                   />
                 </View>
               </Pressable>
@@ -251,46 +248,72 @@ const SearchPage = () => {
       {/* Move Modal */}
       {selectedResult && (
         <Modal
-            transparent={true}
-            visible={addSearchToListModal}
-            animationType="fade"
-            onRequestClose={() => setSearchAddToListModal(false)}
+          transparent={true}
+          visible={searchAddToListModal}
+          animationType="fade"
+          onRequestClose={() => setSearchAddToListModal(false)}
+        >
+          <Pressable
+            style={appStyles.modalOverlay}
+            onPress={() => setSearchAddToListModal(false)}
           >
-            <Pressable
-              style={appStyles.modalOverlay}
-              onPress={() => setSearchAddToListModal(false)}
-            >
-              <View style={appStyles.modalContent}>
-                <Text style={appStyles.modalTitle}>
-                  Move "{selectedResult?.title}" to:
-                </Text>
-                {selectedResult && Object.keys(lists).map((tab, index) => (
-                  tab === "Favorite" ? (
-                    <View key={`LandingPage-${selectedResult.id}-heart-${index}`} style={{paddingTop: 10}}>
-                      <Heart 
-                        heartColor={heartColors[selectedResult?.id] || unselectedHeartColor}
-                        size={35}
-                        onPress={() => moveItemToFavoriteList(selectedResult?.id)}
-                      />
-                    </View>
-                  ) : (
-                     <TouchableOpacity
+            <View style={appStyles.modalContent}>
+              <Text style={appStyles.modalTitle}>
+                Move "{selectedResult?.title}" to:
+              </Text>
+              {selectedResult && (
+                <>
+                  {/* Render all tabs except FAVORITE_TAB */}
+                  {Object.keys(lists)
+                    .filter((tab) => tab !== FAVORITE_TAB)
+                    .map((tab, index) => (
+                      <TouchableOpacity
                         key={`LandingPage-${selectedResult.id}-${tab}-${index}`}
-                        style={[appStyles.modalButton, isItemInList(selectedResult, tab, lists) && appStyles.selectedModalButton]}
-                        onPress={() => moveItemToList(selectedResult, tab)}
+                        style={[
+                          appStyles.modalButton,
+                          isItemInList(selectedResult, tab, lists) && appStyles.selectedModalButton,
+                        ]}
+                        onPress={async () => await moveItemToTab(selectedResult, tab, setLists, setPosterLists, [setSearchAddToListModal], null)}
                       >
                         <Text style={appStyles.modalButtonText}>
                           {tab} {isItemInList(selectedResult, tab, lists) ? "✓" : ""}
                         </Text>
                       </TouchableOpacity>
-                  )
-                ))}
-              </View>
-            </Pressable>
+                    ))}
+
+                  {/* Render FAVORITE_TAB at the bottom */}
+                  {lists[FAVORITE_TAB] && (
+                    <View
+                      key={`LandingPage-${selectedResult.id}-heart`}
+                      style={{ paddingTop: 10 }}
+                    >
+                      <Heart
+                        heartColor={
+                          heartColors[selectedResult?.id] || Colors.unselectedHeartColor
+                        }
+                        size={35}
+                        onPress={async () => await moveItemToTab(selectedResult, FAVORITE_TAB, setLists, setPosterLists, [setSearchAddToListModal], setHeartColors)}
+                      />
+                    </View>
+                  )}
+                </>
+              )}
+            </View>
+          </Pressable>
         </Modal>
       )}
 
+      {/* Loading Overlay */}
+      <Modal visible={isSearching} transparent animationType="fade">
+        <View style={styles.overlay}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#fff" />
+            <Text style={styles.loadingText}>Searching...</Text>
+          </View>
+        </View>
+      </Modal>
     </View>
+    </Pressable>
   );
 };
 
@@ -299,7 +322,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.backgroundColor,
     padding: 16,
-    paddingVertical: 50,
+    paddingTop: 35,
+    paddingBottom: 70
   },
   searchBar: {
     backgroundColor: Colors.cardBackgroundColor,
@@ -308,6 +332,24 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     color: '#FFFFFF',
     marginBottom: 20,
+    fontSize: 16,
+  },
+
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingContainer: {
+    backgroundColor: '#222',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: '#fff',
+    marginTop: 10,
     fontSize: 16,
   },
 });

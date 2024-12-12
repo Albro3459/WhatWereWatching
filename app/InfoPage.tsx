@@ -4,22 +4,19 @@ import { View, Text, Image, StyleSheet, ScrollView, Button, TouchableOpacity, Di
 import * as SplashScreen from "expo-splash-screen";
 import StarRating from 'react-native-star-rating-widget';
 import Heart from './components/heartComponent';
-import { Content, Service, StreamingOption } from './types/contentType';
+import { Content, PosterContent, Service, StreamingOption } from './types/contentType';
 import { useLocalSearchParams, usePathname } from 'expo-router/build/hooks';
-import { getContentById, getPosterByContent, getRandomContent } from './helpers/fetchHelper';
+import { getContentById, getPostersFromContent, getRandomContent } from './helpers/fetchHelper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { appStyles, RalewayFont } from '@/styles/appStyles';
 import { router } from 'expo-router';
 import { SvgUri } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STORAGE_KEY } from '@/Global';
-import { isItemInList } from './helpers/listHelper';
-import { WatchList } from './types/listsType';
+import { Global, STORAGE_KEY } from '@/Global';
+import { DEFAULT_TABS, FAVORITE_TAB, isItemInList, moveItemToTab, sortTabs, turnTabsIntoPosterTabs } from './helpers/listHelper';
+import { PosterList, WatchList } from './types/listsType';
 
 const screenWidth = Dimensions.get("window").width;
-const scale = 1;
-const selectedHeartColor = "#FF2452";
-const unselectedHeartColor = "#ECE6F0";
 
 const REVIEW_STORAGE_KEY = 'movie_reviews';
 
@@ -36,40 +33,44 @@ function InfoPage() {
   const { id } = useLocalSearchParams() as InfoPageParams;
   const contentID = id ? id.toString() : null;
 
-  const [content, setContent] = useState<Content>();
-  const streamingServices: () => { serviceName: string, darkThemeImage: string, link: string }[] = () => {
+  const [content, setContent] = useState<PosterContent>();
+
+  type ServiceType = { serviceID: string, price: string, darkThemeImage: string, link: string };
+  const streamingServices: () => { freeServices: ServiceType[]; paidServices: ServiceType[] } = () => {
     const set = new Set<string>(); // Use a Set to track unique service names
   
-    return Object.values(content.streamingOptions || {}).flatMap((options: StreamingOption[]) => 
+    const serviceObjects: ServiceType[] = Object.values(content.streamingOptions || {}).flatMap((options: StreamingOption[]) => 
       options.map((option: StreamingOption) => {
         const service = option.service;
         const images = service?.imageSet; // Check if ImageSet exists
-        const uniqueKey = service?.name || ''; // Use serviceName as unique identifier
+        const uniqueKey = service?.id || ''; // Use serviceID as unique identifier
   
         if (!set.has(uniqueKey)) {
           set.add(uniqueKey); // Add to Set to ensure uniqueness
           return {
-            serviceName: uniqueKey,
+            serviceID: uniqueKey,
+            price: getServicePrice(option),
             darkThemeImage: images?.darkThemeImage || '', // Safely access darkThemeImage
             link: option.link || '',
           };
         }
         return null; // Exclude duplicates
-      }).filter((item) => item !== null) // Remove null entries
+      }).filter((item): item is ServiceType => item !== null) // Remove null entries
     );
+
+    const freeServices: ServiceType[] = serviceObjects.filter((service) => service.price === '0');
+    const paidServices: ServiceType[] = serviceObjects.filter((service) => service.price != '0');
+
+    return { freeServices, paidServices} ;
   };
 
   const [isLoading, setIsLoading] = useState(true);
   
   const [rating, setRating] = useState(2.5); // this is the default rating
 
-  const [lists, setLists] = useState<WatchList>({
-    Planned: [],
-    Watching: [],
-    Completed: [],
-    Favorite: [],
-  });
-  // const [watchList, setWatchList] = useState<Set<string>>();
+  const [lists, setLists] = useState<WatchList>(DEFAULT_TABS);
+  const [posterLists, setPosterLists] = useState<PosterList>(DEFAULT_TABS as PosterList);
+
   const [addToListModal, setAddToListModal] = useState(false);
 
   const [heartColors, setHeartColors] = useState<{[key: string]: string}>();
@@ -82,8 +83,8 @@ function InfoPage() {
    const [newReviewRating, setNewReviewRating] = useState(0);
    const [addReviewModal, setAddReviewModal] = useState(false);
  
-   const [recommendedContent, setRecommendedContent] = useState<Content[]>([]);
-   const [selectedRecommendation, setSelectedRecommendation] = useState<Content | null>(null);
+   const [recommendedContent, setRecommendedContent] = useState<PosterContent[]>([]);
+   const [selectedRecommendation, setSelectedRecommendation] = useState<PosterContent | null>(null);
    const [infoModalVisible, setInfoModalVisible] = useState(false);
 
    type Review = {
@@ -96,99 +97,16 @@ function InfoPage() {
     contentID: string; // ID of the movie or show this review is for
   };
 
-  const moveItemToFavoriteList = async (id: string) => {
-    try {
-      // Update heartColors locally
-      setHeartColors((prevColors = {}) => ({
-        ...prevColors,
-        [id]: prevColors[id] === selectedHeartColor ? unselectedHeartColor : selectedHeartColor,
-      }));
-  
-      // Fetch tabs from AsyncStorage
-      const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
-      const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
-  
-      // Find the item in all tabs
-      let item = Object.values<Content>(tabs)
-        .flat()
-        .find((content: Content) => content.id === id);
-  
-      if (!item) {
-        item = await getContentById(id);
-        if (!item) {
-          console.log(`LandingPage: item with id: ${id} doesn't exist`);
-          return;
-        }
+
+  const getServicePrice = (option: StreamingOption) : string => {
+    const service = option.service;
+    if (service && option.price && option.price.amount && option.price.currency === "USD") {
+      const priceAmount = parseFloat(option.price.amount);
+      if (!isNaN(priceAmount)) {
+        return priceAmount === 0 ? "0" : `From $${priceAmount.toFixed(2)}`
       }
-  
-      // Check if the item is already in the Favorite tab
-      const isFavorite = tabs.Favorite.some((fav) => fav.id === id);
-  
-      // Update the Favorite tab
-      const updatedFavorites = isFavorite
-        ? tabs.Favorite.filter((content) => content.id !== id) // Remove if already in Favorites
-        : [...tabs.Favorite, item]; // Add if not in Favorites
-  
-      const updatedTabs = {
-        ...tabs,
-        Favorite: updatedFavorites,
-      };
-      
-      setLists(updatedTabs);
-      // Save updated tabs to AsyncStorage
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
-
-      setInfoModalVisible(false);
-  
-      // Show success alert
-      Alert.alert(
-        "Success",
-        isFavorite
-          ? `Removed "${item.title}" from Favorites`
-          : `Added "${item.title}" to Favorites`
-      );
-  
-    } catch (error) {
-      console.error("Error updating Favorites:", error);
-      // Alert.alert("Error", "Unable to update Favorites. Please try again.");
     }
-  };
-
-  const moveItemToList = async (item: Content, targetTab: string) => {
-    try {
-      // Load tabs from AsyncStorage
-      const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
-      const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
-  
-      // Check if the item is already in the target tab
-      const isItemInTargetTab = tabs[targetTab].some((content) => content.id === item.id);
-  
-      // Update the target tab
-      const updatedTabs = {
-        ...tabs,
-        [targetTab]: isItemInTargetTab
-          ? tabs[targetTab].filter((content) => content.id !== item.id) // Remove if already exists
-          : [...tabs[targetTab], item], // Add if it doesn't exist
-      };
-
-      setLists(updatedTabs);
-  
-      // Save updated tabs back to AsyncStorage
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
-      
-      setAddToListModal(false);
-      setInfoModalVisible(false);
-      // Show success alert
-      Alert.alert(
-        "Success",
-        isItemInTargetTab
-          ? `Removed "${item.title}" from "${targetTab}"`
-          : `Moved "${item.title}" to "${targetTab}"`
-      );
-  
-    } catch (error) {
-      console.error("Error updating tabs:", error);
-    }
+    return "0";
   };
 
   const toHoursAndMinutes = (runtime) => {
@@ -205,17 +123,22 @@ function InfoPage() {
           setActiveTab('About');
           const getContent = await getContentById(contentID);
           if (getContent) {
-            setContent(getContent);
+            // console.log(`Getting content for ${getContent.title}`);
+            const posters = await getPostersFromContent(getContent);
+            const updatedContent: PosterContent = { ...getContent, posters };
+            setContent(updatedContent);
 
             try {
               const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
               if (savedTabs) {
-                const parsedTabs = JSON.parse(savedTabs);
+                const parsedTabs: WatchList = savedTabs
+                            ? sortTabs({ ...DEFAULT_TABS, ...JSON.parse(savedTabs) }) // Ensure tabs are sorted
+                            : DEFAULT_TABS;
                 setLists(parsedTabs);
                 const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc) => {
                   acc[getContent.id] = parsedTabs.Favorite.some((fav) => fav.id === getContent.id)
-                    ? selectedHeartColor
-                    : unselectedHeartColor;
+                    ? Colors.selectedHeartColor
+                    : Colors.unselectedHeartColor;
                   return acc;
                 }, {});
                 setHeartColors(savedHeartColors);
@@ -224,7 +147,7 @@ function InfoPage() {
               console.error("Error loading library content:", error);
             }
 
-            const randomContent = await getRandomContent(4);
+            const randomContent = await getRandomContent(5);
             if (randomContent) {
               setRecommendedContent(randomContent);
             }
@@ -249,7 +172,7 @@ function InfoPage() {
     };
 
     getContentObject();
-  }, [pathname, contentID]);
+  }, [contentID]);
 
   const handleAddReview = async () => {
     if (!newReviewText || newReviewRating <= 0) {
@@ -259,8 +182,8 @@ function InfoPage() {
 
     const newReview = {
       id: `${Date.now()}`,
-      user: '@currentuser',
-      text: newReviewText,
+      user: `@${Global.username || "currentuser"}`,
+      text: newReviewText.trim(),
       rating: newReviewRating,
       avatar: 'https://via.placeholder.com/50',
       contentID,
@@ -291,13 +214,31 @@ function InfoPage() {
           <View style={styles.content}>
 
             <View style={{flexDirection: "row", justifyContent: "flex-start", alignItems: "center"}}>
+              <Text style={styles.sectionTitle}>Rating:  </Text>
+              {Array.from({ length: 5 }).map((_, index) => {
+                const rating = parseFloat((content.rating / 20).toFixed(2)); // Calculate the rating on a 5-star scale
+                const isFullStar = index < Math.floor(rating); // Full star if index is less than integer part of rating
+                const isHalfStar = index >= Math.floor(rating) && index < rating; // Half star if index is fractional
+
+                return (
+                  <MaterialIcons
+                    key={index}
+                    name={isFullStar ? 'star' : isHalfStar ? 'star-half' : 'star-border'}
+                    size={16}
+                    color="#FFD700"
+                  />
+                );
+              })}
+            </View>
+
+            <View style={{flexDirection: "row", justifyContent: "flex-start", alignItems: "center"}}>
               <Text style={styles.sectionTitle}>{`${content.showType.charAt(0).toUpperCase() + content.showType.slice(1).toLowerCase()}:`}</Text>
               <Text style={[styles.text, {fontSize: 18, paddingLeft: 15, paddingTop: 10, textAlign: 'center', textAlignVertical: "center"}]}>
                   {
                     content.showType === 'movie' ? (
-                      toHoursAndMinutes(content.runtime)
+                      content.runtime ? toHoursAndMinutes(content.runtime) : ""
                     ) : (
-                      `Seasons: ${content.seasonCount}  |  Episodes: ${content.episodeCount}`
+                      content.seasonCount && content.episodeCount ? `Seasons: ${content.seasonCount}  |  Episodes: ${content.episodeCount}` : ""
                     )
                   }
               </Text>
@@ -308,7 +249,7 @@ function InfoPage() {
 
             <Text style={styles.sectionTitle}>Where to Watch</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start', columnGap: 10, padding: 10 }}>
-              {streamingServices().map((service, index) => (
+              {streamingServices().freeServices.map((service, index) => (
                 <Pressable
                   key={index}
                   style={{
@@ -331,6 +272,32 @@ function InfoPage() {
                     width={screenWidth / 5}
                     height={screenWidth / 5}
                   />
+                </Pressable>
+              ))}
+              {streamingServices().paidServices.map((service, index) => (
+                <Pressable
+                  key={index}
+                  style={{
+                    maxWidth: screenWidth / 5,
+                    maxHeight: 50,
+                    margin: 5,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  onPress={() => {
+                    if (service.link) {
+                      Linking.openURL(service.link).catch(err => console.error("Failed to open URL:", err));
+                    } else {
+                      console.log("No link available");
+                    }
+                  }}
+                >
+                  <SvgUri
+                    uri={service.darkThemeImage}
+                    width={screenWidth / 5}
+                    height={screenWidth / 5}
+                  />
+                  <Text style={{color: Colors.reviewTextColor, fontSize: 12, marginTop: -10, paddingBottom: 10}}>{service.price}</Text>
                 </Pressable>
               ))}
             </View>
@@ -356,7 +323,10 @@ function InfoPage() {
                 <Text style={styles.text}>No reviews yet. Be the first to add one!</Text>
               ) : (
                 <FlatList
+                  showsVerticalScrollIndicator={false}
+                  scrollEnabled={false}
                   data={reviews}
+                  keyExtractor={(item) => item.id}
                   renderItem={({ item }) => (
                     <View style={appStyles.reviewCard}>
                       <Image source={{ uri: item.avatar }} style={appStyles.avatar} />
@@ -364,19 +334,31 @@ function InfoPage() {
                         <Text style={appStyles.reviewUser}>{item.user}</Text>
                         <Text style={appStyles.reviewText}>{item.text}</Text>
                         <View style={appStyles.ratingContainer}>
-                          {Array.from({ length: 5 }).map((_, index) => (
+                          {/* {Array.from({ length: 5 }).map((_, index) => (
                             <MaterialIcons
                               key={index}
                               name={index < item.rating ? 'star' : 'star-border'}
                               size={16}
                               color="#FFD700"
                             />
-                          ))}
+                          ))} */}
+                          {Array.from({ length: 5 }).map((_, index) => {
+                            const isFullStar = index < Math.floor(item.rating); // Full star if index is less than integer part of rating
+                            const isHalfStar = index >= Math.floor(item.rating) && index < item.rating; // Half star if index is fractional
+
+                            return (
+                              <MaterialIcons
+                                key={index}
+                                name={isFullStar ? 'star' : isHalfStar ? 'star-half' : 'star-border'}
+                                size={16}
+                                color="#FFD700"
+                              />
+                            );
+                          })}
                         </View>
                       </View>
                     </View>
                   )}
-                  keyExtractor={(item) => item.id}
                 />
               )}
               <Button title="Add Review" onPress={() => setAddReviewModal(true)} />
@@ -391,6 +373,7 @@ function InfoPage() {
                   <View style={styles.modalContent}>
                     <Text style={styles.modalTitle}>Add a Review</Text>
                     <TextInput
+                      multiline={true}
                       style={styles.textInput}
                       placeholder="Write your review..."
                       placeholderTextColor="#aaa"
@@ -399,7 +382,7 @@ function InfoPage() {
                     />
                     <Text style={styles.ratingLabel}>Rating:</Text>
                     <View style={styles.ratingInput}>
-                      {Array.from({ length: 5 }).map((_, index) => (
+                      {/* {Array.from({ length: 5 }).map((_, index) => (
                         <Text
                           key={index}
                           style={[
@@ -410,7 +393,11 @@ function InfoPage() {
                         >
                           ★
                         </Text>
-                      ))}
+                      ))} */}
+                      <StarRating
+                        rating={newReviewRating}
+                        onChange={setNewReviewRating}
+                      />
                     </View>
                     <View style={styles.modalButtons}>
                       <Button title="Cancel" onPress={() => setAddReviewModal(false)} />
@@ -442,7 +429,7 @@ function InfoPage() {
                   onLongPress={() => {setSelectedRecommendation(item); setInfoModalVisible(true);}}
                 >
                   <Image
-                    source={{uri: getPosterByContent(item)}}
+                    source={{uri: item && item.posters.vertical }}
                     style={appStyles.movieImage}
                   />
                   <Text style={appStyles.movieTitle}>{item.title}</Text>
@@ -460,32 +447,32 @@ function InfoPage() {
       return null; // Prevent rendering until loaded
     }
 
-   // Render function for reviews
-   const renderReview = ({ item }: {item: Review}) => {
+  //  // Render function for auto generated reviews
+  //  const renderReview = ({ item }: {item: Review}) => {
 
-    return (
-      <View style={appStyles.reviewCard}>
-        <Image source={{ uri: item.avatar }} style={appStyles.avatar} />
-        <View style={appStyles.reviewTextContainer}>
-          <Text style={appStyles.reviewUser}>{item.user}</Text>
-          <Text style={appStyles.reviewText}>{item.text}</Text>
-          <Text style={appStyles.reviewMovie}>
-            Movie: {item.contentTitle.length > 0 ? item.contentTitle : "Unknown"}
-          </Text>
-          <View style={appStyles.ratingContainer}>
-            {Array.from({ length: 5 }).map((_, index) => (
-              <MaterialIcons
-                key={index}
-                name={index < item.rating ? "star" : "star-border"}
-                size={16}
-                color="#FFD700"
-              />
-            ))}
-          </View>
-        </View>
-      </View>
-    );
-  };
+  //   return (
+  //     <View style={appStyles.reviewCard}>
+  //       <Image source={{ uri: item.avatar }} style={appStyles.avatar} />
+  //       <View style={appStyles.reviewTextContainer}>
+  //         <Text style={appStyles.reviewUser}>{item.user}</Text>
+  //         <Text style={appStyles.reviewText}>{item.text}</Text>
+  //         <Text style={appStyles.reviewMovie}>
+  //           Movie: {item.contentTitle.length > 0 ? item.contentTitle : "Unknown"}
+  //         </Text>
+  //         <View style={appStyles.ratingContainer}>
+  //           {Array.from({ length: 5 }).map((_, index) => (
+  //             <MaterialIcons
+  //               key={index}
+  //               name={index < item.rating ? "star" : "star-border"}
+  //               size={16}
+  //               color="#FFD700"
+  //             />
+  //           ))}
+  //         </View>
+  //       </View>
+  //     </View>
+  //   );
+  // };
   
   if (isLoading) {
     return null; // Prevent rendering until loaded
@@ -496,7 +483,7 @@ function InfoPage() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.movieContainer}>
           {/* Movie Poster */}
-          <Image source={{ uri: getPosterByContent(content) }} style={styles.posterImage} />
+          <Image source={{ uri: content && content.posters.vertical }} style={styles.posterImage} />
           {/* Movie Info */}
           <View style={styles.infoSection}>
             <Text style={styles.title}>{content && content.title}</Text>
@@ -527,11 +514,12 @@ function InfoPage() {
                   onPress={() => setAddToListModal(false)}
                 >
                   <View style={styles.modalContent}>
-                    {Object.keys(lists).slice(0,3).map((list, index) => (
+                    {Object.keys(lists).filter((list) => list !== FAVORITE_TAB).map((list, index) => (
                       <Pressable 
                         key={index}
                         style={[styles.optionPressable, isItemInList(content, list, lists) && styles.selectedOptionPressable]} 
-                        onPress={() => moveItemToList(content, list)}
+                        // onPress={() => moveItemToList(content, list)}
+                        onPress={async () => await moveItemToTab(content, list, setLists, setPosterLists, [setAddToListModal], null)}
                       >
                         <Text style={styles.optionText}>
                           {list} {isItemInList(content, list, lists) ? "✓" : ""}
@@ -542,9 +530,10 @@ function InfoPage() {
                 </Pressable>
               </Modal>
               <Heart 
-                  heartColor={(heartColors && heartColors[content.id]) || unselectedHeartColor}
+                  heartColor={(heartColors && heartColors[content.id]) ||Colors.unselectedHeartColor}
                   size={45}
-                  onPress={() => moveItemToFavoriteList(content.id)}
+                  // onPress={() => moveItemToFavoriteList(content.id)}
+                  onPress={async () => await moveItemToTab(content, FAVORITE_TAB, setLists, setPosterLists, [setAddToListModal], setHeartColors)}
               />
             </View>
           </View>
@@ -573,42 +562,58 @@ function InfoPage() {
       {/* Move Modal */}
       {selectedRecommendation && (
         <Modal
-            transparent={true}
-            visible={infoModalVisible}
-            animationType="fade"
-            onRequestClose={() => setInfoModalVisible(false)}
+          transparent={true}
+          visible={infoModalVisible}
+          animationType="fade"
+          onRequestClose={() => setInfoModalVisible(false)}
+        >
+          <Pressable
+            style={appStyles.modalOverlay}
+            onPress={() => setInfoModalVisible(false)}
           >
-            <Pressable
-              style={appStyles.modalOverlay}
-              onPress={() => setInfoModalVisible(false)}
-            >
-              <View style={appStyles.modalContent}>
-                <Text style={appStyles.modalTitle}>
-                  Move "{selectedRecommendation?.title}" to:
-                </Text>
-                {selectedRecommendation && Object.keys(lists).map((tab, index) => (
-                  tab === "Favorite" ? (
-                    <View key={`LandingPage-${selectedRecommendation.id}-heart-${index}`} style={{paddingTop: 10}}>
-                      <Heart 
-                        heartColor={heartColors[selectedRecommendation?.id] || unselectedHeartColor}
-                        size={35}
-                        onPress={() => moveItemToFavoriteList(selectedRecommendation?.id)}
-                      />
-                    </View>
-                  ) : (
-                     <TouchableOpacity
+            <View style={appStyles.modalContent}>
+              <Text style={appStyles.modalTitle}>
+                Move "{selectedRecommendation?.title}" to:
+              </Text>
+              {selectedRecommendation && (
+                <>
+                  {/* Render all tabs except FAVORITE_TAB */}
+                  {Object.keys(lists)
+                    .filter((tab) => tab !== FAVORITE_TAB)
+                    .map((tab, index) => (
+                      <TouchableOpacity
                         key={`LandingPage-${selectedRecommendation.id}-${tab}-${index}`}
-                        style={[appStyles.modalButton, isItemInList(selectedRecommendation, tab, lists) && appStyles.selectedModalButton]}
-                        onPress={() => moveItemToList(selectedRecommendation, tab)}
+                        style={[
+                          appStyles.modalButton,
+                          isItemInList(selectedRecommendation, tab, lists) && appStyles.selectedModalButton,
+                        ]}
+                        onPress={async () => await moveItemToTab(selectedRecommendation, tab, setLists, setPosterLists, [setInfoModalVisible], null)}
                       >
                         <Text style={appStyles.modalButtonText}>
                           {tab} {isItemInList(selectedRecommendation, tab, lists) ? "✓" : ""}
                         </Text>
                       </TouchableOpacity>
-                  )
-                ))}
-              </View>
-            </Pressable>
+                    ))}
+
+                  {/* Render FAVORITE_TAB at the bottom */}
+                  {lists[FAVORITE_TAB] && (
+                    <View
+                      key={`LandingPage-${selectedRecommendation.id}-heart`}
+                      style={{ paddingTop: 10 }}
+                    >
+                      <Heart
+                        heartColor={
+                          heartColors[selectedRecommendation?.id] || Colors.unselectedHeartColor
+                        }
+                        size={35}
+                        onPress={async () => await moveItemToTab(selectedRecommendation, FAVORITE_TAB, setLists, setPosterLists, [setInfoModalVisible], setHeartColors)}
+                      />
+                    </View>
+                  )}
+                </>
+              )}
+            </View>
+          </Pressable>
         </Modal>
       )}
     </View>
@@ -740,7 +745,7 @@ const styles = StyleSheet.create({
       backgroundColor: Colors.cardBackgroundColor,
       borderRadius: 10,
       padding: 20,
-      width: 250,
+      width: screenWidth*0.8,
       alignItems: "center",
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
@@ -768,8 +773,10 @@ const styles = StyleSheet.create({
       backgroundColor: '#333',
       color: '#fff',
       padding: 10,
-      borderRadius: 5,
+      borderRadius: 8,
       marginBottom: 20,
+      width: "100%",
+      minHeight: 50,
     },
     ratingLabel: {
       color: '#fff',

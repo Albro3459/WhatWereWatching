@@ -1,68 +1,33 @@
 import React, { useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
-import { InitialValues } from '../types/filterModalType';
+import { Filter, Genres, PaidOptions, Services, Types,  } from '../types/filterTypes';
 import { Colors } from '@/constants/Colors';
 import { rgbaColor } from 'react-native-reanimated/lib/typescript/Colors';
 import { RalewayFont } from '@/styles/appStyles';
 
-const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, onClose: (any) => void, initialValues: InitialValues}) => {
-  const [selectedGenres, setSelectedGenres] = useState(initialValues.selectedGenres || []);
-  const [selectedTypes, setSelectedTypes] = useState(initialValues.selectedTypes || []);
-  const [selectedServices, setSelectedServices] = useState(initialValues.selectedServices || []);
-  const [selectedPaidOptions, setSelectedPaidOptions] = useState(initialValues.selectedPaidOptions || []);
+
+type FilterSetFuncTypes = {
+  setSelectedGenres: React.Dispatch<React.SetStateAction<any[]>>;
+  setSelectedTypes: React.Dispatch<React.SetStateAction<any[]>>;
+  setSelectedServices: React.Dispatch<React.SetStateAction<any[]>>;
+  setSelectedPaidOptions: React.Dispatch<React.SetStateAction<any[]>>;
+};
+
+const FilterModal = ({ visible, initialValues, setTypes, onSubmit, onCancel } : {visible: boolean, 
+                                                                      initialValues: Filter, 
+                                                                      setTypes: FilterSetFuncTypes,
+                                                                      onSubmit: () => void,
+                                                                      onCancel: () => void
+                                                                    }) => {
+  // const [selectedGenres, setSelectedGenres] = useState(initialValues.selectedGenres || []);
+  // const [selectedTypes, setSelectedTypes] = useState(initialValues.selectedTypes || []);
+  // const [selectedServices, setSelectedServices] = useState(initialValues.selectedServices || []);
+  // const [selectedPaidOptions, setSelectedPaidOptions] = useState(initialValues.selectedPaidOptions || []);
   const [genreOpen, setGenreOpen] = useState(false);
   const [typeOpen, setTypeOpen] = useState(false);
   const [serviceOpen, setServiceOpen] = useState(false);
   const [paidOpen, setPaidOpen] = useState(false);
-
-  const genres = [
-    { label: 'Action', value: 'Action' },
-    { label: 'Adventure', value: 'Adventure' },
-    { label: 'Animation', value: 'Animation' },
-    { label: 'Comedy', value: 'Comedy' },
-    { label: 'Crime', value: 'Crime' },
-    { label: 'Drama', value: 'Drama' },
-    { label: 'Horror', value: 'Horror' },
-    { label: 'Sci-Fi', value: 'Science Fiction' },
-    { label: 'Romance', value: 'Romance' },
-    { label: 'Reality', value: 'Reality' },
-    { label: 'Thriller', value: 'Thriller' },
-    { label: 'Mystery', value: 'Mystery' },
-    { label: 'Fantasy', value: 'Fantasy' },
-    { label: 'Documentary', value: 'Documentary' },
-    { label: 'Family', value: 'Family' },
-    { label: 'Musical', value: 'Musical' },
-    { label: 'Biography', value: 'Biography' },
-    { label: 'History', value: 'History' },
-    { label: 'War', value: 'War' },
-    { label: 'Western', value: 'Western' },
-  ];
-
-  const types = [
-    { label: 'Movie', value: 'movie' },
-    { label: 'Show', value: 'series' },
-  ];
-
-  const services = [
-    { label: 'Netflix', value: 'Netflix' },
-    { label: 'Hulu', value: 'Hulu' },
-    { label: 'HBO Max', value: 'Max' },
-    { label: 'Amazon Prime', value: 'Prime Video' },
-    { label: 'Apple TV', value: 'Apple TV' },
-    { label: 'Disney+', value: 'Disney+' },
-    { label: 'Peacock', value: 'Peacock' },
-    { label: 'Paramount+', value: 'Paramount+' },
-    { label: 'Tubi', value: 'Tubi' },
-  ];
-
-  const paidOptions = [
-    { label: 'Free', value: 'free' },
-    { label: 'Subscription', value: 'subscription' },
-    { label: 'Rent', value: 'rent' },
-    { label: 'Buy', value: 'buy' },
-    { label: 'Add On', value: 'addon' },
-  ];
 
   const handleOpen = (modalName) => {
     setGenreOpen(modalName === 'genre' ? !genreOpen : false);
@@ -76,20 +41,7 @@ const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, on
         handleOpen("none");
         return;
     }
-    const filters: InitialValues = {
-        selectedGenres: [...selectedGenres], // Ensures the current value is captured
-        selectedTypes: [...selectedTypes],
-        selectedServices: [...selectedServices],
-        selectedPaidOptions: [...selectedPaidOptions],
-    };
-    
-    // console.log('Current Filters:', {
-    //     selectedGenres: [...selectedGenres],
-    //     selectedTypes: [...selectedTypes],
-    //     selectedServices: [...selectedServices],
-    //     selectedPaidOptions: [...selectedPaidOptions],
-    //   });
-    onClose(filters);
+    onSubmit();
   };
 
   return (
@@ -103,9 +55,9 @@ const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, on
             multiple={true}
             open={genreOpen}
             setOpen={() => handleOpen('genre')}
-            value={selectedGenres}
-            setValue={setSelectedGenres}
-            items={genres}
+            value={initialValues.selectedGenres}
+            setValue={setTypes.setSelectedGenres}
+            items={Genres}
             placeholder="Select Genres"
             style={styles.dropdown}
             theme="DARK"
@@ -120,9 +72,9 @@ const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, on
             multiple={true}
             open={typeOpen}
             setOpen={() => handleOpen('type')}
-            value={selectedTypes}
-            setValue={setSelectedTypes}
-            items={types}
+            value={initialValues.selectedTypes}
+            setValue={setTypes.setSelectedTypes}
+            items={Types}
             placeholder="Select Types"
             style={styles.dropdown}
             theme="DARK"
@@ -137,9 +89,9 @@ const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, on
             multiple={true}
             open={serviceOpen}
             setOpen={() => handleOpen('service')}
-            value={selectedServices}
-            setValue={setSelectedServices}
-            items={services}
+            value={initialValues.selectedServices}
+            setValue={setTypes.setSelectedServices}
+            items={Services}
             placeholder="Select Services"
             style={styles.dropdown}
             theme="DARK"
@@ -154,9 +106,9 @@ const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, on
             multiple={true}
             open={paidOpen}
             setOpen={() => handleOpen('paid')}
-            value={selectedPaidOptions}
-            setValue={setSelectedPaidOptions}
-            items={paidOptions}
+            value={initialValues.selectedPaidOptions}
+            setValue={setTypes.setSelectedPaidOptions}
+            items={PaidOptions}
             placeholder="Select Payment Option"
             style={styles.dropdown}
             theme="DARK"
@@ -167,11 +119,12 @@ const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, on
           />
 
           <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.button} onPress={handleApply}>
-              <Text style={styles.buttonText}>Apply</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={() => { handleOpen("none"); onClose(null); }}>
+            <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={() => { handleOpen("none"); onCancel(); }}>
               <Text style={[styles.buttonText, {color: Colors.backgroundColor}]}>Cancel</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.button} onPress={handleApply}>
+              <Text style={styles.buttonText}>Save</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -188,26 +141,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContainer: {
-    backgroundColor: "#8b74bd",
+    backgroundColor: "white",
     opacity: 50,
     borderRadius: 10,
     padding: 20,
     width: '90%',
   },
   title: {
-    color: "white",
+    color: Colors.backgroundColor,
     fontSize: 24,
     fontFamily: RalewayFont,
     textAlign: "center",
   },
   label: {
-    color: "white",
+    color: "black",
     marginBottom: 5,
     fontSize: 16,
   },
   dropdown: {
     marginBottom: 10,
-    backgroundColor: Colors.unselectedColor,
+    backgroundColor: `${Colors.unselectedColor}CC`,
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -217,13 +170,14 @@ const styles = StyleSheet.create({
   button: {
     padding: 10,
     borderRadius: 10,
-    backgroundColor: Colors.selectedColor, 
+    backgroundColor: Colors.buttonColor, 
     alignItems: 'center',
     flex: 1,
     marginHorizontal: 5,
   },
   cancelButton: {
     backgroundColor: Colors.grayCell,
+    borderRadius: 5,
   },
   buttonText: {
     color: 'white',

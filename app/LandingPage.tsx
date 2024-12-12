@@ -4,19 +4,17 @@ import { Card, Title, Button, Searchbar } from "react-native-paper";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Link, router, usePathname } from "expo-router";
 import { Colors } from "@/constants/Colors";
-import { getContentById, getPosterByContent, getRandomContent } from "./helpers/fetchHelper";
-import { Content } from "./types/contentType";
+import { getContentById, getPostersFromContent, getRandomContent } from "./helpers/fetchHelper";
+import { Content, PosterContent } from "./types/contentType";
 import { appStyles, RalewayFont } from "@/styles/appStyles";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Heart from "./components/heartComponent";
 import { Global, STORAGE_KEY } from "@/Global";
-import { isItemInList } from "./helpers/listHelper";
+import { DEFAULT_TABS, FAVORITE_TAB, isItemInList, moveItemToTab, sortTabs } from "./helpers/listHelper";
+import { WatchList } from "./types/listsType";
 
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
-const scale = .75;
-const selectedHeartColor = "#FF2452";
-const unselectedHeartColor = "#ECE6F0";
 
 const LIBRARY_OVERLAY_HEIGHT = screenHeight*.095
 
@@ -25,16 +23,16 @@ function LandingPage () {
 
     const [name, setName] = useState<string>(Global.name);
 
-    const tabList = ["Planned", "Watching", "Completed", "Favorite"];
+    const [tabs, setTabs] = useState<WatchList>(DEFAULT_TABS);
     const [heartColors, setHeartColors] = useState<{ [key: string]: string }>({});  
     const [isLoading, setIsLoading] = useState(true);
-    const [selectedContent, setSelectedContent] = useState<Content>(null);
+    const [selectedContent, setSelectedContent] = useState<PosterContent>(null);
     const [listModalVisible, setListModalVisible] = useState(false);
 
     // State to manage the currently displayed movie
     const [carouselIndex, setCarouselIndex] = useState(0);
-    const [carouselContent, setCarouselContent] = useState<Content[]>([]);
-    const [moviesAndShows, setMoviesAndShows] = useState<Content[]>([]);    
+    const [carouselContent, setCarouselContent] = useState<PosterContent[]>([]);
+    const [moviesAndShows, setMoviesAndShows] = useState<PosterContent[]>([]);    
     
     type Review = {
       id: string;
@@ -89,25 +87,30 @@ function LandingPage () {
       const fetchProfile = () => {
           if (pathname === "/LandingPage") {
               setName(Global.name);
+              Global.backPressLoadSearch = false;
           }
       };  
       fetchProfile();
-  }, [pathname, Global.name]);
+  }, [Global.name]);
 
     useEffect(() => {
       setListModalVisible(false);
       const loadContent = async () => {
-        if (pathname === "/LandingPage") {
+        if (pathname === "/LandingPage" && Global.justSignedIn) {
           try {
+            setSelectedContent(null);
             // Load saved tabs from AsyncStorage
             // console.log('LandingPage: Loading async storage ');
             const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
             if (savedTabs) {
-              const parsedTabs = JSON.parse(savedTabs);
+              const parsedTabs: WatchList = savedTabs
+                      ? sortTabs({ ...DEFAULT_TABS, ...JSON.parse(savedTabs) }) // Ensure tabs are sorted
+                      : DEFAULT_TABS;
+              setTabs(parsedTabs);
 
               // Extract only favorites initially
               const savedHeartColors = (parsedTabs.Favorite || []).reduce((acc, content) => {
-                acc[content.id] = selectedHeartColor;
+                acc[content.id] = Colors.selectedHeartColor;
                 // console.log(
                 //   `Setting Heart Color: ID=${content.id}, Title="${content.title}", HeartColor=${selectedHeartColor}`
                 // );
@@ -125,98 +128,6 @@ function LandingPage () {
   
       loadContent();
     }, [pathname]);
-  
-    const moveItemToFavoriteTab = async (id: string) => {
-      try {
-        // Update heartColors locally
-        setHeartColors((prevColors = {}) => ({
-          ...prevColors,
-          [id]: prevColors[id] === selectedHeartColor ? unselectedHeartColor : selectedHeartColor,
-        }));
-    
-        // Fetch tabs from AsyncStorage
-        const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
-        const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
-    
-        // Find the item in all tabs
-        let item = Object.values<Content>(tabs)
-          .flat()
-          .find((content: Content) => content.id === id);
-    
-        if (!item) {
-          item = await getContentById(id);
-          if (!item) {
-            console.log(`LandingPage: item with id: ${id} doesn't exist`);
-            return;
-          }
-        }
-    
-        // Check if the item is already in the Favorite tab
-        const isFavorite = tabs.Favorite.some((fav) => fav.id === id);
-    
-        // Update the Favorite tab
-        const updatedFavorites = isFavorite
-          ? tabs.Favorite.filter((content) => content.id !== id) // Remove if already in Favorites
-          : [...tabs.Favorite, item]; // Add if not in Favorites
-    
-        const updatedTabs = {
-          ...tabs,
-          Favorite: updatedFavorites,
-        };
-    
-        // Save updated tabs to AsyncStorage
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
-    
-        // Show success alert
-        Alert.alert(
-          "Success",
-          isFavorite
-            ? `Removed "${item.title}" from Favorites`
-            : `Added "${item.title}" to Favorites`
-        );
-    
-        setListModalVisible(false); // Close the modal
-      } catch (error) {
-        console.error("Error updating Favorites:", error);
-        Alert.alert("Error", "Unable to update Favorites. Please try again.");
-      }
-    };
-  
-    const moveItemToTab = async (item: Content, targetTab: string) => {
-      try {
-        // Load tabs from AsyncStorage
-        const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
-        const tabs = savedTabs ? JSON.parse(savedTabs) : { Planned: [], Watching: [], Completed: [], Favorite: [] };
-    
-        // Check if the item is already in the target tab
-        const isItemInTargetTab = tabs[targetTab].some((content) => content.id === item.id);
-    
-        // Update the target tab
-        const updatedTabs = {
-          ...tabs,
-          [targetTab]: isItemInTargetTab
-            ? tabs[targetTab].filter((content) => content.id !== item.id) // Remove if already exists
-            : [...tabs[targetTab], item], // Add if it doesn't exist
-        };
-    
-        // Save updated tabs back to AsyncStorage
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
-    
-        // Show success alert
-        Alert.alert(
-          "Success",
-          isItemInTargetTab
-            ? `Removed "${item.title}" from "${targetTab}"`
-            : `Moved "${item.title}" to "${targetTab}"`
-        );
-    
-        // Close the modal
-        setListModalVisible(false);
-      } catch (error) {
-        console.error("Error updating tabs:", error);
-      }
-    };
-    
 
     // Function to handle the Next button
     const handleNextMovie = () => {
@@ -235,28 +146,29 @@ function LandingPage () {
         if (pathname === "/LandingPage") {
           if (!moviesAndShows || moviesAndShows.length == 0) {
 
-            const randomContent = await getRandomContent(10);
-            if (randomContent) {
-              setMoviesAndShows(randomContent.slice(0, 5));
-              setCarouselContent(randomContent.slice(5, 9));
-            }
-            
-            const updatedReviews = await Promise.all(
-              reviews.map(async (review) => {
-                const content = await getContentById(review.contentID);
-                // console.log(`review id: ${review.id} has title ${content.title}`);
-                return {
-                  ...review,
-                  contentTitle: content?.title || "Unknown",
-                };
-              })
-            );
-            setReviews(updatedReviews);
+              const randomContent: PosterContent[] = await getRandomContent(10);
+              if (randomContent) {
+                const middle = Math.floor(randomContent.length / 2);
+                setMoviesAndShows(randomContent.slice(0, middle));
+                setCarouselContent(randomContent.slice(middle));
+              }
+              
+              const updatedReviews = await Promise.all(
+                reviews.map(async (review) => {
+                  const content = await getContentById(review.contentID);
+                  // console.log(`review id: ${review.id} has title ${content.title}`);
+                  return {
+                    ...review,
+                    contentTitle: content?.title || "Unknown",
+                  };
+                })
+              );
+              setReviews(updatedReviews);
           }
         }
       }
       fetchRecommendedContent();
-    }, [pathname]);     
+    }, []);     
 
     // Render function for reviews
     const renderReview = ({ item }: {item: Review}) => {
@@ -288,7 +200,7 @@ function LandingPage () {
   return (
     <View style={styles.container} >
       <ScrollView style={{ marginBottom: LIBRARY_OVERLAY_HEIGHT}} showsVerticalScrollIndicator={false}>
-        <Text style={styles.welcomeText}>WELCOME BACK {Global.name.length > 0 ? Global.name.toUpperCase() : "USER"}!</Text>
+        <Text style={styles.welcomeText}>WELCOME BACK {Global.name.length > 0 ? Global.name.toUpperCase() : Global.username.length > 0 ? Global.username.toUpperCase() : "USER"}!</Text>
         {/* Trending Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>TRENDING</Text>
@@ -297,7 +209,7 @@ function LandingPage () {
                                     params: { id: carouselContent[carouselIndex].id },
                     })}>
             <Card style={styles.trendingCard}>
-              <Image source={{ uri: getPosterByContent(carouselContent[carouselIndex], false)}} style={styles.trendingImage} />
+              <Image source={{ uri: carouselContent[carouselIndex] && carouselContent[carouselIndex].posters.horizontal }} style={styles.trendingImage} />
               <Card.Content>
                 <Title style={styles.trendingTitle}>
                   {carouselContent && carouselContent[carouselIndex] && carouselContent[carouselIndex].title}
@@ -342,7 +254,7 @@ function LandingPage () {
                 }}
               >
                 <Image
-                  source={{uri: getPosterByContent(item)}}
+                  source={{ uri: item && item.posters.vertical }}
                   style={styles.movieImage}
                 />
                 <Text style={styles.movieTitle}>{item.title}</Text>
@@ -367,42 +279,58 @@ function LandingPage () {
       {/* Move Modal */}
       {selectedContent && (
         <Modal
-            transparent={true}
-            visible={listModalVisible}
-            animationType="fade"
-            onRequestClose={() => setListModalVisible(false)}
+          transparent={true}
+          visible={listModalVisible}
+          animationType="fade"
+          onRequestClose={() => setListModalVisible(false)}
+        >
+          <Pressable
+            style={appStyles.modalOverlay}
+            onPress={() => setListModalVisible(false)}
           >
-            <Pressable
-              style={appStyles.modalOverlay}
-              onPress={() => setListModalVisible(false)}
-            >
-              <View style={appStyles.modalContent}>
-                <Text style={appStyles.modalTitle}>
-                  Move "{selectedContent?.title}" to:
-                </Text>
-                {selectedContent && tabList.map((tab, index) => (
-                  tab === "Favorite" ? (
-                    <View key={`LandingPage-${selectedContent.id}-heart-${index}`} style={{paddingTop: 10}}>
-                      <Heart 
-                        heartColor={heartColors[selectedContent?.id] || unselectedHeartColor}
-                        size={35}
-                        onPress={() => moveItemToFavoriteTab(selectedContent?.id)}
-                      />
-                    </View>
-                  ) : (
-                     <TouchableOpacity
+            <View style={appStyles.modalContent}>
+              <Text style={appStyles.modalTitle}>
+                Move "{selectedContent?.title}" to:
+              </Text>
+              {selectedContent && (
+                <>
+                  {/* Render all tabs except FAVORITE_TAB */}
+                  {Object.keys(tabs)
+                    .filter((tab) => tab !== FAVORITE_TAB)
+                    .map((tab, index) => (
+                      <TouchableOpacity
                         key={`LandingPage-${selectedContent.id}-${tab}-${index}`}
-                        style={[appStyles.modalButton, isItemInList(selectedContent, tab, tabList) && appStyles.selectedModalButton]}
-                        onPress={() => moveItemToTab(selectedContent, tab)}
+                        style={[
+                          appStyles.modalButton,
+                          isItemInList(selectedContent, tab, tabs) && appStyles.selectedModalButton,
+                        ]}
+                        onPress={async () => await moveItemToTab(selectedContent, tab, setTabs, null, [setListModalVisible], null)}
                       >
                         <Text style={appStyles.modalButtonText}>
-                          {tab} {isItemInList(selectedContent, tab, tabList) ? "✓" : ""}
+                          {tab} {isItemInList(selectedContent, tab, tabs) ? "✓" : ""}
                         </Text>
                       </TouchableOpacity>
-                  )
-                ))}
-              </View>
-            </Pressable>
+                    ))}
+
+                  {/* Render FAVORITE_TAB at the bottom */}
+                  {tabs[FAVORITE_TAB] && (
+                    <View
+                      key={`LandingPage-${selectedContent.id}-heart`}
+                      style={{ paddingTop: 10 }}
+                    >
+                      <Heart
+                        heartColor={
+                          heartColors[selectedContent?.id] || Colors.unselectedHeartColor
+                        }
+                        size={35}
+                        onPress={async () => await moveItemToTab(selectedContent, FAVORITE_TAB, setTabs, null, [setListModalVisible], setHeartColors)}
+                      />
+                    </View>
+                  )}
+                </>
+              )}
+            </View>
+          </Pressable>
         </Modal>
       )}
 
@@ -546,4 +474,3 @@ const styles = StyleSheet.create({
 });
 
 export default LandingPage;
-

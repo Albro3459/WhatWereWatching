@@ -10,24 +10,23 @@ import {
   Alert,
   Pressable,
   Dimensions,
+  TextInput,
 } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from "expo-splash-screen";
-import { getPosterByContent } from './helpers/fetchHelper';
 import { router, usePathname } from 'expo-router';
 import Heart from './components/heartComponent';
-import { Content } from './types/contentType';
+import { Content, PosterContent } from './types/contentType';
 import { appStyles } from '@/styles/appStyles';
-import { STORAGE_KEY } from '@/Global';
+import { Global, STORAGE_KEY } from '@/Global';
 import { Colors } from '@/constants/Colors';
-import { WatchList } from './types/listsType';
-import { isItemInList } from './helpers/listHelper';
+import { PosterList, WatchList } from './types/listsType';
+import { createNewList, DEFAULT_TABS, FAVORITE_TAB, isItemInList, moveItemToTab, sortTabs, turnTabsIntoPosterTabs } from './helpers/listHelper';
+import DropDownPicker from 'react-native-dropdown-picker';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
-const scale = .75;
-const selectedHeartColor = "#FF2452";
-const unselectedHeartColor = "#ECE6F0";
 
 // Prevent splash screen from hiding until everything is loaded
 SplashScreen.preventAutoHideAsync();
@@ -36,17 +35,21 @@ const LibraryPage = () => {
   const pathname = usePathname();
   const pagerViewRef = useRef(null);
 
+  // const [selectedList, setSelectedList] = useState<string[]>([]);
+  // const [dropDownOpen, setDropDownOpen] = useState(false);
+  // const [libraryModal, setLibraryModal] = useState(false);
+
   const [activeTab, setActiveTab] = useState(0);
-  const [tabs, setTabs] = useState<WatchList>({
-    Planned: [],
-    Watching: [],
-    Completed: [],
-    Favorite: [],
-  });
+
+  const [tabs, setTabs] = useState<WatchList>(DEFAULT_TABS);
+  const [posterTabs, setPosterTabs] = useState<PosterList>(DEFAULT_TABS as PosterList);
+  const [newListName, setNewListName] = useState<string>("");
+  const [createNewListModal, setCreateNewListModal] = useState(false);
+
   const [heartColors, setHeartColors] = useState<{ [key: string]: string }>({});  
 
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedItem, setSelectedItem] = useState<Content>(null);
+  const [selectedItem, setSelectedItem] = useState<PosterContent>(null);
   const [moveModalVisible, setMoveModalVisible] = useState(false);
 
   useEffect(() => {
@@ -57,35 +60,23 @@ const LibraryPage = () => {
           // Load saved tabs from AsyncStorage
           const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
           if (savedTabs) {
-            const parsedTabs = JSON.parse(savedTabs);
+            const parsedTabs: WatchList = savedTabs
+                        ? sortTabs({ ...DEFAULT_TABS, ...JSON.parse(savedTabs) }) // Ensure tabs are sorted
+                        : DEFAULT_TABS;
             setTabs(parsedTabs);
+
+            const newPosterLists = await turnTabsIntoPosterTabs(parsedTabs);
+            setPosterTabs(newPosterLists);            
+
             // Initialize heartColors based on the Favorite tab
             const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc, content: Content) => {
               acc[content.id] = parsedTabs.Favorite.some((fav) => fav.id === content.id)
-                ? selectedHeartColor
-                : unselectedHeartColor;
+                ? Colors.selectedHeartColor
+                : Colors.unselectedHeartColor;
               return acc;
             }, {});
             setHeartColors(savedHeartColors);
           }
-          // We dont need random content anymore
-          //  else {
-          //   // If no saved data, load random content for "Planned" and "Watching"
-          //   const plannedContent = await getRandomContent(8);
-          //   const watchingContent = await getRandomContent(8);
-          //   const heartColors = [...plannedContent, ...watchingContent].reduce((acc, content) => {
-          //     acc[content.id] = unselectedHeartColor;
-          //     return acc;
-          //   }, {});
-          //   setHeartColors(heartColors);
-
-          //   setTabs(({
-          //     Planned: plannedContent,
-          //     Watching: watchingContent,
-          //     Completed: [],
-          //     Favorite: [],
-          //   }));
-          // }
         } catch (error) {
           console.error('Error loading library content:', error);
         } finally {
@@ -96,85 +87,78 @@ const LibraryPage = () => {
     };
 
     loadContent();
-  }, [pathname]);
+  }, []);  
 
-  const saveTabsToStorage = async (updatedTabs) => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTabs));
-    } catch (error) {
-      console.error('Error saving tabs to storage:', error);
+  useEffect(() => {
+    const reFetch = async () => {
+      if (pathname === "/LibraryPage") {
+        if (Global.backPressLoadLibrary) {
+          // console.log("LIBRARY back press load begin");
+          // Re-initialize tabs
+
+          try {
+            // console.log("starting to pull lists");
+            // Load saved tabs from AsyncStorage
+            const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+            if (savedTabs) {
+              const parsedTabs: WatchList = savedTabs
+                          ? sortTabs({ ...DEFAULT_TABS, ...JSON.parse(savedTabs) }) // Ensure tabs are sorted
+                          : DEFAULT_TABS;
+              setTabs(parsedTabs);
+              const newPosterLists = await turnTabsIntoPosterTabs(parsedTabs);
+              setPosterTabs(newPosterLists);   
+
+              // Initialize heartColors based on the Favorite tab
+              const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc, content: Content) => {
+                acc[content.id] = parsedTabs.Favorite.some((fav) => fav.id === content.id)
+                  ? Colors.selectedHeartColor
+                  : Colors.unselectedHeartColor;
+                return acc;
+              }, {});
+              setHeartColors(savedHeartColors);
+              // console.log("SAVED lists");
+            }
+          } catch (error) {
+            console.error('Error loading library content:', error);
+          }
+        }
+
+        Global.backPressLoadLibrary = false;
+      }
+    }
+
+    reFetch();
+  }, [pathname]); // need this for this one
+
+
+  const handelCreateNewTab = async (newTabName: string) => {
+    if (newTabName.trim()) {
+      const newTabIndex: number = Object.keys(tabs).length;
+      await createNewList(newListName, setTabs, setPosterTabs);
+      setNewListName("");
+      setCreateNewListModal(false);
+      setActiveTab(newTabIndex);
+      pagerViewRef.current?.setPage(newTabIndex);
     }
   };
 
-  const handleTabPress = (index) => {
+
+  const handleTabPress = async (index) => {
     setActiveTab(index);
     pagerViewRef.current?.setPage(index);
-  };
 
-  const moveItemToFavoriteTab = (id: string) => {
-    setHeartColors((prevColors = {}) => {
-      const newColor = prevColors[id] === selectedHeartColor ? unselectedHeartColor : selectedHeartColor;
-  
-      setTabs((prevTabs) => {
-        const item = Object.values(prevTabs)
-          .flat()
-          .find((content) => content.id === id);
-  
-        if (!item) return prevTabs;
-  
-        const isFavorite = newColor === selectedHeartColor;
-  
-        const updatedFavorites = isFavorite
-          ? [...prevTabs.Favorite, item]
-          : prevTabs.Favorite.filter((content) => content.id !== id);
-  
-        const updatedTabs = {
-          ...prevTabs,
-          Favorite: updatedFavorites,
-        };
-  
-        saveTabsToStorage(updatedTabs); // Save updated state to AsyncStorage
-        Alert.alert('Success', `${isFavorite ? "Added" : "Removed"} "${item.title}" ${isFavorite ? "to" : "from"} Favorite tab`);
-        return updatedTabs;
-      });
-      
-      setMoveModalVisible(false);
-      return { ...prevColors, [id]: newColor };
-    });
-  };
-
-  const moveItemToTab = (item: Content, targetTab) => {
-    const sourceTab = Object.keys(tabs).find((tab) =>
-      tabs[tab].some((content) => content.id === item.id)
-    );
-
-    if (sourceTab) {
-      let updatedTabs;
-      let deleted = false;
-      if (sourceTab === targetTab) {
-        updatedTabs = {
-          ...tabs,
-          [sourceTab]: tabs[sourceTab].filter((content) => content.id !== item.id),
-        };
-        deleted = true;
-      }
-      else {
-        updatedTabs = {
-          ...tabs,
-          [sourceTab]: tabs[sourceTab].filter((content) => content.id !== item.id),
-          [targetTab]: [...tabs[targetTab], item],
-        };
-      }
-
-      setTabs(updatedTabs);
-      saveTabsToStorage(updatedTabs); // Save updated state to AsyncStorage
-
-      Alert.alert('Success', `${deleted ? "Removed" : "Moved"} "${item.title}" ${deleted ? "from" : "to"} "${targetTab}"`);
+    const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+    if (savedTabs) {
+      const parsedTabs: WatchList = savedTabs
+                        ? sortTabs({ ...DEFAULT_TABS, ...JSON.parse(savedTabs) }) // Ensure tabs are sorted
+                        : DEFAULT_TABS;
+      setTabs(parsedTabs);
+      const newPosterLists = await turnTabsIntoPosterTabs(parsedTabs);
+      setPosterTabs(newPosterLists);
     }
-    setMoveModalVisible(false);
   };
 
-  const renderTabContent = (tabData) => {
+  const renderTabContent = (tabData: PosterContent[], tab) => {
     if (!tabData || tabData.length === 0) {
       return (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -189,14 +173,18 @@ const LibraryPage = () => {
       <FlatList
         data={tabData}
         numColumns={2}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item, index) => `${item.id}-${index}-${tab}`}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.movieCard}
-            onPress={() => router.push({
-              pathname: '/InfoPage',
-              params: { id: item.id },
-            })}
+            onPress={() => {
+                Global.backPressLoadLibrary = true;
+                router.push({
+                pathname: '/InfoPage',
+                params: { id: item.id },
+              });
+              // console.log(`Library clicked on: title ${item.title} | id ${item.id} `);
+            }}
             onLongPress={() => {
               setSelectedItem(item);
               setMoveModalVisible(true);
@@ -204,8 +192,11 @@ const LibraryPage = () => {
           >
             <Image
               source={{
-                uri: getPosterByContent(item) || 'https://via.placeholder.com/100x150',
-              }}
+                  uri: item.posters?.vertical || 
+                      (console.log(`Library poster missing for: ${item.title} | poster: ${item.posters?.vertical}`), 
+                        // reloadMissingImages(item), 
+                        "https://example.com/default-image.jpg")
+                }}
               style={styles.movieImage}
             />
             <Text style={styles.movieTitle}>{item.title}</Text>
@@ -215,14 +206,6 @@ const LibraryPage = () => {
     );
   };
 
-  // if (isLoading) {
-  //   return (
-  //     <View style={styles.loadingContainer}>
-  //       <Text style={styles.loadingText}>Loading Library...</Text>
-  //     </View>
-  //   );
-  // }
-
   if (isLoading) {
     return null; // Show splashcreen until loaded
   }
@@ -230,12 +213,12 @@ const LibraryPage = () => {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.backgroundColor }}>
       {/* Tab Bar */}
-      <View style={styles.tabBar}>
-        {Object.keys(tabs).map((tab, index) => (
+      <View style={[styles.tabBar, {flexDirection: 'row'}, (Object.keys(tabs).length <= 4) && {paddingLeft: 24}]}>
+        {/* {Object.keys(tabs).map((tab, index) => (
           <TouchableOpacity
             key={index}
             style={[styles.tabItem, activeTab === index && styles.activeTabItem]}
-            onPress={() => handleTabPress(index)}
+            onPress={async () => await handleTabPress(index)}
           >
             <Text
               style={[styles.tabText, activeTab === index && styles.activeTabText]}
@@ -243,18 +226,88 @@ const LibraryPage = () => {
               {tab}
             </Text>
           </TouchableOpacity>
-        ))}
+        ))} */}
+
+        <FlatList
+          data={Object.keys(tabs)}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          nestedScrollEnabled
+          keyExtractor={(tab, index) => index.toString()}
+          renderItem={({ item, index }) => (
+            <TouchableOpacity
+              style={[styles.tabItem, activeTab === index && styles.activeTabItem, {paddingHorizontal:8}, (Object.keys(tabs).length <= 4) && {paddingHorizontal: 12}]}
+              onPress={async () => await handleTabPress(index)}
+            >
+              { item === FAVORITE_TAB ? (
+                <Heart 
+                  heartColor={ Colors.selectedHeartColor}
+                  size={25}
+                />
+              ) : (
+                <Text
+                  style={[styles.tabText, activeTab === index && styles.activeTabText]}
+                >
+                  {item}
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
+        />
+        <Pressable onPress={() => setCreateNewListModal(true)} >
+          <View style={{ paddingLeft: 10}}>
+              <Ionicons name="add-circle-outline" size={35} color="white" />
+          </View> 
+        </Pressable>
       </View>
+        
+      {/* Create List Modal */}
+      <Modal
+        transparent={true}
+        visible={createNewListModal}
+        animationType="fade"
+        onRequestClose={() => setCreateNewListModal(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setCreateNewListModal(false)}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Add New List</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Enter list name"
+              value={newListName}
+              onChangeText={setNewListName}
+            />
+            <View style={styles.buttonRow}>
+              <Pressable
+                style={styles.cancelButton}
+                onPress={() => setCreateNewListModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={styles.addButton}
+                onPress={async () => await handelCreateNewTab(newListName) }
+              >
+                <Text style={styles.addButtonText}>Add</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
 
       {/* Pager View */}
       <PagerView
         style={{ flex: 1, marginTop: 20, marginBottom: 50 }}
         initialPage={0}
+        key={Object.keys(posterTabs).join('-')}
         ref={pagerViewRef}
         onPageSelected={(e) => setActiveTab(e.nativeEvent.position)}
       >
-        {Object.keys(tabs).map((tab, index) => (
-          <View key={index}>{renderTabContent(tabs[tab])}</View>
+        {Object.keys(posterTabs).map((tab) => (
+          <View key={tab}>{renderTabContent(posterTabs[tab], tab)}</View>
         ))}
       </PagerView>
 
@@ -274,27 +327,43 @@ const LibraryPage = () => {
               <Text style={appStyles.modalTitle}>
                 Move "{selectedItem?.title}" to:
               </Text>
-              {selectedItem && Object.keys(tabs).map((tab, index) => (
-                tab === "Favorite" ? (
-                  <View key={`LandingPage-${selectedItem.id}-heart-${index}`} style={{paddingTop: 10}}>
-                    <Heart 
-                      heartColor={heartColors[selectedItem?.id] || unselectedHeartColor}
-                      size={35}
-                      onPress={() => moveItemToFavoriteTab(selectedItem?.id)}
-                    />
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    key={`LandingPage-${selectedItem.id}-${tab}-${index}`}
-                    style={[appStyles.modalButton, isItemInList(selectedItem, tab, tabs) && appStyles.selectedModalButton]}
-                    onPress={() => moveItemToTab(selectedItem, tab)}
-                  >
-                  <Text style={appStyles.modalButtonText}>
-                    {tab} {isItemInList(selectedItem, tab, tabs) ? "✓" : ""}
-                  </Text>
-                </TouchableOpacity>
-              )
-              ))}
+              {selectedItem && (
+                <>
+                  {/* Render all tabs except FAVORITE_TAB */}
+                  {Object.keys(tabs)
+                    .filter((tab) => tab !== FAVORITE_TAB)
+                    .map((tab, index) => (
+                      <TouchableOpacity
+                        key={`LandingPage-${selectedItem.id}-${tab}-${index}`}
+                        style={[
+                          appStyles.modalButton,
+                          isItemInList(selectedItem, tab, tabs) && appStyles.selectedModalButton,
+                        ]}
+                        onPress={async () => await moveItemToTab(selectedItem, tab, setTabs, setPosterTabs, [setMoveModalVisible], null)}
+                      >
+                        <Text style={appStyles.modalButtonText}>
+                          {tab} {isItemInList(selectedItem, tab, tabs) ? "✓" : ""}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+
+                  {/* Render FAVORITE_TAB at the bottom */}
+                  {tabs[FAVORITE_TAB] && (
+                    <View
+                      key={`LandingPage-${selectedItem.id}-heart`}
+                      style={{ paddingTop: 10 }}
+                    >
+                      <Heart
+                        heartColor={
+                          heartColors[selectedItem?.id] || Colors.unselectedHeartColor
+                        }
+                        size={35}
+                        onPress={async () => await moveItemToTab(selectedItem, FAVORITE_TAB, setTabs, setPosterTabs, [setMoveModalVisible], setHeartColors)}
+                      />
+                    </View>
+                  )}
+                </>
+              )}
             </View>
           </Pressable>
         </Modal>
@@ -319,7 +388,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.tabBarColor,
     justifyContent: 'center',
     alignItems: "center",
-    padding: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 15,
   },
   tabItem: {
     paddingVertical: 8,
@@ -336,6 +406,61 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 14,
     marginTop: 5,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 20,
+    width: '80%',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: Colors.backgroundColor,
+  },
+  textInput: {
+    width: '100%',
+    borderWidth: 1,
+    backgroundColor: `${Colors.unselectedColor}CC`, // Add 'CC' for 80% opacity in HEX
+    borderColor: Colors.backgroundColor,
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 20,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  cancelButton: {
+    padding: 10,
+    backgroundColor: Colors.grayCell,
+    borderRadius: 5,
+    flex: 1,
+    marginRight: 10,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: Colors.backgroundColor,
+  },
+  addButton: {
+    padding: 10,
+    backgroundColor: Colors.buttonColor,
+    borderRadius: 5,
+    flex: 1,
+    alignItems: 'center',
+  },
+  addButtonText: {
+    color: 'white',
   },
 });
 
