@@ -34,26 +34,34 @@ function InfoPage() {
   const contentID = id ? id.toString() : null;
 
   const [content, setContent] = useState<PosterContent>();
-  const streamingServices: () => { serviceName: string, darkThemeImage: string, link: string }[] = () => {
+
+  type ServiceType = { serviceID: string, price: string, darkThemeImage: string, link: string };
+  const streamingServices: () => { freeServices: ServiceType[]; paidServices: ServiceType[] } = () => {
     const set = new Set<string>(); // Use a Set to track unique service names
   
-    return Object.values(content.streamingOptions || {}).flatMap((options: StreamingOption[]) => 
+    const serviceObjects: ServiceType[] = Object.values(content.streamingOptions || {}).flatMap((options: StreamingOption[]) => 
       options.map((option: StreamingOption) => {
         const service = option.service;
         const images = service?.imageSet; // Check if ImageSet exists
-        const uniqueKey = service?.name || ''; // Use serviceName as unique identifier
+        const uniqueKey = service?.id || ''; // Use serviceID as unique identifier
   
         if (!set.has(uniqueKey)) {
           set.add(uniqueKey); // Add to Set to ensure uniqueness
           return {
-            serviceName: uniqueKey,
+            serviceID: uniqueKey,
+            price: getServicePrice(option),
             darkThemeImage: images?.darkThemeImage || '', // Safely access darkThemeImage
             link: option.link || '',
           };
         }
         return null; // Exclude duplicates
-      }).filter((item) => item !== null) // Remove null entries
+      }).filter((item): item is ServiceType => item !== null) // Remove null entries
     );
+
+    const freeServices: ServiceType[] = serviceObjects.filter((service) => service.price === '0');
+    const paidServices: ServiceType[] = serviceObjects.filter((service) => service.price != '0');
+
+    return { freeServices, paidServices} ;
   };
 
   const [isLoading, setIsLoading] = useState(true);
@@ -87,6 +95,18 @@ function InfoPage() {
     rating: number;
     avatar: string;
     contentID: string; // ID of the movie or show this review is for
+  };
+
+
+  const getServicePrice = (option: StreamingOption) : string => {
+    const service = option.service;
+    if (service && option.price && option.price.amount && option.price.currency === "USD") {
+      const priceAmount = parseFloat(option.price.amount);
+      if (!isNaN(priceAmount)) {
+        return priceAmount === 0 ? "0" : `From $${priceAmount.toFixed(2)}`
+      }
+    }
+    return "0";
   };
 
   const toHoursAndMinutes = (runtime) => {
@@ -127,16 +147,9 @@ function InfoPage() {
               console.error("Error loading library content:", error);
             }
 
-            const randomContent = await getRandomContent(4);
+            const randomContent = await getRandomContent(5);
             if (randomContent) {
               setRecommendedContent(randomContent);
-              // const updatedRandomContent: PosterContent[] = await Promise.all(
-              //   randomContent.map(async (content: Content): Promise<PosterContent> => {
-              //     const posters = await getPostersFromContent(content);
-              //     return { ...content, posters };
-              //   })
-              // );
-              // setRecommendedContent(updatedRandomContent);
             }
 
             // Load and filter reviews for the current content
@@ -205,9 +218,9 @@ function InfoPage() {
               <Text style={[styles.text, {fontSize: 18, paddingLeft: 15, paddingTop: 10, textAlign: 'center', textAlignVertical: "center"}]}>
                   {
                     content.showType === 'movie' ? (
-                      toHoursAndMinutes(content.runtime)
+                      content.runtime ? toHoursAndMinutes(content.runtime) : ""
                     ) : (
-                      `Seasons: ${content.seasonCount}  |  Episodes: ${content.episodeCount}`
+                      content.seasonCount && content.episodeCount ? `Seasons: ${content.seasonCount}  |  Episodes: ${content.episodeCount}` : ""
                     )
                   }
               </Text>
@@ -218,7 +231,7 @@ function InfoPage() {
 
             <Text style={styles.sectionTitle}>Where to Watch</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start', columnGap: 10, padding: 10 }}>
-              {streamingServices().map((service, index) => (
+              {streamingServices().freeServices.map((service, index) => (
                 <Pressable
                   key={index}
                   style={{
@@ -241,6 +254,32 @@ function InfoPage() {
                     width={screenWidth / 5}
                     height={screenWidth / 5}
                   />
+                </Pressable>
+              ))}
+              {streamingServices().paidServices.map((service, index) => (
+                <Pressable
+                  key={index}
+                  style={{
+                    maxWidth: screenWidth / 5,
+                    maxHeight: 50,
+                    margin: 5,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  onPress={() => {
+                    if (service.link) {
+                      Linking.openURL(service.link).catch(err => console.error("Failed to open URL:", err));
+                    } else {
+                      console.log("No link available");
+                    }
+                  }}
+                >
+                  <SvgUri
+                    uri={service.darkThemeImage}
+                    width={screenWidth / 5}
+                    height={screenWidth / 5}
+                  />
+                  <Text style={{color: Colors.reviewTextColor, fontSize: 12, marginTop: -10, paddingBottom: 10}}>{service.price}</Text>
                 </Pressable>
               ))}
             </View>

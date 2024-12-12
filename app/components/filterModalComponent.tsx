@@ -6,11 +6,24 @@ import { Colors } from '@/constants/Colors';
 import { rgbaColor } from 'react-native-reanimated/lib/typescript/Colors';
 import { RalewayFont } from '@/styles/appStyles';
 
-const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, onClose: (any) => void, initialValues: Filter}) => {
-  const [selectedGenres, setSelectedGenres] = useState(initialValues.selectedGenres || []);
-  const [selectedTypes, setSelectedTypes] = useState(initialValues.selectedTypes || []);
-  const [selectedServices, setSelectedServices] = useState(initialValues.selectedServices || []);
-  const [selectedPaidOptions, setSelectedPaidOptions] = useState(initialValues.selectedPaidOptions || []);
+
+type FilterSetFuncTypes = {
+  setSelectedGenres: React.Dispatch<React.SetStateAction<any[]>>;
+  setSelectedTypes: React.Dispatch<React.SetStateAction<any[]>>;
+  setSelectedServices: React.Dispatch<React.SetStateAction<any[]>>;
+  setSelectedPaidOptions: React.Dispatch<React.SetStateAction<any[]>>;
+};
+
+const FilterModal = ({ visible, initialValues, setTypes, onSubmit, onCancel } : {visible: boolean, 
+                                                                      initialValues: Filter, 
+                                                                      setTypes: FilterSetFuncTypes,
+                                                                      onSubmit: () => void,
+                                                                      onCancel: () => void
+                                                                    }) => {
+  // const [selectedGenres, setSelectedGenres] = useState(initialValues.selectedGenres || []);
+  // const [selectedTypes, setSelectedTypes] = useState(initialValues.selectedTypes || []);
+  // const [selectedServices, setSelectedServices] = useState(initialValues.selectedServices || []);
+  // const [selectedPaidOptions, setSelectedPaidOptions] = useState(initialValues.selectedPaidOptions || []);
   const [genreOpen, setGenreOpen] = useState(false);
   const [typeOpen, setTypeOpen] = useState(false);
   const [serviceOpen, setServiceOpen] = useState(false);
@@ -28,20 +41,7 @@ const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, on
         handleOpen("none");
         return;
     }
-    const filters: Filter = {
-        selectedGenres: [...selectedGenres], // Ensures the current value is captured
-        selectedTypes: [...selectedTypes],
-        selectedServices: [...selectedServices],
-        selectedPaidOptions: [...selectedPaidOptions],
-    };
-    
-    // console.log('Current Filters:', {
-    //     selectedGenres: [...selectedGenres],
-    //     selectedTypes: [...selectedTypes],
-    //     selectedServices: [...selectedServices],
-    //     selectedPaidOptions: [...selectedPaidOptions],
-    //   });
-    onClose(filters);
+    onSubmit();
   };
 
   return (
@@ -55,8 +55,8 @@ const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, on
             multiple={true}
             open={genreOpen}
             setOpen={() => handleOpen('genre')}
-            value={selectedGenres}
-            setValue={setSelectedGenres}
+            value={initialValues.selectedGenres}
+            setValue={setTypes.setSelectedGenres}
             items={Genres}
             placeholder="Select Genres"
             style={styles.dropdown}
@@ -72,8 +72,8 @@ const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, on
             multiple={true}
             open={typeOpen}
             setOpen={() => handleOpen('type')}
-            value={selectedTypes}
-            setValue={setSelectedTypes}
+            value={initialValues.selectedTypes}
+            setValue={setTypes.setSelectedTypes}
             items={Types}
             placeholder="Select Types"
             style={styles.dropdown}
@@ -89,8 +89,8 @@ const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, on
             multiple={true}
             open={serviceOpen}
             setOpen={() => handleOpen('service')}
-            value={selectedServices}
-            setValue={setSelectedServices}
+            value={initialValues.selectedServices}
+            setValue={setTypes.setSelectedServices}
             items={Services}
             placeholder="Select Services"
             style={styles.dropdown}
@@ -106,8 +106,8 @@ const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, on
             multiple={true}
             open={paidOpen}
             setOpen={() => handleOpen('paid')}
-            value={selectedPaidOptions}
-            setValue={setSelectedPaidOptions}
+            value={initialValues.selectedPaidOptions}
+            setValue={setTypes.setSelectedPaidOptions}
             items={PaidOptions}
             placeholder="Select Payment Option"
             style={styles.dropdown}
@@ -119,12 +119,12 @@ const FilterModal = ({ visible, onClose, initialValues } : {visible: boolean, on
           />
 
           <View style={styles.buttonContainer}>
-            <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={() => { handleOpen("none"); onClose(null); }}>
+            <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={() => { handleOpen("none"); onCancel(); }}>
               <Text style={[styles.buttonText, {color: Colors.backgroundColor}]}>Cancel</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.button} onPress={handleApply}>
-              <Text style={styles.buttonText}>Apply</Text>
+              <Text style={styles.buttonText}>Save</Text>
             </TouchableOpacity>
           </View>
         </View>

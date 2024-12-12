@@ -96,7 +96,7 @@ function LandingPage () {
     useEffect(() => {
       setListModalVisible(false);
       const loadContent = async () => {
-        if (pathname === "/LandingPage") {
+        if (pathname === "/LandingPage" && Global.justSignedIn) {
           try {
             setSelectedContent(null);
             // Load saved tabs from AsyncStorage
@@ -127,7 +127,7 @@ function LandingPage () {
       };
   
       loadContent();
-    }, []);
+    }, [pathname]);
 
     // Function to handle the Next button
     const handleNextMovie = () => {
@@ -146,47 +146,24 @@ function LandingPage () {
         if (pathname === "/LandingPage") {
           if (!moviesAndShows || moviesAndShows.length == 0) {
 
-            const randomContent: PosterContent[] = await getRandomContent(10);
-            if (randomContent) {
-              const middle = Math.floor(randomContent.length / 2);
-              setMoviesAndShows(randomContent.slice(0, middle));
-              setCarouselContent(randomContent.slice(middle));
-
-              // // Add posters to the random content
-              // const updatedContent: PosterContent[] = (
-              //   await Promise.all(
-              //     randomContent.map(async (content: Content): Promise<PosterContent | null> => {
-              //       const posters = await getPostersFromContent(content);
+              const randomContent: PosterContent[] = await getRandomContent(10);
+              if (randomContent) {
+                const middle = Math.floor(randomContent.length / 2);
+                setMoviesAndShows(randomContent.slice(0, middle));
+                setCarouselContent(randomContent.slice(middle));
+              }
               
-              //       // // Check if horizontal or vertical poster strings are not empty
-              //       // if (
-              //       //   (posters?.horizontal && posters?.horizontal?.trim() !== "") ||
-              //       //   (posters?.vertical && posters?.vertical?.trim() !== "")
-              //       // ) {
-              //         return { ...content, posters };
-              //       // }
-              
-              //       // // Return null if both horizontal and vertical are empty
-              //       // return null;
-              //     })
-              //   )
-              // ).filter((item): item is PosterContent => item !== null); // Type guard for filtering null values
-              // const middle = Math.floor(updatedContent.length / 2);
-              // setMoviesAndShows(updatedContent.slice(0, middle));
-              // setCarouselContent(updatedContent.slice(middle));
-            }
-            
-            const updatedReviews = await Promise.all(
-              reviews.map(async (review) => {
-                const content = await getContentById(review.contentID);
-                // console.log(`review id: ${review.id} has title ${content.title}`);
-                return {
-                  ...review,
-                  contentTitle: content?.title || "Unknown",
-                };
-              })
-            );
-            setReviews(updatedReviews);
+              const updatedReviews = await Promise.all(
+                reviews.map(async (review) => {
+                  const content = await getContentById(review.contentID);
+                  // console.log(`review id: ${review.id} has title ${content.title}`);
+                  return {
+                    ...review,
+                    contentTitle: content?.title || "Unknown",
+                  };
+                })
+              );
+              setReviews(updatedReviews);
           }
         }
       }

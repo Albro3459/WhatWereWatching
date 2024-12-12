@@ -31,6 +31,8 @@ export default function Index() {
         Global.username = inputUsername.trim();
         Global.password = inputPassword;
 
+        Global.justSignedIn = true;
+
         router.push('/LandingPage');
     };
     

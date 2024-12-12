@@ -47,9 +47,12 @@ export default function ProfilePage() {
                     text: 'OK',
                     onPress: () => {
                         if (Global.justSignedUp) {
+                            // on sign up
                             router.push('/LandingPage');
                             Global.justSignedUp = false;
+                            Global.justSignedIn = true;
                         } else {
+                            // regular save
                             Global.justSignedUp = false;
                         }
                     },

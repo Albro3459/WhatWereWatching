@@ -1,6 +1,6 @@
 import { Colors } from '@/constants/Colors';
-import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, FlatList, Image, StyleSheet, Pressable, TouchableOpacity, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Dimensions, ScrollView, Alert, Modal } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, TextInput, FlatList, Image, StyleSheet, Pressable, TouchableOpacity, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Dimensions, ScrollView, Alert, Modal, ActivityIndicator } from 'react-native';
 import Heart from './components/heartComponent';
 import { Content, PosterContent } from './types/contentType';
 import { getContentById, getPostersFromContent, searchByKeywords } from './helpers/fetchHelper';
@@ -20,7 +20,11 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const SearchPage = () => {
   const pathname = usePathname();
 
+  const [onPageLoad, setOnPageLoad] = useState(true);
+  const [isSearching, setIsSearching] = useState(false);
+
   const [searchText, setSearchText] = useState('');
+  const searchInputRef = useRef<TextInput>(null);  
   const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
   const [selectedGenres, setSelectedGenres] = useState([]);
   const [selectedTypes, setSelectedTypes] = useState([]);
@@ -42,18 +46,20 @@ const SearchPage = () => {
   };
   const [movies, setMovies] = useState<Movie[]>([]);
 
-  const handleFilterModalClose = (filter : Filter | null) => {
+  const handleFilterModalCancel = () => {
     setIsFilterModalVisible(false);
-    if (!filter) { return; }
-    setSelectedGenres(filter.selectedGenres);
-    setSelectedTypes(filter.selectedTypes);
-    setSelectedServices(filter.selectedServices);
-    setSelectedPaidOptions(filter.selectedPaidOptions);
-    // const filters = [...values.selectedGenres, ...values.selectedTypes, ...values.selectedServices, ...values.selectedPaidOptions].join(',');
-    search(searchText || "", filter);
+    setSelectedGenres([]);
+    setSelectedTypes([]);
+    setSelectedServices([]);
+    setSelectedPaidOptions([]);
+    return;
+  };
 
-    Global.searchMovies = []
-    Global.searchFilter = filter;
+  const handleFilterModalSubmit = async () => {
+    setIsFilterModalVisible(false);
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
   };
 
   const search = async (searchText: string, filter: Filter) => {
@@ -65,47 +71,55 @@ const SearchPage = () => {
         return;
     }
     setSearchText(searchText);
-    const contents: PosterContent[] = await searchByKeywords(searchText, filter);
-    if (contents) {
-      const mappedMovies = contents.map((content: PosterContent, index) => ({
-        id: content.id,
-        rating: (() => {
-                    const result = 4 + ((index + 2) * 3) * 0.01;
-                    return parseFloat(Math.min(result, 5).toFixed(2));
-                  })(), // All this just to round to 2 decimals. God damn js can suck sometimes
-        content: content,
-      }));
-      setMovies(mappedMovies);
-      Global.searchMovies = mappedMovies;
-      Global.searchFilter = filter;
-
+    setOnPageLoad(false);
+    // if (isSearching) { return; }
+    await (async () => {
+      setIsSearching(true);
       try {
-        // Load saved tabs from AsyncStorage
-        const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
-        if (savedTabs) {
-          const parsedTabs: WatchList = savedTabs
-                                  ? sortTabs({ ...DEFAULT_TABS, ...JSON.parse(savedTabs) }) // Ensure tabs are sorted
-                                  : DEFAULT_TABS;
-          setLists(parsedTabs);
-          // Initialize heartColors based on the Favorite tab
-          const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc, content: Content) => {
-            acc[content.id] = parsedTabs.Favorite.some((fav) => fav.id === content.id)
-              ? Colors.selectedHeartColor
-              : Colors.unselectedHeartColor;
-            return acc;
-          }, {});
-          setHeartColors(savedHeartColors);
+        console.log("im searching bitch");
+        const contents: PosterContent[] = await searchByKeywords(searchText, filter);
+        if (contents) {
+          const mappedMovies = contents.map((content: PosterContent, index) => ({
+            id: content.id,
+            rating:  parseFloat((content.rating/20).toFixed(2)), // rating is on 100 pt scale so this converts to 5 star scale
+            content: content,
+          }));
+          setMovies(mappedMovies);
+          Global.searchMovies = mappedMovies;
+          Global.searchFilter = filter;
+
+          try {
+            // Load saved tabs from AsyncStorage
+            const savedTabs = await AsyncStorage.getItem(STORAGE_KEY);
+            if (savedTabs) {
+              const parsedTabs: WatchList = savedTabs
+                                      ? sortTabs({ ...DEFAULT_TABS, ...JSON.parse(savedTabs) }) // Ensure tabs are sorted
+                                      : DEFAULT_TABS;
+              setLists(parsedTabs);
+              // Initialize heartColors based on the Favorite tab
+              const savedHeartColors = Object.values(parsedTabs).flat().reduce<{ [key: string]: string }>((acc, content: Content) => {
+                acc[content.id] = parsedTabs.Favorite.some((fav) => fav.id === content.id)
+                  ? Colors.selectedHeartColor
+                  : Colors.unselectedHeartColor;
+                return acc;
+              }, {});
+              setHeartColors(savedHeartColors);
+            }
+          } catch (error) {
+            console.error('Error loading library content:', error);
+          }
         }
-      } catch (error) {
-        console.error('Error loading library content:', error);
+      } finally {
+        setIsSearching(false);
       }
-    }
+    })();
   };
 
   useEffect(() => {
     const reFetch = async () => {
       if (pathname === "/SearchPage") {
         if (Global.backPressLoadSearch) {
+          setOnPageLoad(false);
           // console.log("SEARCH back press load begin");
           // Re-initialize search state
           if (Global.searchMovies && Global.searchMovies.length > 0) {
@@ -142,7 +156,6 @@ const SearchPage = () => {
             console.error('Error loading library content:', error);
           }
         }
-
         Global.backPressLoadSearch = false;
       }
     }
@@ -151,6 +164,7 @@ const SearchPage = () => {
   }, [pathname]); // need this for this one
 
   return (
+    <Pressable style={{height: screenHeight}} onPress={Keyboard.dismiss}>
     <View style={[styles.container]}>
         {/* Search Bar */}
         <View style={{flexDirection: "row", columnGap: 10, justifyContent: "center"}} >
@@ -158,6 +172,7 @@ const SearchPage = () => {
             <Feather name="search" size={28} color="white" />
           </Pressable>
           <TextInput
+            ref={searchInputRef}
             style={[styles.searchBar, {flex: 1}]}
             placeholder="Search for a movie or TV show..."
             placeholderTextColor={Colors.reviewTextColor}
@@ -168,6 +183,7 @@ const SearchPage = () => {
             onSubmitEditing={async () => await search(searchText, { selectedGenres, selectedTypes, selectedServices, selectedPaidOptions} as Filter )}
             returnKeyType="search" // makes the return key say search
             clearButtonMode='while-editing'
+            autoFocus
           />
           <Pressable onPress={() => setIsFilterModalVisible(true)}>
             <Ionicons name="filter-circle-outline" color={"white"} size={35} />
@@ -175,13 +191,19 @@ const SearchPage = () => {
         </View>
 
         {/* ADD FILTERING */}
-        <FilterModal visible={isFilterModalVisible} onClose={handleFilterModalClose} initialValues={ {selectedGenres, selectedTypes, selectedServices, selectedPaidOptions} } />
+        <FilterModal 
+          visible={isFilterModalVisible} 
+          initialValues={ {selectedGenres, selectedTypes, selectedServices, selectedPaidOptions} }
+          setTypes={ {setSelectedGenres, setSelectedTypes, setSelectedServices, setSelectedPaidOptions } }
+          onSubmit={async () =>  await handleFilterModalSubmit()}
+          onCancel={handleFilterModalCancel}
+        />
 
         {/* Movie Cards */}
         {(!movies || movies.length <= 0) ? (
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
             <Text style={{ fontSize: 16, color: 'gray', textAlign: 'center' }}>
-              {searchText.length <= 0 ? "Try Searching for a Show or Movie!" : "No Results :("}
+              {searchText.length <= 0 && onPageLoad ? "Try Searching for a Show or Movie!" : "No Results :("}
             </Text>
           </View>
         ) : (
@@ -276,7 +298,17 @@ const SearchPage = () => {
         </Modal>
       )}
 
+      {/* Loading Overlay */}
+      <Modal visible={isSearching} transparent animationType="fade">
+        <View style={styles.overlay}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#fff" />
+            <Text style={styles.loadingText}>Searching...</Text>
+          </View>
+        </View>
+      </Modal>
     </View>
+    </Pressable>
   );
 };
 
@@ -294,6 +326,24 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     color: '#FFFFFF',
     marginBottom: 20,
+    fontSize: 16,
+  },
+
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingContainer: {
+    backgroundColor: '#222',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: '#fff',
+    marginTop: 10,
     fontSize: 16,
   },
 });

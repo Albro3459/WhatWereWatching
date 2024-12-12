@@ -379,7 +379,28 @@ const isFilterEmpty = (filter: Filter) => {
          filter.selectedServices.length === 0 && filter.selectedPaidOptions.length === 0;
 };
 
+
+// THE API CANNOT FILTER BY PAID TYPE LIKE free or rent or buy or subscription. idk why its retarded
 const fetchWithFilters = async (filter: Filter): Promise<Content[]> => {
+
+  // gets services in this format: for free: netflix, for rent: netflix.rent, then makes them comma separated
+  const getServiceTypes = (): string => {
+    let outputText: string = "";
+    const services: string[] = filter.selectedServices && filter.selectedServices.length > 0
+                    ? filter.selectedServices
+                    : Services.map((service) => service.value);
+
+    const paidOptions: string[] = filter.selectedPaidOptions || filter.selectedPaidOptions; // empty means free
+
+    services.map((service) => {
+        for (const option of paidOptions) {
+          outputText += `${service}${option ? `.${option}` : ""},`;
+        }
+      })
+      .join(",");
+
+    return outputText.slice(0, -1); // remove the trailing comma
+  };
 
   // use the ... spread to only include it if I want to
   const options = {
@@ -393,13 +414,25 @@ const fetchWithFilters = async (filter: Filter): Promise<Content[]> => {
       order_by: 'popularity_1year',
       ...filter.selectedGenres.length > 0 && { genres_relation: 'or' }, // include content from any selected genre
       output_language: 'en',
-      ...filter.selectedServices.length > 0 && { catalogs: filter.selectedServices.join(',') },
+      ...getServiceTypes() && { catalogs: getServiceTypes() },
       ...filter.selectedTypes.length === 1 && { show_type: filter.selectedTypes[0] } // Include only if exactly one type is specified
     },
     headers: API_HEADERS
   };
 
   try {
+    console.log('fetching with these filters', {
+      country: 'us',
+      series_granularity: 'show',
+      ...filter.selectedGenres.length > 0 && { genres: filter.selectedGenres.join(',') },
+      order_direction: 'desc',
+      order_by: 'popularity_1year',
+      ...filter.selectedGenres.length > 0 && { genres_relation: 'or' }, // include content from any selected genre
+      output_language: 'en',
+      ...getServiceTypes() && { catalogs: getServiceTypes() },
+      ...filter.selectedTypes.length === 1 && { show_type: filter.selectedTypes[0] } // Include only if exactly one type is specified
+    });
+
     const response = await axios.request(options);
     const data = response.data;
     if (!data || !Array.isArray(data.shows)) {
@@ -553,6 +586,8 @@ export const searchByKeywords = async (keyword: string, filter: Filter): Promise
   try {
     if (!keyword) { keyword = ""; }
     else { keyword = keyword.toLowerCase().trim() || ""; }
+
+    if (keyword.length === 0 && isFilterEmpty(filter)) { return null; }
 
     let apiResults: Content[] = [];
     // const filteredLocalData: Content[] = isFilterEmpty(filter) ? await filterLocalDB(keyword, filter) || [] : []; // dont use local data with filters (it gives bad results because we dont know how to rank results. thats why google is so good)

@@ -13,6 +13,7 @@ export const Global = {
     genres: new Set<string>(),
 
     justSignedUp: false,
+    justSignedIn: false,
 
     backPressLoadSearch: false,
     searchMovies: [],
@@ -46,6 +47,7 @@ export const SignInReset = () => {
     Global.genres = new Set<string>();
 
     Global.justSignedUp = false;
+    Global.justSignedIn = false;
 
     ClearLoadState();
 };
